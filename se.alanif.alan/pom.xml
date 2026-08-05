@@ -63,6 +63,19 @@
   <build>
     <!-- Grammar + hand-written sources live in src/ (Xtext convention). -->
     <sourceDirectory>src</sourceDirectory>
+    <!-- The serialized grammar (Alan.xtextbin) and ANTLR .tokens generated into
+         src-gen are loaded from the classpath at runtime, so copy the non-Java
+         files from src/ and src-gen/ into the jar. -->
+    <resources>
+      <resource>
+        <directory>src</directory>
+        <excludes><exclude>**/*.java</exclude></excludes>
+      </resource>
+      <resource>
+        <directory>src-gen</directory>
+        <excludes><exclude>**/*.java</exclude></excludes>
+      </resource>
+    </resources>
     <plugins>
       <!-- Run MWE2 to generate parser/lexer/model + service stubs into src-gen/. -->
       <plugin>

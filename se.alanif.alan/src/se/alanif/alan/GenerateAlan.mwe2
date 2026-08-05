@@ -17,10 +17,10 @@ Workflow {
 				runtimeTest = {
 					enabled = false
 				}
-				// The IDE/LSP-server layer is a separate module, enabled in the
-				// next step; for now generate the runtime language only.
+				// The platform-independent IDE layer -> the se.alanif.alan.ide module,
+				// which is the base for the LSP server.
 				genericIde = {
-					enabled = false
+					enabled = true
 				}
 				eclipsePlugin = {
 					enabled = false

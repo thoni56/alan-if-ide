@@ -21,6 +21,7 @@
 
   <modules>
     <module>se.alanif.alan</module>
+    <module>se.alanif.alan.ide</module>
   </modules>
 
   <properties>
