@@ -1,0 +1,6 @@
+target/
+src-gen/
+*.class
+node_modules/
+*.vsix
+.antlr-generator*.jar

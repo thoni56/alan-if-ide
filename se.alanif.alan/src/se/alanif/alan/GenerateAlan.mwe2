@@ -1,0 +1,54 @@
+module se.alanif.alan.GenerateAlan
+
+import org.eclipse.xtext.xtext.generator.*
+import org.eclipse.xtext.xtext.generator.model.project.*
+
+// rootPath resolves against the module dir (exec-maven-plugin runs MWE2 from
+// se.alanif.alan/), so ".." is the repo root and baseName names this module.
+var rootPath = ".."
+
+Workflow {
+
+	component = XtextGenerator {
+		configuration = {
+			project = StandardProjectConfig {
+				baseName = "se.alanif.alan"
+				rootPath = rootPath
+				runtimeTest = {
+					enabled = false
+				}
+				// The IDE/LSP-server layer is a separate module, enabled in the
+				// next step; for now generate the runtime language only.
+				genericIde = {
+					enabled = false
+				}
+				eclipsePlugin = {
+					enabled = false
+				}
+				createEclipseMetaData = false
+			}
+			code = {
+				encoding = "UTF-8"
+				lineDelimiter = "\n"
+				// Service stubs (validator, scope provider, ...) in Java, not Xtend,
+				// so the build stays pure Maven-Central with no Xtend compiler.
+				preferXtendStubs = false
+			}
+		}
+		language = StandardLanguage {
+			name = "se.alanif.alan.Alan"
+			fileExtensions = "alan"
+
+			serializer = {
+				generateStub = false
+			}
+			// Alan is case-insensitive (alan.smk folds input to lowercase); match
+			// keywords regardless of case.
+			parserGenerator = {
+				options = {
+					ignoreCase = true
+				}
+			}
+		}
+	}
+}

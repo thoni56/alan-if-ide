@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>se.alanif</groupId>
+  <artifactId>alanide-xtext-parent</artifactId>
+  <version>0.1.0-SNAPSHOT</version>
+  <packaging>pom</packaging>
+  <name>AlanIDE on Xtext (parent)</name>
+
+  <!--
+    AlanIDE2: an Xtext-based language server for Alan, delivered as a VS Code
+    extension. Bootstrapped from the Alan compiler grammar (alan.pmk) via
+    tools/pmk2xtext.py in the sibling alan repo; from here Alan.xtext is AUTHORED
+    source (see grammar-baseline/ for the drift-audit snapshot).
+
+    Plain Maven-Central build (no Tycho / no Eclipse target platform).
+  -->
+
+  <modules>
+    <module>se.alanif.alan</module>
+  </modules>
+
+  <properties>
+    <maven.compiler.release>21</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <xtext.version>2.43.0</xtext.version>
+  </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <!-- Aligns the whole Xtext + MWE2 + EMF stack to one consistent set. -->
+      <dependency>
+        <groupId>org.eclipse.xtext</groupId>
+        <artifactId>xtext-dev-bom</artifactId>
+        <version>${xtext.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <repositories>
+    <repository>
+      <id>central</id>
+      <url>https://repo1.maven.org/maven2</url>
+    </repository>
+  </repositories>
+
+  <build>
+    <pluginManagement>
+      <plugins>
+        <!-- Maven 3.8.7 binds an ancient compiler plugin (3.1, Java-5 default);
+             pin a modern one so <release>21</release> is honoured. -->
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <version>3.13.0</version>
+          <configuration>
+            <release>${maven.compiler.release}</release>
+          </configuration>
+        </plugin>
+        <!--
+          exec-maven-plugin pinned to 1.x: 3.x's isolated classloader breaks
+          MWE2's Guice reflection (learned the hard way in tools/xtext-check).
+        -->
+        <plugin>
+          <groupId>org.codehaus.mojo</groupId>
+          <artifactId>exec-maven-plugin</artifactId>
+          <version>1.6.0</version>
+        </plugin>
+        <plugin>
+          <groupId>org.codehaus.mojo</groupId>
+          <artifactId>build-helper-maven-plugin</artifactId>
+          <version>3.6.0</version>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+  </build>
+
+</project>
