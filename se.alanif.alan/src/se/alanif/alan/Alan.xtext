@@ -884,6 +884,7 @@ OptionalMinus:
 
 AlanId:
       ID
+    | QUOTED_ID
     | 'location'
     | 'actor'
     | 'opaque'
@@ -899,5 +900,10 @@ AlanId:
 ;
 
 // --------------------------------------------------------------------------
+// Alan lets any word be used as an identifier by quoting it: 'restore', 'lock'
+// (from alan.smk, not alan.pmk). A '-delimited token, with '' as an escaped
+// quote. The AlanValueConverterService strips the quotes for the model value.
+terminal QUOTED_ID: "'" ( "''" | !("'") )* "'";
+
 terminal SL_COMMENT: '--' !('\n' | '\r')* ('\r'? '\n')?;
 terminal ML_COMMENT: '////' -> '////';

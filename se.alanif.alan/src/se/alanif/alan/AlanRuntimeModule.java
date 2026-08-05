@@ -8,4 +8,9 @@ package se.alanif.alan;
  * Use this class to register components to be used at runtime / without the Equinox extension registry.
  */
 public class AlanRuntimeModule extends AbstractAlanRuntimeModule {
+
+    /** Use our value converters (strips quotes from QUOTED_ID). */
+    public Class<? extends org.eclipse.xtext.conversion.IValueConverterService> bindIValueConverterService() {
+        return se.alanif.alan.conversion.AlanValueConverterService.class;
+    }
 }
