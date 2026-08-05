@@ -1,0 +1,50 @@
+{
+  "name": "alan-ide",
+  "displayName": "Alan IDE",
+  "description": "Language support for the Alan interactive-fiction language (Xtext LSP).",
+  "version": "0.1.0",
+  "publisher": "alanif",
+  "engines": { "vscode": "^1.75.0" },
+  "categories": ["Programming Languages"],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "alan",
+        "aliases": ["Alan", "alan"],
+        "extensions": [".alan"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "alan",
+        "scopeName": "source.alan",
+        "path": "./syntaxes/alan.tmLanguage.json"
+      }
+    ],
+    "configuration": {
+      "title": "Alan IDE",
+      "properties": {
+        "alan.java.home": {
+          "type": "string",
+          "default": "",
+          "description": "Path to a JDK/JRE 21+ home. If empty, uses `java` from PATH."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^18.19.0",
+    "@types/vscode": "^1.75.0",
+    "typescript": "^5.4.0"
+  }
+}

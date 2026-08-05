@@ -25,3 +25,18 @@ Plain Maven-Central build (no Tycho). Needs JDK 21 + Maven.
 
     mvn compile     # runs MWE2 (generate) then compiles
 
+
+## Status: v0 (thin vertical) — WORKING
+
+`.alan` files get **syntax highlighting** (TextMate) + **outline** (LSP
+`documentSymbol`, from the EMF model), and the parser **never hangs** on
+incomplete input. Verified headlessly (`scratchpad/lsp_test.py`): initialize →
+didOpen → documentSymbol returns the declaration outline.
+
+    ./build.sh          # server jar + extension
+
+To try it: open `vscode-extension/` in VS Code and press **F5** (Extension
+Development Host), then open a `.alan` file. Needs `java` (21+) on PATH.
+
+Next: formatter, then Alan-compiler diagnostics, then cross-references
+(go-to-definition / rename).

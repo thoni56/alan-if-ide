@@ -1,0 +1,75 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Alan",
+  "scopeName": "source.alan",
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "#keywords"
+    },
+    {
+      "include": "#numbers"
+    },
+    {
+      "include": "#quotedId"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-dash.alan",
+          "match": "--.*$"
+        },
+        {
+          "name": "comment.block.alan",
+          "begin": "////",
+          "end": "////"
+        }
+      ]
+    },
+    "strings": {
+      "name": "string.quoted.double.alan",
+      "begin": "\"",
+      "end": "\"",
+      "patterns": [
+        {
+          "name": "constant.character.escape.alan",
+          "match": "\"\""
+        }
+      ]
+    },
+    "quotedId": {
+      "name": "variable.other.quoted.alan",
+      "begin": "'",
+      "end": "'",
+      "patterns": [
+        {
+          "name": "constant.character.escape.alan",
+          "match": "''"
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.other.alan",
+          "match": "(?i)\\b(actor|add|after|an|and|are|article|at|before|between|by|can|cancel|character|characters|check|container|contains|count|current|decrease|definite|depend|depending|describe|description|directly|do|does|each|else|elsif|empty|end|entered|event|every|exclude|exit|extract|first|for|form|from|has|header|here|if|import|in|include|increase|indefinite|indirectly|initialize|into|is|isa|it|last|limits|list|locate|location|look|make|max|mentioned|message|meta|min|name|near|nearby|negative|no|not|of|off|on|only|opaque|option|options|or|play|prompt|pronoun|quit|random|restart|restore|save|say|schedule|score|script|set|show|start|step|stop|strip|style|sum|synonyms|syntax|system|taking|the|then|this|to|transcript|transitively|until|use|verb|visits|wait|when|where|with|word|words)\\b"
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.alan",
+          "match": "\\b[0-9]+\\b"
+        }
+      ]
+    }
+  }
+}
