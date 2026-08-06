@@ -3,10 +3,14 @@ package se.alanif.alan.compiler;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -116,10 +120,44 @@ public final class AlanCompilerRunner {
             }
         } finally {
             if (tmp != null) {
-                try { Files.deleteIfExists(tmp); } catch (IOException ignored) { }
+                cleanupArtifacts(tmp, sourceDir);
             }
         }
         return out;
+    }
+
+    /**
+     * Remove the temp input AND every file the compiler spawned from it. The
+     * compiler names its outputs ({@code .a3c}, logs, ...) after the input's
+     * basename and may write them next to the input, in its working directory, or
+     * in the process CWD -- so sweep all three. The temp stem is unique per run
+     * (see {@link Files#createTempFile}), so matching {@code <stem>*} can only hit
+     * this run's own artifacts, never a user's file or a concurrent run's.
+     */
+    private static void cleanupArtifacts(Path tmp, Path sourceDir) {
+        String name = tmp.getFileName().toString();
+        int dot = name.lastIndexOf('.');
+        String stem = dot >= 0 ? name.substring(0, dot) : name; // alan-lsp-<unique>
+
+        Set<Path> dirs = new LinkedHashSet<>();
+        Path parent = tmp.getParent();
+        if (parent != null) {
+            dirs.add(parent);
+        }
+        if (sourceDir != null) {
+            dirs.add(sourceDir);
+        }
+        dirs.add(Paths.get(System.getProperty("user.dir")));
+
+        for (Path dir : dirs) {
+            try (DirectoryStream<Path> ds = Files.newDirectoryStream(dir, stem + "*")) {
+                for (Path p : ds) {
+                    try { Files.deleteIfExists(p); } catch (IOException ignored) { }
+                }
+            } catch (IOException ignored) {
+                // dir gone / unreadable -- nothing to clean there
+            }
+        }
     }
 
     private static Severity severity(String s) {
