@@ -103,6 +103,14 @@
           </arguments>
           <classpathScope>compile</classpathScope>
           <includePluginDependencies>false</includePluginDependencies>
+          <!--
+            After MWE2's main() returns, exec:java (default cleanupDaemonThreads=true)
+            interrupts leftover threads. That hits EMF's daemon reference-clearing
+            thread mid ReferenceQueue.remove() and prints a harmless (post-'Done.')
+            InterruptedException. The thread is a daemon and dies with the JVM, so
+            skip the cleanup to keep the build output clean.
+          -->
+          <cleanupDaemonThreads>false</cleanupDaemonThreads>
         </configuration>
       </plugin>
 
