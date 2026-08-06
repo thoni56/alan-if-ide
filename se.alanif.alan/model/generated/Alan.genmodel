@@ -27,12 +27,18 @@
     <genClasses ecoreClass="Alan.ecore#//Syntax"/>
     <genClasses ecoreClass="Alan.ecore#//Class">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Alan.ecore#//Class/name"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Alan.ecore#//Class/heritage"/>
     </genClasses>
     <genClasses ecoreClass="Alan.ecore#//Addition">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Alan.ecore#//Addition/name"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Alan.ecore#//Addition/heritage"/>
     </genClasses>
     <genClasses ecoreClass="Alan.ecore#//Instance">
       <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Alan.ecore#//Instance/name"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Alan.ecore#//Instance/heritage"/>
+    </genClasses>
+    <genClasses ecoreClass="Alan.ecore#//Heritage">
+      <genFeatures notify="false" createChild="false" propertySortChoices="true" ecoreFeature="ecore:EReference Alan.ecore#//Heritage/superclass"/>
     </genClasses>
     <genClasses ecoreClass="Alan.ecore#//Event"/>
     <genClasses ecoreClass="Alan.ecore#//Rule"/>

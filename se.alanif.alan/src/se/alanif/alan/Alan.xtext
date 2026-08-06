@@ -247,7 +247,7 @@ Does:
 // RETURNS: cla
 // SHALLOW MODEL (Era-1 seed; outline node) -- audit me
 Class:
-      'every' name=AlanId OptionalHeritage Properties ClassTail
+      'every' name=AlanId (heritage=Heritage)? Properties ClassTail
 ;
 
 // RETURNS: id
@@ -258,7 +258,7 @@ ClassTail:
 // RETURNS: cla
 // SHALLOW MODEL (Era-1 seed; outline node) -- audit me
 Addition:
-      'add' 'to' ('every')? name=AlanId OptionalHeritage Properties AddTail
+      'add' 'to' ('every')? name=AlanId (heritage=Heritage)? Properties AddTail
 ;
 
 // RETURNS: id
@@ -269,7 +269,7 @@ AddTail:
 // RETURNS: ins
 // SHALLOW MODEL (Era-1 seed; outline node) -- audit me
 Instance:
-      'the' name=AlanId OptionalHeritage Properties InstanceTail
+      'the' name=AlanId (heritage=Heritage)? Properties InstanceTail
 ;
 
 // RETURNS: id
@@ -278,14 +278,11 @@ InstanceTail:
 ;
 
 // RETURNS: id
-// has empty alternative -> optional at use site
-OptionalHeritage:
-      (Heritage)?
-;
-
-// RETURNS: id
+// CROSS-REF (Era-2; first wired reference) -- 'isa' links an instance/class to its
+// parent Class. The name text is parsed by AlanId (handles quoted ids / soft
+// keywords); resolution is case-insensitive (see AlanScopeProvider).
 Heritage:
-      'isa' AlanId ('.')?
+      {Heritage} 'isa' superclass=[Class|AlanId] ('.')?
 ;
 
 // RETURNS: all!

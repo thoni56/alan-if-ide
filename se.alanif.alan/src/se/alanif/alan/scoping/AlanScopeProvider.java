@@ -3,13 +3,36 @@
  */
 package se.alanif.alan.scoping;
 
+import java.util.List;
+
+import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.ecore.EReference;
+import org.eclipse.xtext.EcoreUtil2;
+import org.eclipse.xtext.scoping.IScope;
+import org.eclipse.xtext.scoping.Scopes;
+import org.eclipse.xtext.scoping.impl.SimpleScope;
+
+import se.alanif.alan.alan.AlanPackage;
+import se.alanif.alan.alan.Class;
 
 /**
- * This class contains custom scoping description.
- * 
- * See https://www.eclipse.org/Xtext/documentation/303_runtime_concepts.html#scoping
- * on how and when to use it.
+ * Custom scoping for Alan.
+ *
+ * First wired reference: {@code Heritage.superclass} ('isa'). Alan is
+ * case-insensitive, so the returned scope ignores case — 'isa DOOR' resolves to
+ * 'every door'. The candidate set is every Class in the resource (Alan has a
+ * flat, whole-adventure namespace; imports splice files together at scan time).
  */
 public class AlanScopeProvider extends AbstractAlanScopeProvider {
 
+	@Override
+	public IScope getScope(EObject context, EReference reference) {
+		if (reference == AlanPackage.Literals.HERITAGE__SUPERCLASS) {
+			List<Class> classes = EcoreUtil2.getAllContentsOfType(
+					EcoreUtil2.getRootContainer(context), Class.class);
+			return new SimpleScope(IScope.NULLSCOPE,
+					Scopes.scopedElementsFor(classes), true);
+		}
+		return super.getScope(context, reference);
+	}
 }
