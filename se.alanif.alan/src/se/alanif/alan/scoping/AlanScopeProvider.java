@@ -3,36 +3,94 @@
  */
 package se.alanif.alan.scoping;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
+import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EReference;
+import org.eclipse.emf.ecore.resource.Resource;
+import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.xtext.EcoreUtil2;
 import org.eclipse.xtext.scoping.IScope;
 import org.eclipse.xtext.scoping.Scopes;
 import org.eclipse.xtext.scoping.impl.SimpleScope;
 
+import se.alanif.alan.alan.Adventure;
+import se.alanif.alan.alan.AlanFactory;
 import se.alanif.alan.alan.AlanPackage;
 import se.alanif.alan.alan.Class;
+import se.alanif.alan.alan.Heritage;
 
 /**
  * Custom scoping for Alan.
  *
  * First wired reference: {@code Heritage.superclass} ('isa'). Alan is
  * case-insensitive, so the returned scope ignores case — 'isa DOOR' resolves to
- * 'every door'. The candidate set is every Class in the resource (Alan has a
- * flat, whole-adventure namespace; imports splice files together at scan time).
+ * 'every door'. The candidate set is every Class declared in the resource PLUS
+ * the predefined built-in classes (entity/thing/object/... ), which the Alan
+ * compiler provides implicitly and which never appear as 'every' in source.
  */
 public class AlanScopeProvider extends AbstractAlanScopeProvider {
+
+	/**
+	 * The compiler's predefined class hierarchy: {name, parent-name}. Parent is
+	 * null for the root. These are injected into scope so 'isa actor' resolves.
+	 */
+	private static final String[][] BUILTINS = {
+			{ "entity", null },
+			{ "thing", "entity" },
+			{ "object", "thing" },
+			{ "actor", "thing" },
+			{ "location", "entity" },
+			{ "literal", "entity" },
+			{ "string", "literal" },
+			{ "integer", "literal" },
+	};
+
+	/** Synthetic resource holding the built-ins; not scanned/validated. */
+	private static final URI PRELUDE_URI = URI.createURI("synthetic:/alan/builtins.alan");
 
 	@Override
 	public IScope getScope(EObject context, EReference reference) {
 		if (reference == AlanPackage.Literals.HERITAGE__SUPERCLASS) {
-			List<Class> classes = EcoreUtil2.getAllContentsOfType(
-					EcoreUtil2.getRootContainer(context), Class.class);
-			return new SimpleScope(IScope.NULLSCOPE,
-					Scopes.scopedElementsFor(classes), true);
+			List<Class> classes = new ArrayList<>(EcoreUtil2.getAllContentsOfType(
+					EcoreUtil2.getRootContainer(context), Class.class));
+			classes.addAll(builtinClasses(context.eResource().getResourceSet()));
+			return new SimpleScope(IScope.NULLSCOPE, Scopes.scopedElementsFor(classes), true);
 		}
 		return super.getScope(context, reference);
+	}
+
+	/**
+	 * The predefined classes, materialised as real (in-memory) Class objects in a
+	 * synthetic resource so the linker can resolve to them and content-assist can
+	 * propose them. Cached in the resource set so we build the prelude once.
+	 */
+	private synchronized List<Class> builtinClasses(ResourceSet rs) {
+		Resource r = rs.getResource(PRELUDE_URI, false);
+		if (r == null) {
+			r = rs.createResource(PRELUDE_URI);
+			AlanFactory f = AlanFactory.eINSTANCE;
+			Adventure adv = f.createAdventure();
+			Map<String, Class> byName = new LinkedHashMap<>();
+			for (String[] np : BUILTINS) {
+				Class c = f.createClass();
+				c.setName(np[0]);
+				adv.getClasses().add(c);
+				byName.put(np[0], c);
+			}
+			for (String[] np : BUILTINS) {
+				if (np[1] != null) {
+					Heritage h = f.createHeritage();
+					h.setSuperclass(byName.get(np[1]));
+					byName.get(np[0]).setHeritage(h);
+				}
+			}
+			r.getContents().add(adv);
+		}
+		return ((Adventure) r.getContents().get(0)).getClasses();
 	}
 }
