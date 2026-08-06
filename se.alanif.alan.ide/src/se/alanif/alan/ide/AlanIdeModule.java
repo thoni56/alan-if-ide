@@ -3,9 +3,17 @@
  */
 package se.alanif.alan.ide;
 
+import org.eclipse.xtext.ide.server.symbol.DocumentSymbolService;
+
+import se.alanif.alan.ide.symbol.AlanDocumentSymbolService;
 
 /**
  * Use this class to register ide components.
  */
 public class AlanIdeModule extends AbstractAlanIdeModule {
+
+	/** Graceful go-to-definition for built-in (synthetic prelude) targets. */
+	public Class<? extends DocumentSymbolService> bindDocumentSymbolService() {
+		return AlanDocumentSymbolService.class;
+	}
 }
