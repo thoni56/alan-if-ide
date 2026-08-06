@@ -17,6 +17,26 @@ import org.eclipse.xtext.nodemodel.INode;
  */
 public class AlanValueConverterService extends DefaultTerminalConverters {
 
+    /** Alan strings: "" escapes a quote, backslash is literal (unlike the default,
+     *  which is Java/backslash-escaped). Strip the delimiters and collapse "" -> ". */
+    @ValueConverter(rule = "STRING")
+    public IValueConverter<String> STRING() {
+        return new IValueConverter<String>() {
+            @Override
+            public String toValue(String string, INode node) throws ValueConverterException {
+                if (string == null || string.length() < 2) {
+                    return string;
+                }
+                return string.substring(1, string.length() - 1).replace("\"\"", "\"");
+            }
+
+            @Override
+            public String toString(String value) throws ValueConverterException {
+                return "\"" + value.replace("\"", "\"\"") + "\"";
+            }
+        };
+    }
+
     @ValueConverter(rule = "AlanId")
     public IValueConverter<String> AlanId() {
         return new IValueConverter<String>() {

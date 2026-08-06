@@ -14,8 +14,15 @@ Adventure:
       ( classes+=Class | instances+=Instance | additions+=Addition
       | synonyms+=Synonyms | messages+=Messages | syntaxes+=Syntax
       | events+=Event | rules+=Rule | prompts+=Prompt
-      | Verb | 'import' )*
+      | Verb | imports+=Import )*
       Start?
+;
+
+// import 'filename'.  -- Alan splices the file in at scan time; for the IDE we
+// just record the imported name (shown in the outline; a value for go-to later).
+// The filename is a quoted id (single quotes), so AlanId covers it.
+Import:
+      'import' name=AlanId '.'
 ;
 
 // RETURNS: <nothing>
@@ -900,10 +907,23 @@ AlanId:
 ;
 
 // --------------------------------------------------------------------------
-// Alan lets any word be used as an identifier by quoting it: 'restore', 'lock'
-// (from alan.smk, not alan.pmk). A '-delimited token, with '' as an escaped
-// quote. The AlanValueConverterService strips the quotes for the model value.
+// Alan lexer terminals. These come from the scanner (alan.smk), NOT alan.pmk,
+// so they override / supplement what common.Terminals provides. Terminal
+// overrides must appear AFTER the parser rules to win over the inherited ones.
+
+// Identifiers may contain national (Latin-1) letters -- Alan is Swedish-origin,
+// so 'dörr', 'nyckel' are ordinary ids. common.Terminals' ID is ASCII-only.
+terminal fragment LETTER:
+    'a'..'z' | 'A'..'Z' | 'À'..'Ö' | 'Ø'..'ö' | 'ø'..'ÿ';
+terminal ID: LETTER (LETTER | '0'..'9' | '_')*;
+
+// A quoted word used as an identifier: 'restore', 'foo''s'. '' escapes a quote.
+// AlanValueConverterService strips the quotes for the model value.
 terminal QUOTED_ID: "'" ( "''" | !("'") )* "'";
+
+// Alan strings escape a quote by DOUBLING it (""), not with a backslash, and a
+// backslash is a literal character. common.Terminals' STRING uses backslash.
+terminal STRING: '"' ( '""' | !('"') )* '"';
 
 terminal SL_COMMENT: '--' !('\n' | '\r')* ('\r'? '\n')?;
 terminal ML_COMMENT: '////' -> '////';

@@ -16,6 +16,10 @@
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Alan.ecore#//Adventure/events"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Alan.ecore#//Adventure/rules"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Alan.ecore#//Adventure/prompts"/>
+      <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Alan.ecore#//Adventure/imports"/>
+    </genClasses>
+    <genClasses ecoreClass="Alan.ecore#//Import">
+      <genFeatures createChild="false" ecoreFeature="ecore:EAttribute Alan.ecore#//Import/name"/>
     </genClasses>
     <genClasses ecoreClass="Alan.ecore#//Prompt"/>
     <genClasses ecoreClass="Alan.ecore#//Synonyms"/>
