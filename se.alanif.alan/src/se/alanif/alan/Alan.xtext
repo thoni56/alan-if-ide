@@ -466,13 +466,10 @@ OptionalExtract:
 
 // RETURNS: evt
 // SHALLOW MODEL (Era-1 seed; outline node) -- audit me
+// name= makes events navigable (schedule/cancel targets) via the name-based
+// goto-def; EventHeader inlined so the name lands on the Event node itself.
 Event:
-      {Event} EventHeader Statements EventTail
-;
-
-// RETURNS: srcp, id
-EventHeader:
-      'event' AlanId
+      'event' name=AlanId Statements EventTail
 ;
 
 // RETURNS: id
