@@ -13,4 +13,9 @@ public class AlanRuntimeModule extends AbstractAlanRuntimeModule {
     public Class<? extends org.eclipse.xtext.conversion.IValueConverterService> bindIValueConverterService() {
         return se.alanif.alan.conversion.AlanValueConverterService.class;
     }
+
+    /** Add real Alan-compiler diagnostics on top of Xtext's validation. */
+    public Class<? extends org.eclipse.xtext.validation.IResourceValidator> bindIResourceValidator() {
+        return se.alanif.alan.validation.AlanResourceValidator.class;
+    }
 }

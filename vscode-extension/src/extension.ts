@@ -17,13 +17,18 @@ export function activate(context: ExtensionContext) {
     }
 
     // `java` from the configured JDK home, else PATH.
-    const javaHome = workspace.getConfiguration('alan').get<string>('java.home');
+    const cfg = workspace.getConfiguration('alan');
+    const javaHome = cfg.get<string>('java.home');
     const javaCmd = javaHome ? path.join(javaHome, 'bin', 'java') : 'java';
 
-    const serverOptions: ServerOptions = {
-        run:   { command: javaCmd, args: ['-jar', jar] },
-        debug: { command: javaCmd, args: ['-jar', jar] }
-    };
+    // Pass the Alan compiler path to the server (for diagnostics) via env.
+    const env = { ...process.env };
+    const compilerPath = cfg.get<string>('compiler.path');
+    if (compilerPath) {
+        env.ALAN_COMPILER = compilerPath;
+    }
+    const exec = { command: javaCmd, args: ['-jar', jar], options: { env } };
+    const serverOptions: ServerOptions = { run: exec, debug: exec };
 
     const clientOptions: LanguageClientOptions = {
         documentSelector: [{ scheme: 'file', language: 'alan' }],

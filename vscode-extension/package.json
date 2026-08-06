@@ -31,6 +31,11 @@
           "type": "string",
           "default": "",
           "description": "Path to a JDK/JRE 21+ home. If empty, uses `java` from PATH."
+        },
+        "alan.compiler.path": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the Alan compiler for diagnostics. If empty, uses `alan` from PATH. Diagnostics are skipped if it can't be found."
         }
       }
     }

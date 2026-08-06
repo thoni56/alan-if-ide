@@ -5,6 +5,7 @@ package se.alanif.alan.ide;
 
 import com.google.inject.Guice;
 import com.google.inject.Injector;
+import com.google.inject.Stage;
 import org.eclipse.xtext.util.Modules2;
 import se.alanif.alan.AlanRuntimeModule;
 import se.alanif.alan.AlanStandaloneSetup;
@@ -16,7 +17,12 @@ public class AlanIdeSetup extends AlanStandaloneSetup {
 
 	@Override
 	public Injector createInjector() {
-		return Guice.createInjector(Modules2.mixin(new AlanRuntimeModule(), new AlanIdeModule()));
+		// Stage.PRODUCTION so eager singletons are built at injector creation -- in
+		// particular the validator, which registers itself with the EValidator
+		// registry from its (eager) constructor. Guice's default DEVELOPMENT stage
+		// skips eager singletons, so @Check validation would never run.
+		return Guice.createInjector(Stage.PRODUCTION,
+				Modules2.mixin(new AlanRuntimeModule(), new AlanIdeModule()));
 	}
-	
+
 }

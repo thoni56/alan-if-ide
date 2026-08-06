@@ -3,23 +3,9 @@
  */
 package se.alanif.alan.validation;
 
-
 /**
- * This class contains custom validation rules. 
- *
- * See https://www.eclipse.org/Xtext/documentation/303_runtime_concepts.html#validation
+ * Custom Xtext validation rules (parse/model level). Real Alan-compiler
+ * diagnostics are added by {@link AlanResourceValidator}.
  */
 public class AlanValidator extends AbstractAlanValidator {
-	
-//	public static final String INVALID_NAME = "invalidName";
-//
-//	@Check
-//	public void checkGreetingStartsWithCapital(Greeting greeting) {
-//		if (!Character.isUpperCase(greeting.getName().charAt(0))) {
-//			warning("Name should start with a capital",
-//					AlanPackage.Literals.GREETING__NAME,
-//					INVALID_NAME);
-//		}
-//	}
-	
 }
