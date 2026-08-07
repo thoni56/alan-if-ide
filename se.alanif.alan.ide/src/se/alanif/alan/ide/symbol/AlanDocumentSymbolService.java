@@ -12,14 +12,19 @@ import org.eclipse.lsp4j.Location;
 import org.eclipse.xtext.findReferences.IReferenceFinder;
 import org.eclipse.xtext.ide.server.DocumentExtensions;
 import org.eclipse.xtext.ide.server.symbol.DocumentSymbolService;
+import org.eclipse.xtext.nodemodel.ICompositeNode;
 import org.eclipse.xtext.nodemodel.ILeafNode;
+import org.eclipse.xtext.nodemodel.INode;
 import org.eclipse.xtext.parser.IParseResult;
 import org.eclipse.xtext.nodemodel.util.NodeModelUtils;
 import org.eclipse.xtext.resource.EObjectAtOffsetHelper;
 import org.eclipse.xtext.resource.XtextResource;
 import org.eclipse.xtext.util.CancelIndicator;
+import org.eclipse.xtext.util.TextRegion;
 
 import com.google.inject.Inject;
+
+import se.alanif.alan.services.AlanGrammarAccess;
 
 /**
  * Go-to-definition for Alan, with two behaviours the base handler lacks.
@@ -47,6 +52,9 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 
 	@Inject
 	private DocumentExtensions documentExtensions;
+
+	@Inject
+	private AlanGrammarAccess grammar;
 
 	@Override
 	public List<? extends Location> getDefinitions(XtextResource resource, int offset,
@@ -99,17 +107,66 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 		}
 
 		List<Location> hits = new ArrayList<>();
+		// (a) declarations that ARE in the semantic model (they carry a name=):
+		//     Class / Instance / Addition / Event / Import.
 		for (Iterator<EObject> it = resource.getAllContents(); it.hasNext();) {
 			EObject obj = it.next();
 			String declared = nameOf(obj);
 			if (declared != null && declared.equalsIgnoreCase(name)) {
 				Location loc = documentExtensions.newLocation(obj);
-				if (loc != null) {
+				if (loc != null && !hits.contains(loc)) {
 					hits.add(loc);
 				}
 			}
 		}
+		// (b) declarations that are NOT in the model (verbs, syntax, scripts,
+		//     synonyms) -- found by scanning the node model for their declaring ids.
+		addDeclarationIndexHits(resource, parse.getRootNode(), name, hits);
 		return hits;
+	}
+
+	/**
+	 * Add declarations that live in datatype rules and so never reach the semantic
+	 * model: verb names (a comma-list after 'verb'), the verb a 'syntax' item
+	 * defines, script names, and synonym words. Verb is reused inside class bodies,
+	 * so modelling it would trigger the typing cascade; instead we recognise the
+	 * DECLARING identifier by its grammar element in the node model, which
+	 * distinguishes e.g. the 'verb' header from 'end verb'. Multi-name verbs fall
+	 * out naturally (each id in the list is indexed).
+	 */
+	private void addDeclarationIndexHits(XtextResource resource, ICompositeNode root,
+			String name, List<Location> hits) {
+		EObject verbNames = grammar.getVerbHeaderAccess().getIdListParserRuleCall_2();
+		EObject synonymNames = grammar.getSynonymDeclarationAccess().getIdListParserRuleCall_0();
+		EObject scriptName = grammar.getScriptAccess().getAlanIdParserRuleCall_1();
+		EObject syntaxName = grammar.getSyntaxItemAccess().getAlanIdParserRuleCall_0();
+
+		for (INode node : root.getAsTreeIterable()) {
+			EObject element = node.getGrammarElement();
+			if (element == verbNames || element == synonymNames) {
+				// an IdList: every non-separator leaf is a declared name
+				for (INode child : node.getAsTreeIterable()) {
+					if (child instanceof ILeafNode && !((ILeafNode) child).isHidden()) {
+						String text = child.getText().trim();
+						if (!text.equals(",") && unquote(text).equalsIgnoreCase(name)) {
+							addNodeLocation(resource, child, hits);
+						}
+					}
+				}
+			} else if (element == scriptName || element == syntaxName) {
+				if (unquote(node.getText().trim()).equalsIgnoreCase(name)) {
+					addNodeLocation(resource, node, hits);
+				}
+			}
+		}
+	}
+
+	private void addNodeLocation(XtextResource resource, INode node, List<Location> hits) {
+		Location loc = documentExtensions.newLocation(resource,
+				new TextRegion(node.getOffset(), node.getLength()));
+		if (loc != null && !hits.contains(loc)) {
+			hits.add(loc);
+		}
 	}
 
 	/** The String value of an EObject's {@code name} feature, or null. */
