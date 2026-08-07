@@ -43,6 +43,14 @@ public class AlanResourceValidator extends ResourceValidatorImpl {
         if (!compiler.isAvailable() || resource.getContents().isEmpty()) {
             return result;
         }
+        // Only a .alan file is a compile input. An imported .i (and other includes)
+        // cannot be compiled on its own -- Alan splices them in at scan time -- so
+        // running the compiler on one yields spurious errors. Skip it here; once the
+        // project descriptor lands, editing a .i will compile the project's MAIN
+        // file (explicit in alan.json, else the first .alan in the dir) instead.
+        if (!isAlanSource(resource.getURI())) {
+            return result;
+        }
         Path sourceDir = fileDirOf(resource.getURI());
         if (sourceDir == null) {
             return result;
@@ -76,6 +84,11 @@ public class AlanResourceValidator extends ResourceValidatorImpl {
             case INFO:    return Severity.INFO;
             default:      return Severity.ERROR;
         }
+    }
+
+    /** True only for a .alan file -- the unit the compiler can be run on directly. */
+    private static boolean isAlanSource(URI uri) {
+        return uri != null && "alan".equalsIgnoreCase(uri.fileExtension());
     }
 
     private static Path fileDirOf(URI uri) {
