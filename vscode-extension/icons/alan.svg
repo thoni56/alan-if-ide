@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- mint frame, echoing the Alan logo's backdrop -->
+  <rect x="1.5" y="1.5" width="29" height="29" rx="6" fill="#DCEFCF"/>
+  <!-- CRT monitor, the logo's centrepiece -->
+  <g stroke="#4E5C93" stroke-width="1.1" stroke-linejoin="round">
+    <rect x="7.5" y="24.4" width="13.5" height="2.7" rx="1.2" fill="#93A6D6"/>
+    <rect x="11.75" y="22" width="5" height="3" fill="#93A6D6"/>
+    <rect x="5" y="7" width="18.5" height="16" rx="2.4" fill="#93A6D6"/>
+    <rect x="7.4" y="9.3" width="13.7" height="11.4" rx="1.4" fill="#D8E184"/>
+  </g>
+  <!-- glow highlight on the screen -->
+  <path d="M8.6 10.4 H16 L9.4 19.4 H8.6 Z" fill="#EAEFAE" opacity="0.8"/>
+  <!-- A for Alan, on the screen -->
+  <g fill="none" stroke="#3F4F8C" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14.25 11.3 L11.7 18.9"/>
+    <path d="M14.25 11.3 L16.8 18.9"/>
+    <path d="M12.7 16 H15.8"/>
+  </g>
+</svg>

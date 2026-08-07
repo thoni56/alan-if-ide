@@ -6,7 +6,7 @@ VER=$(node -p "require('./package.json').version")
 OUT="$PWD/alan-ide-$VER.vsix"
 STAGE=$(mktemp -d)
 mkdir -p "$STAGE/extension"
-cp -r package.json language-configuration.json out syntaxes server node_modules "$STAGE/extension/"
+cp -r package.json language-configuration.json out syntaxes icons server node_modules "$STAGE/extension/"
 cat > "$STAGE/extension.vsixmanifest" <<XML
 <?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011">
@@ -27,6 +27,7 @@ cat > "$STAGE/[Content_Types].xml" <<XML
   <Default Extension="json" ContentType="application/json"/>
   <Default Extension="js" ContentType="application/javascript"/>
   <Default Extension="jar" ContentType="application/java-archive"/>
+  <Default Extension="svg" ContentType="image/svg+xml"/>
   <Default Extension="map" ContentType="application/json"/>
   <Default Extension="vsixmanifest" ContentType="text/xml"/>
 </Types>
