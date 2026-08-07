@@ -105,9 +105,20 @@ public class AlanResourceValidator extends ResourceValidatorImpl {
         // The main is compiled from its live buffer (own errors, live). Imports share
         // ONE cached compile of the project, so validating an 80-file workspace runs
         // a single compile instead of one per file.
-        List<AlanCompilerRunner.Diagnostic> diags = main.equals(resourceFile)
-                ? compiler.run(resourceText, dir, resourceName)
-                : projectDiagnostics(dir, main);
+        List<AlanCompilerRunner.Diagnostic> diags;
+        if (main.equals(resourceFile)) {
+            diags = compiler.run(resourceText, dir, resourceName);
+        } else {
+            // The compiler reads imports from DISK (only the main's buffer is live).
+            // If this import's buffer differs from disk, the compiler's markers are
+            // stale AND would mis-place against the edited text, so show none until
+            // it's saved. Xtext's own syntax errors keep updating live meanwhile.
+            String disk = readFile(resourceFile);
+            if (disk == null || !disk.equals(resourceText)) {
+                return result;
+            }
+            diags = projectDiagnostics(dir, main);
+        }
         for (AlanCompilerRunner.Diagnostic d : diags) {
             if (!resourceName.equalsIgnoreCase(baseName(d.file))) {
                 continue; // an error in some other file; it belongs to that document
