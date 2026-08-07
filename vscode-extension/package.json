@@ -2,7 +2,7 @@
   "name": "alan-ide",
   "displayName": "Alan IDE",
   "description": "Language support for the Alan interactive-fiction language (Xtext LSP).",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "publisher": "alanif",
   "engines": { "vscode": "^1.75.0" },
   "categories": ["Programming Languages"],
