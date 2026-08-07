@@ -7,6 +7,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.eclipse.emf.common.util.URI;
@@ -42,6 +45,9 @@ import se.alanif.alan.compiler.AlanCompilerRunner;
 public class AlanResourceValidator extends ResourceValidatorImpl {
 
     private final AlanCompilerRunner compiler = AlanCompilerRunner.fromEnvironment();
+
+    /** One cached project compile per directory, keyed by the source files' state. */
+    private static final Map<Path, ProjectCompile> CACHE = new ConcurrentHashMap<>();
 
     @Override
     public List<Issue> validate(Resource resource, CheckMode mode, CancelIndicator monitor) {
@@ -89,17 +95,19 @@ public class AlanResourceValidator extends ResourceValidatorImpl {
         // Text of the file we're validating (for offset->line/col) -- from the live
         // buffer if it parsed, else from disk (a .i fragment may not parse alone).
         String resourceText = resourceText(resource, resourceFile);
-        // Text to compile as the main: the live buffer when it IS the main, else disk.
-        String mainText = main.equals(resourceFile) ? resourceText : readFile(main);
-        if (resourceText == null || mainText == null) {
+        if (resourceText == null) {
             return result;
         }
 
         String resourceName = resourceFile.getFileName().toString();
         LineMap lines = new LineMap(resourceText);
 
-        List<AlanCompilerRunner.Diagnostic> diags =
-                compiler.run(mainText, dir, main.getFileName().toString());
+        // The main is compiled from its live buffer (own errors, live). Imports share
+        // ONE cached compile of the project, so validating an 80-file workspace runs
+        // a single compile instead of one per file.
+        List<AlanCompilerRunner.Diagnostic> diags = main.equals(resourceFile)
+                ? compiler.run(resourceText, dir, resourceName)
+                : projectDiagnostics(dir, main);
         for (AlanCompilerRunner.Diagnostic d : diags) {
             if (!resourceName.equalsIgnoreCase(baseName(d.file))) {
                 continue; // an error in some other file; it belongs to that document
@@ -120,6 +128,67 @@ public class AlanResourceValidator extends ResourceValidatorImpl {
             result.add(issue);
         }
         return result;
+    }
+
+    /**
+     * Diagnostics for the whole project, compiled from disk and cached until any
+     * source file's timestamp changes. The first import validated in a build triggers
+     * the compile; every other import reuses the result -- so an 80-file workspace
+     * costs one compile, not one per file. (The main is handled separately from its
+     * live buffer, so unsaved main edits still validate.)
+     */
+    private List<AlanCompilerRunner.Diagnostic> projectDiagnostics(Path dir, Path main) {
+        String signature = signatureOf(dir);
+        ProjectCompile cached = CACHE.get(dir);
+        if (cached != null && cached.signature.equals(signature)) {
+            return cached.diagnostics;
+        }
+        synchronized (CACHE) {
+            cached = CACHE.get(dir);
+            if (cached != null && cached.signature.equals(signature)) {
+                return cached.diagnostics;
+            }
+            String mainText = readFile(main);
+            List<AlanCompilerRunner.Diagnostic> diags = mainText == null
+                    ? new ArrayList<>()
+                    : compiler.run(mainText, dir, main.getFileName().toString());
+            CACHE.put(dir, new ProjectCompile(signature, diags));
+            return diags;
+        }
+    }
+
+    /** A signature of all Alan source files in a directory (name + last-modified). */
+    private static String signatureOf(Path dir) {
+        try (Stream<Path> files = Files.list(dir)) {
+            return files
+                    .filter(p -> {
+                        String n = p.getFileName().toString().toLowerCase();
+                        return n.endsWith(".alan") || n.endsWith(".i");
+                    })
+                    .sorted()
+                    .map(AlanResourceValidator::stamp)
+                    .collect(Collectors.joining("|"));
+        } catch (IOException e) {
+            return "";
+        }
+    }
+
+    private static String stamp(Path p) {
+        try {
+            return p.getFileName() + ":" + Files.getLastModifiedTime(p).toMillis();
+        } catch (IOException e) {
+            return p.getFileName() + ":0";
+        }
+    }
+
+    private static final class ProjectCompile {
+        final String signature;
+        final List<AlanCompilerRunner.Diagnostic> diagnostics;
+
+        ProjectCompile(String signature, List<AlanCompilerRunner.Diagnostic> diagnostics) {
+            this.signature = signature;
+            this.diagnostics = diagnostics;
+        }
     }
 
     /** Text of the resource: the parsed buffer if available, else the file on disk. */
