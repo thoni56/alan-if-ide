@@ -104,12 +104,16 @@ public final class AlanCompilerRunner {
             if (sourceDir != null && Files.isDirectory(sourceDir)) {
                 pb.directory(sourceDir.toFile());
             }
+            System.err.println("[alan-diag] run: " + String.join(" ", cmd) + "  (cwd=" + sourceDir + ")");
             Process proc = pb.start();
             byte[] outBytes = proc.getInputStream().readAllBytes();
-            if (!proc.waitFor(20, TimeUnit.SECONDS)) {
+            if (!proc.waitFor(60, TimeUnit.SECONDS)) {
                 proc.destroyForcibly();
+                System.err.println("[alan-diag] run: TIMEOUT after 60s");
                 return out;
             }
+            System.err.println("[alan-diag] run: exit=" + proc.exitValue()
+                    + " outputBytes=" + outBytes.length);
             for (String raw : new String(outBytes, StandardCharsets.UTF_8).split("\n")) {
                 Matcher m = LINE.matcher(raw.trim());
                 if (!m.matches()) {
@@ -130,6 +134,7 @@ public final class AlanCompilerRunner {
             }
         } catch (IOException | InterruptedException e) {
             // Compiler missing/failed: surface nothing rather than break validation.
+            System.err.println("[alan-diag] run: FAILED " + e.getClass().getSimpleName() + ": " + e.getMessage());
             if (e instanceof InterruptedException) {
                 Thread.currentThread().interrupt();
             }

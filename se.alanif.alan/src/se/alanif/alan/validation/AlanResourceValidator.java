@@ -57,14 +57,17 @@ public class AlanResourceValidator extends ResourceValidatorImpl {
     private List<Issue> compilerIssues(Resource resource) {
         List<Issue> result = new ArrayList<>();
         URI uri = resource.getURI();
-        if (!compiler.isAvailable() || resource.getContents().isEmpty() || !isAlanSource(uri)) {
+        boolean available = compiler.isAvailable();
+        if (!available || !isAlanSource(uri) || !uri.isFile()) {
+            log("skip uri=" + uri + " available=" + available + " alanSource=" + isAlanSource(uri));
             return result;
         }
         Path dir = fileDirOf(uri);
-        if (dir == null) {
+        Path resourceFile = uri.isFile() ? Paths.get(uri.toFileString()) : null;
+        if (dir == null || resourceFile == null) {
+            log("skip: no file path for " + uri);
             return result;
         }
-        Path resourceFile = Paths.get(uri.toFileString());
 
         // Resolve the compile unit: a .alan is its own main; a .i defers to the
         // first .alan in the directory (an explicit main comes with the project
@@ -72,30 +75,26 @@ public class AlanResourceValidator extends ResourceValidatorImpl {
         boolean editingMain = "alan".equalsIgnoreCase(uri.fileExtension());
         Path main = editingMain ? resourceFile : firstAlanIn(dir);
         if (main == null) {
-            return result; // an import with no .alan next to it -> nothing to compile
-        }
-
-        String resourceText = resourceText(resource);
-        if (resourceText == null) {
+            log("skip: no .alan main next to " + resourceFile.getFileName());
             return result;
         }
-        // The main is compiled from the live buffer when we're editing it; otherwise
-        // from disk (the .i we're editing is read from disk by the compiler too).
-        String mainText;
-        if (main.equals(resourceFile)) {
-            mainText = resourceText;
-        } else {
-            try {
-                mainText = Files.readString(main, StandardCharsets.UTF_8);
-            } catch (IOException e) {
-                return result;
-            }
+
+        // Text of the file we're validating (for offset->line/col) -- from the live
+        // buffer if it parsed, else from disk (a .i fragment may not parse alone).
+        String resourceText = resourceText(resource, resourceFile);
+        // Text to compile as the main: the live buffer when it IS the main, else disk.
+        String mainText = main.equals(resourceFile) ? resourceText : readFile(main);
+        if (resourceText == null || mainText == null) {
+            log("skip: null text resource=" + (resourceText == null) + " main=" + (mainText == null));
+            return result;
         }
 
         String resourceName = resourceFile.getFileName().toString();
         LineMap lines = new LineMap(resourceText);
 
-        for (AlanCompilerRunner.Diagnostic d : compiler.run(mainText, dir, main.getFileName().toString())) {
+        List<AlanCompilerRunner.Diagnostic> diags =
+                compiler.run(mainText, dir, main.getFileName().toString());
+        for (AlanCompilerRunner.Diagnostic d : diags) {
             if (!resourceName.equalsIgnoreCase(baseName(d.file))) {
                 continue; // an error in some other file; it belongs to that document
             }
@@ -114,13 +113,32 @@ public class AlanResourceValidator extends ResourceValidatorImpl {
             issue.setColumnEnd(end[1]);
             result.add(issue);
         }
+        log("done resource=" + resourceName + " main=" + main.getFileName()
+                + " compilerDiags=" + diags.size() + " kept=" + result.size());
         return result;
     }
 
-    private static String resourceText(Resource resource) {
-        EObject root = resource.getContents().get(0);
-        ICompositeNode node = NodeModelUtils.getNode(root);
-        return node == null ? null : node.getRootNode().getText();
+    private static void log(String message) {
+        System.err.println("[alan-diag] " + message);
+    }
+
+    /** Text of the resource: the parsed buffer if available, else the file on disk. */
+    private static String resourceText(Resource resource, Path file) {
+        if (!resource.getContents().isEmpty()) {
+            ICompositeNode node = NodeModelUtils.getNode(resource.getContents().get(0));
+            if (node != null) {
+                return node.getRootNode().getText();
+            }
+        }
+        return readFile(file);
+    }
+
+    private static String readFile(Path file) {
+        try {
+            return Files.readString(file, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            return null;
+        }
     }
 
     /** The lexically-first .alan file in a directory, or null. */
