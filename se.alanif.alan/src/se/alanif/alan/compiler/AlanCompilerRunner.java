@@ -31,13 +31,15 @@ public final class AlanCompilerRunner {
     public enum Severity { ERROR, WARNING, INFO }
 
     public static final class Diagnostic {
-        public final int offset;
+        public final String file;   // the source file the compiler reported (bare name)
+        public final int offset;    // 0-based char offset INTO that file
         public final int length;
         public final Severity severity;
         public final String code;
         public final String message;
 
-        Diagnostic(int offset, int length, Severity severity, String code, String message) {
+        Diagnostic(String file, int offset, int length, Severity severity, String code, String message) {
+            this.file = file;
             this.offset = offset;
             this.length = length;
             this.severity = severity;
@@ -71,15 +73,20 @@ public final class AlanCompilerRunner {
     }
 
     /**
-     * Compile {@code text} and return diagnostics. Imports resolve relative to
-     * {@code sourceDir} (passed via -include and as the working directory). Runs
-     * on a temp copy of the live buffer, so it validates unsaved content.
+     * Compile {@code text} as the project's main file and return diagnostics for
+     * the whole compile -- each carries the source file the compiler named, so the
+     * caller can route errors in spliced imports to the right document. Imports
+     * resolve relative to {@code sourceDir} (passed via -include and as the working
+     * directory). The main is compiled from a temp copy (so unsaved edits to the
+     * main are validated); {@code entryName} is the main's real name, which we
+     * substitute for the temp's name in reported diagnostics.
      */
-    public List<Diagnostic> run(String text, Path sourceDir) {
+    public List<Diagnostic> run(String text, Path sourceDir, String entryName) {
         List<Diagnostic> out = new ArrayList<>();
         Path tmp = null;
         try {
             tmp = Files.createTempFile("alan-lsp-", ".alan");
+            String tmpName = tmp.getFileName().toString();
             Files.write(tmp, text.getBytes(StandardCharsets.UTF_8));
 
             List<String> cmd = new ArrayList<>();
@@ -108,9 +115,17 @@ public final class AlanCompilerRunner {
                 if (!m.matches()) {
                     continue;
                 }
+                String file = m.group("file");
+                // The compiler names the main under our temp file; relabel it to the
+                // main's real name so callers can match diagnostics by file.
+                String base = file.replace('\\', '/');
+                base = base.substring(base.lastIndexOf('/') + 1);
+                if (base.equals(tmpName)) {
+                    file = entryName;
+                }
                 int start = Integer.parseInt(m.group("start"));
                 int end = Integer.parseInt(m.group("end"));
-                out.add(new Diagnostic(start, Math.max(0, end - start),
+                out.add(new Diagnostic(file, start, Math.max(0, end - start),
                         severity(m.group("sev")), m.group("code"), m.group("msg")));
             }
         } catch (IOException | InterruptedException e) {

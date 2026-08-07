@@ -1,14 +1,19 @@
 package se.alanif.alan.validation;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
 
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.xtext.diagnostics.Severity;
+import org.eclipse.xtext.nodemodel.ICompositeNode;
 import org.eclipse.xtext.nodemodel.util.NodeModelUtils;
 import org.eclipse.xtext.util.CancelIndicator;
 import org.eclipse.xtext.validation.CheckMode;
@@ -22,6 +27,17 @@ import se.alanif.alan.compiler.AlanCompilerRunner;
  * IResourceValidator (which the LSP server calls to produce Issues) rather than a
  * @Check: it is the reliable point, since the parse/link Issues we already see
  * flow through here too.
+ *
+ * <p>PROJECT-AWARE (v1). Alan splices {@code import 'file'.} at scan time, so an
+ * imported {@code .i} can't be compiled alone. For any Alan source we compile the
+ * project's MAIN file (the {@code .alan} being edited, else the first {@code .alan}
+ * in the directory) and keep the diagnostics whose reported file is the one being
+ * validated -- so errors land in the correct file at the correct offset, instead
+ * of all piling into the .alan. Limitations of v1: the main is compiled with the
+ * live buffer only when it is the file being edited; imports are read from disk
+ * (so editing a .i refreshes on save); and errors only appear in files that are
+ * open/validated. A single project compile that publishes to every file at once is
+ * the next step.
  */
 public class AlanResourceValidator extends ResourceValidatorImpl {
 
@@ -40,31 +56,54 @@ public class AlanResourceValidator extends ResourceValidatorImpl {
 
     private List<Issue> compilerIssues(Resource resource) {
         List<Issue> result = new ArrayList<>();
-        if (!compiler.isAvailable() || resource.getContents().isEmpty()) {
+        URI uri = resource.getURI();
+        if (!compiler.isAvailable() || resource.getContents().isEmpty() || !isAlanSource(uri)) {
             return result;
         }
-        // Only a .alan file is a compile input. An imported .i (and other includes)
-        // cannot be compiled on its own -- Alan splices them in at scan time -- so
-        // running the compiler on one yields spurious errors. Skip it here; once the
-        // project descriptor lands, editing a .i will compile the project's MAIN
-        // file (explicit in alan.json, else the first .alan in the dir) instead.
-        if (!isAlanSource(resource.getURI())) {
+        Path dir = fileDirOf(uri);
+        if (dir == null) {
             return result;
         }
-        Path sourceDir = fileDirOf(resource.getURI());
-        if (sourceDir == null) {
-            return result;
-        }
-        EObject root = resource.getContents().get(0);
-        String text = NodeModelUtils.getNode(root).getRootNode().getText();
-        LineMap lines = new LineMap(text);
+        Path resourceFile = Paths.get(uri.toFileString());
 
-        for (AlanCompilerRunner.Diagnostic d : compiler.run(text, sourceDir)) {
+        // Resolve the compile unit: a .alan is its own main; a .i defers to the
+        // first .alan in the directory (an explicit main comes with the project
+        // descriptor later).
+        boolean editingMain = "alan".equalsIgnoreCase(uri.fileExtension());
+        Path main = editingMain ? resourceFile : firstAlanIn(dir);
+        if (main == null) {
+            return result; // an import with no .alan next to it -> nothing to compile
+        }
+
+        String resourceText = resourceText(resource);
+        if (resourceText == null) {
+            return result;
+        }
+        // The main is compiled from the live buffer when we're editing it; otherwise
+        // from disk (the .i we're editing is read from disk by the compiler too).
+        String mainText;
+        if (main.equals(resourceFile)) {
+            mainText = resourceText;
+        } else {
+            try {
+                mainText = Files.readString(main, StandardCharsets.UTF_8);
+            } catch (IOException e) {
+                return result;
+            }
+        }
+
+        String resourceName = resourceFile.getFileName().toString();
+        LineMap lines = new LineMap(resourceText);
+
+        for (AlanCompilerRunner.Diagnostic d : compiler.run(mainText, dir, main.getFileName().toString())) {
+            if (!resourceName.equalsIgnoreCase(baseName(d.file))) {
+                continue; // an error in some other file; it belongs to that document
+            }
             Issue.IssueImpl issue = new Issue.IssueImpl();
             issue.setMessage(d.message);
             issue.setSeverity(toXtext(d.severity));
             issue.setCode("alan.compiler." + d.code);
-            issue.setUriToProblem(resource.getURI());
+            issue.setUriToProblem(uri);
             issue.setOffset(d.offset);
             issue.setLength(d.length);
             int[] start = lines.lineColumn(d.offset);
@@ -78,17 +117,44 @@ public class AlanResourceValidator extends ResourceValidatorImpl {
         return result;
     }
 
+    private static String resourceText(Resource resource) {
+        EObject root = resource.getContents().get(0);
+        ICompositeNode node = NodeModelUtils.getNode(root);
+        return node == null ? null : node.getRootNode().getText();
+    }
+
+    /** The lexically-first .alan file in a directory, or null. */
+    private static Path firstAlanIn(Path dir) {
+        try (Stream<Path> s = Files.list(dir)) {
+            return s.filter(p -> p.getFileName().toString().toLowerCase().endsWith(".alan"))
+                    .sorted()
+                    .findFirst()
+                    .orElse(null);
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
+    private static String baseName(String path) {
+        String p = path.replace('\\', '/');
+        return p.substring(p.lastIndexOf('/') + 1);
+    }
+
+    /** True for an Alan source file (.alan main or .i include). */
+    private static boolean isAlanSource(URI uri) {
+        if (uri == null) {
+            return false;
+        }
+        String ext = uri.fileExtension();
+        return "alan".equalsIgnoreCase(ext) || "i".equalsIgnoreCase(ext);
+    }
+
     private static Severity toXtext(AlanCompilerRunner.Severity s) {
         switch (s) {
             case WARNING: return Severity.WARNING;
             case INFO:    return Severity.INFO;
             default:      return Severity.ERROR;
         }
-    }
-
-    /** True only for a .alan file -- the unit the compiler can be run on directly. */
-    private static boolean isAlanSource(URI uri) {
-        return uri != null && "alan".equalsIgnoreCase(uri.fileExtension());
     }
 
     private static Path fileDirOf(URI uri) {
