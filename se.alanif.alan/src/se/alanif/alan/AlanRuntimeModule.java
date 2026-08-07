@@ -18,9 +18,4 @@ public class AlanRuntimeModule extends AbstractAlanRuntimeModule {
     public Class<? extends org.eclipse.xtext.validation.IResourceValidator> bindIResourceValidator() {
         return se.alanif.alan.validation.AlanResourceValidator.class;
     }
-
-    /** Report each declaration's full header line for go-to-def/find-references. */
-    public Class<? extends org.eclipse.xtext.resource.ILocationInFileProvider> bindILocationInFileProvider() {
-        return se.alanif.alan.resource.AlanLocationInFileProvider.class;
-    }
 }
