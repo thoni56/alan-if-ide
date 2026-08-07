@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
-  <!-- mint frame, echoing the Alan logo -- semi-transparent so it doesn't glare on dark themes -->
+  <!-- mint frame (semi-transparent so it does not glare on dark themes) -->
   <rect x="1" y="1" width="30" height="30" rx="6" fill="#DCEFCF" fill-opacity="0.4"/>
   <!-- CRT monitor, enlarged to fill the badge -->
   <g stroke="#4E5C93" stroke-width="1.15" stroke-linejoin="round">
