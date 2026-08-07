@@ -37,7 +37,9 @@ Workflow {
 		}
 		language = StandardLanguage {
 			name = "se.alanif.alan.Alan"
-			fileExtensions = "alan"
+			// .i files are Alan imports (spliced at scan time); register them too so
+			// the language server can load/parse/validate them, not just .alan.
+			fileExtensions = "alan,i"
 
 			serializer = {
 				generateStub = false

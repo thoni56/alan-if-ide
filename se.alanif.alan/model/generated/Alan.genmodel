@@ -5,7 +5,7 @@
     rootExtendsClass="org.eclipse.emf.ecore.impl.MinimalEObjectImpl$Container" complianceLevel="17.0"
     copyrightFields="false" runtimeVersion="2.36">
   <genPackages prefix="Alan" basePackage="se.alanif.alan" disposableProviderFactory="true"
-      fileExtensions="alan" ecorePackage="Alan.ecore#/">
+      fileExtensions="alan,i" ecorePackage="Alan.ecore#/">
     <genClasses ecoreClass="Alan.ecore#//Adventure">
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Alan.ecore#//Adventure/classes"/>
       <genFeatures property="None" children="true" createChild="true" ecoreFeature="ecore:EReference Alan.ecore#//Adventure/instances"/>
