@@ -45,7 +45,18 @@ public class AlanResourceValidator extends ResourceValidatorImpl {
 
     @Override
     public List<Issue> validate(Resource resource, CheckMode mode, CancelIndicator monitor) {
-        List<Issue> issues = new ArrayList<>(super.validate(resource, mode, monitor));
+        List<Issue> issues = new ArrayList<>();
+        for (Issue issue : super.validate(resource, mode, monitor)) {
+            // Alan resolves names across the whole spliced program. An individual .i
+            // fragment can't see classes/instances defined in sibling files, so
+            // Xtext's per-file linker emits spurious "Couldn't resolve reference"
+            // errors. The Alan compiler is the authority on real undefined references
+            // (it splices first), so drop Xtext's linking diagnostics and defer to it.
+            if (org.eclipse.xtext.diagnostics.Diagnostic.LINKING_DIAGNOSTIC.equals(issue.getCode())) {
+                continue;
+            }
+            issues.add(issue);
+        }
         try {
             issues.addAll(compilerIssues(resource));
         } catch (RuntimeException e) {
@@ -57,15 +68,12 @@ public class AlanResourceValidator extends ResourceValidatorImpl {
     private List<Issue> compilerIssues(Resource resource) {
         List<Issue> result = new ArrayList<>();
         URI uri = resource.getURI();
-        boolean available = compiler.isAvailable();
-        if (!available || !isAlanSource(uri) || !uri.isFile()) {
-            log("skip uri=" + uri + " available=" + available + " alanSource=" + isAlanSource(uri));
+        if (!compiler.isAvailable() || !isAlanSource(uri) || !uri.isFile()) {
             return result;
         }
         Path dir = fileDirOf(uri);
         Path resourceFile = uri.isFile() ? Paths.get(uri.toFileString()) : null;
         if (dir == null || resourceFile == null) {
-            log("skip: no file path for " + uri);
             return result;
         }
 
@@ -75,7 +83,6 @@ public class AlanResourceValidator extends ResourceValidatorImpl {
         boolean editingMain = "alan".equalsIgnoreCase(uri.fileExtension());
         Path main = editingMain ? resourceFile : firstAlanIn(dir);
         if (main == null) {
-            log("skip: no .alan main next to " + resourceFile.getFileName());
             return result;
         }
 
@@ -85,7 +92,6 @@ public class AlanResourceValidator extends ResourceValidatorImpl {
         // Text to compile as the main: the live buffer when it IS the main, else disk.
         String mainText = main.equals(resourceFile) ? resourceText : readFile(main);
         if (resourceText == null || mainText == null) {
-            log("skip: null text resource=" + (resourceText == null) + " main=" + (mainText == null));
             return result;
         }
 
@@ -113,13 +119,7 @@ public class AlanResourceValidator extends ResourceValidatorImpl {
             issue.setColumnEnd(end[1]);
             result.add(issue);
         }
-        log("done resource=" + resourceName + " main=" + main.getFileName()
-                + " compilerDiags=" + diags.size() + " kept=" + result.size());
         return result;
-    }
-
-    private static void log(String message) {
-        System.err.println("[alan-diag] " + message);
     }
 
     /** Text of the resource: the parsed buffer if available, else the file on disk. */
