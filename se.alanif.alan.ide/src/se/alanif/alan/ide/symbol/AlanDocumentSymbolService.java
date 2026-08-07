@@ -52,15 +52,31 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 	public List<? extends Location> getDefinitions(XtextResource resource, int offset,
 			IReferenceFinder.IResourceAccess resourceAccess, CancelIndicator cancelIndicator) {
 		EObject target = offsetHelper.getElementWithNameAt(resource, offset);
-		if (isSynthetic(target)) {
-			return Collections.emptyList();
+		List<Location> results = new ArrayList<>();
+
+		// Modelled cross-reference target(s) -- e.g. 'isa' -> Class. Skipped when the
+		// target is the fileless synthetic prelude (super would try to load it and
+		// throw "Request textDocument/definition failed").
+		if (!isSynthetic(target)) {
+			List<? extends Location> modelled =
+					super.getDefinitions(resource, offset, resourceAccess, cancelIndicator);
+			if (modelled != null) {
+				results.addAll(modelled);
+			}
 		}
-		List<? extends Location> modelled =
-				super.getDefinitions(resource, offset, resourceAccess, cancelIndicator);
-		if (modelled != null && !modelled.isEmpty()) {
-			return modelled;
+
+		// ALSO add every same-named declaration, deduped. Alan spreads one logical
+		// entity across sites (an 'every'/'the' plus its 'add to' additions), so
+		// go-to-definition should list ALL the parts -- matching what Find-References
+		// already shows. Merging (not just falling back) is what makes the addition
+		// appear even on an 'isa' target, where the modelled path alone yields only
+		// the class.
+		for (Location loc : nameBasedDefinitions(resource, offset)) {
+			if (!results.contains(loc)) {
+				results.add(loc);
+			}
 		}
-		return nameBasedDefinitions(resource, offset);
+		return results;
 	}
 
 	/**
