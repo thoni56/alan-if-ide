@@ -1,0 +1,35 @@
+// Alan authoring profile -- a calmer, prose-friendly VS Code for writing adventures.
+{
+  // Open straight into your work, no "Get Started" tab.
+  "workbench.startupEditor": "none",
+
+  // A document, not a codebase: strip the chrome a writer doesn't need.
+  "editor.minimap.enabled": false,
+  "breadcrumbs.enabled": false,
+  "editor.renderWhitespace": "none",
+  "explorer.compactFolders": false,
+  "workbench.editor.enablePreview": false,
+
+  // Keep the enclosing 'every X' / 'the Y' / 'verb Z' header in view while scrolling.
+  "editor.stickyScroll.enabled": true,
+
+  // Alan source is prose-heavy: wrap long description strings instead of scrolling.
+  "editor.wordWrap": "on",
+  "editor.fontSize": 14,
+  "editor.lineHeight": 1.6,
+  "editor.cursorBlinking": "solid",
+
+  // Forgiving for non-programmers: save quietly, skip the scary prompts.
+  "files.autoSave": "afterDelay",
+  "files.autoSaveDelay": 800,
+  "security.workspace.trust.enabled": false,
+  "telemetry.telemetryLevel": "off",
+  "update.showReleaseNotes": false,
+
+  // Alan-specific editor behaviour: our language server supplies the completions,
+  // so don't clutter them with random words from the buffer.
+  "[alan]": {
+    "editor.wordWrap": "on",
+    "editor.suggest.showWords": false
+  }
+}
