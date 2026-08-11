@@ -1,9 +1,18 @@
 package se.alanif.alan.ide.symbol;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Stream;
 
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EObject;
@@ -70,6 +79,10 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 	@Inject
 	private IQualifiedNameConverter qualifiedNameConverter;
 
+	/** Project-wide index of node-scanned declarations (verbs/scripts/syntax/synonyms),
+	 *  keyed by directory and rebuilt when any source file's timestamp changes. */
+	private static final Map<Path, NodeIndex> NODE_INDEX = new ConcurrentHashMap<>();
+
 	@Override
 	public List<? extends Location> getDefinitions(XtextResource resource, int offset,
 			IReferenceFinder.IResourceAccess resourceAccess, CancelIndicator cancelIndicator) {
@@ -134,10 +147,16 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 			}
 		}
 		// (b) declarations that are NOT in the model (verbs, syntax, scripts,
-		//     synonyms) -- found by scanning the node model for their declaring ids.
-		addDeclarationIndexHits(resource, parse.getRootNode(), name, hits);
+		//     synonyms) in THIS file -- found by scanning the node model.
+		walkNodeDeclarations(parse.getRootNode(), (declared, node) -> {
+			if (declared.equalsIgnoreCase(name)) {
+				addNodeLocation(resource, node, hits);
+			}
+		});
 		// (c) modelled declarations in OTHER files -- via the global index.
 		addCrossFileHits(resource, name, hits);
+		// (d) node-scanned declarations in OTHER files -- via our project index.
+		addProjectNodeHits(resource, name, hits);
 		return hits;
 	}
 
@@ -176,17 +195,20 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 		}
 	}
 
+	/** Receives each node-scanned declaration ({@code name}, defining node). */
+	private interface NodeDeclSink {
+		void accept(String name, INode node);
+	}
+
 	/**
-	 * Add declarations that live in datatype rules and so never reach the semantic
-	 * model: verb names (a comma-list after 'verb'), the verb a 'syntax' item
-	 * defines, script names, and synonym words. Verb is reused inside class bodies,
-	 * so modelling it would trigger the typing cascade; instead we recognise the
-	 * DECLARING identifier by its grammar element in the node model, which
-	 * distinguishes e.g. the 'verb' header from 'end verb'. Multi-name verbs fall
-	 * out naturally (each id in the list is indexed).
+	 * Walk the node model and report declarations that live in datatype rules and so
+	 * never reach the semantic model: verb names (a comma-list after 'verb'), the
+	 * verb a 'syntax' item defines, script names, and synonym words. Verb is reused
+	 * inside class bodies, so modelling it would trigger the typing cascade; instead
+	 * we recognise the DECLARING identifier by its grammar element, which distinguishes
+	 * e.g. the 'verb' header from 'end verb'. Multi-name verbs fall out naturally.
 	 */
-	private void addDeclarationIndexHits(XtextResource resource, ICompositeNode root,
-			String name, List<Location> hits) {
+	private void walkNodeDeclarations(ICompositeNode root, NodeDeclSink sink) {
 		EObject verbNames = grammar.getVerbHeaderAccess().getIdListParserRuleCall_2();
 		EObject synonymNames = grammar.getSynonymDeclarationAccess().getIdListParserRuleCall_0();
 		EObject scriptName = grammar.getScriptAccess().getAlanIdParserRuleCall_1();
@@ -195,20 +217,136 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 		for (INode node : root.getAsTreeIterable()) {
 			EObject element = node.getGrammarElement();
 			if (element == verbNames || element == synonymNames) {
-				// an IdList: every non-separator leaf is a declared name
 				for (INode child : node.getAsTreeIterable()) {
 					if (child instanceof ILeafNode && !((ILeafNode) child).isHidden()) {
 						String text = child.getText().trim();
-						if (!text.equals(",") && unquote(text).equalsIgnoreCase(name)) {
-							addNodeLocation(resource, child, hits);
+						if (!text.equals(",")) {
+							sink.accept(unquote(text), child);
 						}
 					}
 				}
 			} else if (element == scriptName || element == syntaxName) {
-				if (unquote(node.getText().trim()).equalsIgnoreCase(name)) {
-					addNodeLocation(resource, node, hits);
-				}
+				sink.accept(unquote(node.getText().trim()), node);
 			}
+		}
+	}
+
+	/**
+	 * Cross-file navigation for node-scanned symbols (verbs/scripts/syntax/synonyms),
+	 * which aren't in Xtext's index. We keep our own per-directory index of every
+	 * such declaration, rebuilt when any source file's timestamp changes, and look
+	 * the name up in it. The CURRENT file is served live by the scan above and is
+	 * skipped here.
+	 */
+	private void addProjectNodeHits(XtextResource resource, String name, List<Location> hits) {
+		Path dir = dirOf(resource.getURI());
+		if (dir == null || resource.getResourceSet() == null) {
+			return;
+		}
+		String currentUri = lspUriOf(resource);
+		List<Location> found = nodeIndex(dir, resource.getResourceSet()).get(name.toLowerCase(Locale.ROOT));
+		if (found == null) {
+			return;
+		}
+		for (Location loc : found) {
+			if (loc.getUri().equals(currentUri) || hits.contains(loc)) {
+				continue;
+			}
+			hits.add(loc);
+		}
+	}
+
+	/** The project's node-declaration index, cached until a source file changes. */
+	private Map<String, List<Location>> nodeIndex(Path dir, org.eclipse.emf.ecore.resource.ResourceSet rs) {
+		String signature = signatureOf(dir);
+		NodeIndex cached = NODE_INDEX.get(dir);
+		if (cached != null && cached.signature.equals(signature)) {
+			return cached.byName;
+		}
+		synchronized (NODE_INDEX) {
+			cached = NODE_INDEX.get(dir);
+			if (cached != null && cached.signature.equals(signature)) {
+				return cached.byName;
+			}
+			Map<String, List<Location>> map = new HashMap<>();
+			try (Stream<Path> files = Files.list(dir)) {
+				files.filter(AlanDocumentSymbolService::isAlanSource).forEach(p -> {
+					try {
+						Resource r = rs.getResource(URI.createFileURI(p.toString()), true);
+						if (r instanceof XtextResource) {
+							IParseResult parse = ((XtextResource) r).getParseResult();
+							if (parse != null && parse.getRootNode() != null) {
+								walkNodeDeclarations(parse.getRootNode(), (declared, node) -> {
+									if (!declared.isEmpty()) {
+										Location loc = documentExtensions.newLocation((XtextResource) r,
+												new TextRegion(node.getOffset(), node.getLength()));
+										if (loc != null) {
+											map.computeIfAbsent(declared.toLowerCase(Locale.ROOT),
+													k -> new ArrayList<>()).add(loc);
+										}
+									}
+								});
+							}
+						}
+					} catch (RuntimeException ignored) {
+						// unreadable/unparseable file -- skip it
+					}
+				});
+			} catch (IOException ignored) {
+				// directory gone -- return whatever we have
+			}
+			NODE_INDEX.put(dir, new NodeIndex(signature, map));
+			return map;
+		}
+	}
+
+	private String lspUriOf(XtextResource resource) {
+		Location probe = documentExtensions.newLocation(resource, new TextRegion(0, 0));
+		return probe == null ? null : probe.getUri();
+	}
+
+	private static Path dirOf(URI uri) {
+		if (uri == null || !uri.isFile()) {
+			return null;
+		}
+		try {
+			return Paths.get(uri.toFileString()).getParent();
+		} catch (RuntimeException e) {
+			return null;
+		}
+	}
+
+	private static boolean isAlanSource(Path p) {
+		String n = p.getFileName().toString().toLowerCase(Locale.ROOT);
+		return n.endsWith(".alan") || n.endsWith(".i");
+	}
+
+	/** A signature of all Alan source files in a directory (name + last-modified). */
+	private static String signatureOf(Path dir) {
+		try (Stream<Path> files = Files.list(dir)) {
+			StringBuilder sb = new StringBuilder();
+			files.filter(AlanDocumentSymbolService::isAlanSource).sorted().forEach(p -> {
+				sb.append(p.getFileName());
+				try {
+					sb.append(':').append(Files.getLastModifiedTime(p).toMillis());
+				} catch (IOException e) {
+					sb.append(":0");
+				}
+				sb.append('|');
+			});
+			return sb.toString();
+		} catch (IOException e) {
+			return "";
+		}
+	}
+
+	private static final class NodeIndex {
+		final String signature;
+		final Map<String, List<Location>> byName;
+
+		NodeIndex(String signature, Map<String, List<Location>> byName) {
+			this.signature = signature;
+			this.byName = byName;
 		}
 	}
 
