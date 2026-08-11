@@ -5,19 +5,27 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
+import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.EStructuralFeature;
+import org.eclipse.emf.ecore.EcorePackage;
 import org.eclipse.emf.ecore.resource.Resource;
+import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.lsp4j.Location;
 import org.eclipse.xtext.findReferences.IReferenceFinder;
 import org.eclipse.xtext.ide.server.DocumentExtensions;
 import org.eclipse.xtext.ide.server.symbol.DocumentSymbolService;
+import org.eclipse.xtext.naming.IQualifiedNameConverter;
+import org.eclipse.xtext.naming.QualifiedName;
 import org.eclipse.xtext.nodemodel.ICompositeNode;
 import org.eclipse.xtext.nodemodel.ILeafNode;
 import org.eclipse.xtext.nodemodel.INode;
 import org.eclipse.xtext.parser.IParseResult;
 import org.eclipse.xtext.nodemodel.util.NodeModelUtils;
 import org.eclipse.xtext.resource.EObjectAtOffsetHelper;
+import org.eclipse.xtext.resource.IEObjectDescription;
+import org.eclipse.xtext.resource.IResourceDescriptions;
+import org.eclipse.xtext.resource.IResourceDescriptionsProvider;
 import org.eclipse.xtext.resource.XtextResource;
 import org.eclipse.xtext.util.CancelIndicator;
 import org.eclipse.xtext.util.TextRegion;
@@ -55,6 +63,12 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 
 	@Inject
 	private AlanGrammarAccess grammar;
+
+	@Inject
+	private IResourceDescriptionsProvider resourceDescriptionsProvider;
+
+	@Inject
+	private IQualifiedNameConverter qualifiedNameConverter;
 
 	@Override
 	public List<? extends Location> getDefinitions(XtextResource resource, int offset,
@@ -122,7 +136,44 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 		// (b) declarations that are NOT in the model (verbs, syntax, scripts,
 		//     synonyms) -- found by scanning the node model for their declaring ids.
 		addDeclarationIndexHits(resource, parse.getRootNode(), name, hits);
+		// (c) modelled declarations in OTHER files -- via the global index.
+		addCrossFileHits(resource, name, hits);
 		return hits;
+	}
+
+	/**
+	 * Cross-file navigation for modelled declarations (class/instance/addition/event
+	 * -- the {@code name=} nodes Xtext exports to its global index). Query the index
+	 * by name, case-insensitively, and resolve each hit to a location in its own
+	 * file. The current file is handled by the live scans above, so it's skipped
+	 * here. Node-scanned symbols (verbs/scripts/syntax) aren't in the index; making
+	 * those cross-file needs a separate project-wide scan.
+	 */
+	private void addCrossFileHits(XtextResource resource, String name, List<Location> hits) {
+		if (resource.getResourceSet() == null) {
+			return;
+		}
+		IResourceDescriptions index =
+				resourceDescriptionsProvider.getResourceDescriptions(resource.getResourceSet());
+		if (index == null) {
+			return;
+		}
+		URI current = resource.getURI();
+		QualifiedName qn = qualifiedNameConverter.toQualifiedName(name);
+		for (IEObjectDescription description :
+				index.getExportedObjects(EcorePackage.Literals.EOBJECT, qn, true)) {
+			if (current != null && current.equals(description.getEObjectURI().trimFragment())) {
+				continue; // this file's declarations already come from the live scan
+			}
+			EObject obj = EcoreUtil.resolve(description.getEObjectOrProxy(), resource.getResourceSet());
+			if (obj == null || obj.eIsProxy()) {
+				continue;
+			}
+			Location loc = documentExtensions.newLocation(obj);
+			if (loc != null && !hits.contains(loc)) {
+				hits.add(loc);
+			}
+		}
 	}
 
 	/**
