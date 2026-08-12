@@ -25,6 +25,13 @@
           "group": "navigation"
         }
       ],
+      "editor/context": [
+        {
+          "command": "alan.play",
+          "when": "resourceLangId == alan",
+          "group": "navigation"
+        }
+      ],
       "commandPalette": [
         {
           "command": "alan.play",

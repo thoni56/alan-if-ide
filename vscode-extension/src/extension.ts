@@ -1,6 +1,6 @@
 import * as path from 'path';
 import * as fs from 'fs';
-import { ExtensionContext, workspace, window, commands } from 'vscode';
+import { ExtensionContext, workspace, window, commands, StatusBarAlignment } from 'vscode';
 import {
     LanguageClient,
     LanguageClientOptions,
@@ -41,9 +41,26 @@ export function activate(context: ExtensionContext) {
     client = new LanguageClient('alan', 'Alan Language Server', serverOptions, clientOptions);
     client.start();
 
+    // A persistent, always-visible Play affordance (the editor-title icon is easy
+    // to miss). Shown only while an Alan file is the active editor.
+    const playStatus = window.createStatusBarItem(StatusBarAlignment.Left, 100);
+    playStatus.command = 'alan.play';
+    playStatus.text = '$(play) Play';
+    playStatus.tooltip = 'Compile and play this Alan adventure';
+    const updatePlayStatus = () => {
+        if (window.activeTextEditor?.document.languageId === 'alan') {
+            playStatus.show();
+        } else {
+            playStatus.hide();
+        }
+    };
+    updatePlayStatus();
+
     context.subscriptions.push(
         commands.registerCommand('alan.play', () => play()),
-        window.onDidCloseTerminal(onTerminalClosed)
+        window.onDidCloseTerminal(onTerminalClosed),
+        playStatus,
+        window.onDidChangeActiveTextEditor(updatePlayStatus)
     );
 }
 
