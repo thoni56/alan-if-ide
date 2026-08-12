@@ -21,6 +21,7 @@ import org.eclipse.emf.ecore.EcorePackage;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.lsp4j.Location;
+import org.eclipse.xtext.Keyword;
 import org.eclipse.xtext.findReferences.IReferenceFinder;
 import org.eclipse.xtext.ide.server.DocumentExtensions;
 import org.eclipse.xtext.ide.server.symbol.DocumentSymbolService;
@@ -115,23 +116,100 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 	}
 
 	/**
+	 * Find-references, interim by-name flavour. Alan's reference sites (every
+	 * {@code locate}/{@code describe}/exit/expression mention) live in the
+	 * datatype-only subtree and aren't modelled as cross-references, so Xtext's
+	 * model-based finder returns nothing. Instead we resolve the identifier under
+	 * the cursor to a name and return EVERY occurrence of that identifier -- across
+	 * every source file in the directory -- matched case-insensitively (Alan folds
+	 * case). Declarations and usages both show up, which is what an author wants
+	 * from "Find All References". It's an approximation: it's name-scoped, so two
+	 * unrelated things sharing a name would be listed together. Precise references
+	 * need the full semantic model.
+	 */
+	@Override
+	public List<? extends Location> getReferences(XtextResource resource, int offset,
+			IReferenceFinder.IResourceAccess resourceAccess, IResourceDescriptions indexData,
+			CancelIndicator cancelIndicator) {
+		String name = nameUnderCursor(resource, offset);
+		if (name == null) {
+			return Collections.emptyList();
+		}
+		List<Location> hits = new ArrayList<>();
+		collectNameOccurrences(resource, name, hits);
+
+		Path dir = dirOf(resource.getURI());
+		if (dir != null && resource.getResourceSet() != null) {
+			URI current = resource.getURI();
+			try (Stream<Path> files = Files.list(dir)) {
+				files.filter(AlanDocumentSymbolService::isAlanSource).forEach(p -> {
+					URI uri = URI.createFileURI(p.toString());
+					if (uri.equals(current)) {
+						return; // current file already scanned live above
+					}
+					try {
+						Resource r = resource.getResourceSet().getResource(uri, true);
+						if (r instanceof XtextResource) {
+							collectNameOccurrences((XtextResource) r, name, hits);
+						}
+					} catch (RuntimeException ignored) {
+						// unreadable/unparseable file -- skip it
+					}
+				});
+			} catch (IOException ignored) {
+				// directory gone -- return whatever we have
+			}
+		}
+		return hits;
+	}
+
+	/** Add every non-hidden identifier leaf in {@code resource} whose (unquoted)
+	 *  text case-insensitively equals {@code name}. Keywords, comments, whitespace
+	 *  and string literals are skipped, so only real identifier mentions match. */
+	private void collectNameOccurrences(XtextResource resource, String name, List<Location> hits) {
+		IParseResult parse = resource.getParseResult();
+		if (parse == null || parse.getRootNode() == null) {
+			return;
+		}
+		for (INode node : parse.getRootNode().getAsTreeIterable()) {
+			if (!(node instanceof ILeafNode)) {
+				continue;
+			}
+			ILeafNode leaf = (ILeafNode) node;
+			if (leaf.isHidden() || leaf.getGrammarElement() instanceof Keyword) {
+				continue;
+			}
+			if (unquote(leaf.getText().trim()).equalsIgnoreCase(name)) {
+				addNodeLocation(resource, leaf, hits);
+			}
+		}
+	}
+
+	/** The (unquoted, non-empty) identifier text under the cursor, or null. */
+	private String nameUnderCursor(XtextResource resource, int offset) {
+		IParseResult parse = resource.getParseResult();
+		if (parse == null || parse.getRootNode() == null) {
+			return null;
+		}
+		ILeafNode leaf = NodeModelUtils.findLeafNodeAtOffset(parse.getRootNode(), offset);
+		if (leaf == null || leaf.isHidden()) {
+			return null;
+		}
+		String name = unquote(leaf.getText().trim());
+		return name.isEmpty() ? null : name;
+	}
+
+	/**
 	 * Fallback: jump to any declaration whose {@code name} equals the identifier
 	 * under the cursor (case-insensitive). Returns every match -- if a name is both
 	 * an instance and an 'add to', the client offers both.
 	 */
 	private List<? extends Location> nameBasedDefinitions(XtextResource resource, int offset) {
+		String name = nameUnderCursor(resource, offset);
+		if (name == null) {
+			return Collections.emptyList();
+		}
 		IParseResult parse = resource.getParseResult();
-		if (parse == null || parse.getRootNode() == null) {
-			return Collections.emptyList();
-		}
-		ILeafNode leaf = NodeModelUtils.findLeafNodeAtOffset(parse.getRootNode(), offset);
-		if (leaf == null || leaf.isHidden()) {
-			return Collections.emptyList();
-		}
-		String name = unquote(leaf.getText().trim());
-		if (name.isEmpty()) {
-			return Collections.emptyList();
-		}
 
 		List<Location> hits = new ArrayList<>();
 		// (a) declarations that ARE in the semantic model (they carry a name=):
