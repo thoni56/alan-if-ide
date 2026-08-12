@@ -76,11 +76,20 @@ public class AlanFormatter {
     }
 
     private int calculatePreIndentation(String line, int currentIndent) {
+        // A line that starts inside a still-open string is string content: leave it.
+        if (withinString) {
+            return currentIndent;
+        }
         int indent = currentIndent;
         Scanner scanner = new Scanner(line);
         while (scanner.hasNext()) {
             String token = scanner.next();
             if (isComment(token)) {
+                return indent;
+            }
+            // Once a string opens on this line, the rest is prose -- stop scanning for
+            // structure keywords (they'd match words like 'the'/'is' inside the text).
+            if (hasOddNumberOfQuotes(token)) {
                 return indent;
             }
             if (isOutdentingKeyword(token)) {
@@ -106,11 +115,22 @@ public class AlanFormatter {
         Scanner scanner = new Scanner(line);
         while (scanner.hasNext()) {
             String token = scanner.next();
+            // Inside a multi-line string: ignore everything except a quote that could
+            // close it. Prose words are never treated as keywords.
+            if (withinString) {
+                if (hasOddNumberOfQuotes(token)) {
+                    currentIndent = toggleStringIndentation(currentIndent);
+                }
+                continue;
+            }
             if (isComment(token)) {
                 return currentIndent;
-            } else if (hasOddNumberOfQuotes(token)) {
+            }
+            if (hasOddNumberOfQuotes(token)) {
                 currentIndent = toggleStringIndentation(currentIndent);
-            } else if (isIndentingKeyword(token)) {
+                continue;
+            }
+            if (isIndentingKeyword(token)) {
                 currentIndent += INDENT;
             }
             if (isTopLevelOpenClauseInitialiser(token)) {
