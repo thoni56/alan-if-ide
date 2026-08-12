@@ -1,11 +1,12 @@
 import * as path from 'path';
 import * as fs from 'fs';
-import { ExtensionContext, workspace, window } from 'vscode';
+import { ExtensionContext, workspace, window, commands } from 'vscode';
 import {
     LanguageClient,
     LanguageClientOptions,
     ServerOptions
 } from 'vscode-languageclient/node';
+import { play, onTerminalClosed } from './play';
 
 let client: LanguageClient;
 
@@ -39,6 +40,11 @@ export function activate(context: ExtensionContext) {
 
     client = new LanguageClient('alan', 'Alan Language Server', serverOptions, clientOptions);
     client.start();
+
+    context.subscriptions.push(
+        commands.registerCommand('alan.play', () => play()),
+        window.onDidCloseTerminal(onTerminalClosed)
+    );
 }
 
 export function deactivate(): Thenable<void> | undefined {

@@ -6,9 +6,32 @@
   "publisher": "alanif",
   "engines": { "vscode": "^1.75.0" },
   "categories": ["Programming Languages"],
-  "activationEvents": [],
+  "activationEvents": ["onLanguage:alan"],
   "main": "./out/extension.js",
   "contributes": {
+    "commands": [
+      {
+        "command": "alan.play",
+        "title": "Play",
+        "category": "Alan",
+        "icon": "$(play)"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "alan.play",
+          "when": "resourceLangId == alan",
+          "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "alan.play",
+          "when": "resourceLangId == alan"
+        }
+      ]
+    },
     "languages": [
       {
         "id": "alan",
@@ -37,6 +60,11 @@
           "type": "string",
           "default": "",
           "description": "Path to the Alan compiler for diagnostics. If empty, uses `alan` from PATH. Diagnostics are skipped if it can't be found."
+        },
+        "alan.mainFile": {
+          "type": "string",
+          "default": "",
+          "description": "The .alan file to compile and Play (absolute, or relative to the workspace folder). If empty, Play uses the focused .alan file, else the first .alan beside it, else the first .alan in the workspace."
         }
       }
     },
