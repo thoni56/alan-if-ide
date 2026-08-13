@@ -13,12 +13,12 @@ let client: LanguageClient;
 export function activate(context: ExtensionContext) {
     const jar = context.asAbsolutePath(path.join('server', 'alan-lsp.jar'));
     if (!fs.existsSync(jar)) {
-        window.showErrorMessage(`Alan IDE: language server jar not found at ${jar}`);
+        window.showErrorMessage(`Alan IF IDE: language server jar not found at ${jar}`);
         return;
     }
 
     // `java` from the configured JDK home, else PATH.
-    const cfg = workspace.getConfiguration('alan');
+    const cfg = workspace.getConfiguration('alanif');
     const javaHome = cfg.get<string>('java.home');
     const javaCmd = javaHome ? path.join(javaHome, 'bin', 'java') : 'java';
 
@@ -32,23 +32,23 @@ export function activate(context: ExtensionContext) {
     const serverOptions: ServerOptions = { run: exec, debug: exec };
 
     const clientOptions: LanguageClientOptions = {
-        documentSelector: [{ scheme: 'file', language: 'alan' }],
+        documentSelector: [{ scheme: 'file', language: 'alanif' }],
         synchronize: {
             fileEvents: workspace.createFileSystemWatcher('**/*.alan')
         }
     };
 
-    client = new LanguageClient('alan', 'Alan Language Server', serverOptions, clientOptions);
+    client = new LanguageClient('alanif', 'Alan IF Language Server', serverOptions, clientOptions);
     client.start();
 
     // A persistent, always-visible Play affordance (the editor-title icon is easy
     // to miss). Shown only while an Alan file is the active editor.
     const playStatus = window.createStatusBarItem(StatusBarAlignment.Left, 100);
-    playStatus.command = 'alan.play';
+    playStatus.command = 'alanif.play';
     playStatus.text = '$(play) Play';
     playStatus.tooltip = 'Compile and play this Alan adventure';
     const updatePlayStatus = () => {
-        if (window.activeTextEditor?.document.languageId === 'alan') {
+        if (window.activeTextEditor?.document.languageId === 'alanif') {
             playStatus.show();
         } else {
             playStatus.hide();
@@ -57,7 +57,7 @@ export function activate(context: ExtensionContext) {
     updatePlayStatus();
 
     context.subscriptions.push(
-        commands.registerCommand('alan.play', () => play()),
+        commands.registerCommand('alanif.play', () => play()),
         window.onDidCloseTerminal(onTerminalClosed),
         playStatus,
         window.onDidChangeActiveTextEditor(updatePlayStatus)

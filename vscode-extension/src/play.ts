@@ -22,7 +22,7 @@ export async function play(): Promise<void> {
     if (!main) {
         window.showErrorMessage(
             'Alan: no .alan main file found to play. Open the main .alan file, ' +
-            'or set "alan.mainFile" in your settings.');
+            'or set "alanif.mainFile" in your settings.');
         return;
     }
 
@@ -30,7 +30,7 @@ export async function play(): Promise<void> {
     // disk by the compiler, so they must be saved too).
     await workspace.saveAll(false);
 
-    const cfg = workspace.getConfiguration('alan');
+    const cfg = workspace.getConfiguration('alanif');
     const compiler = cfg.get<string>('compiler.path') || 'alan';
     const interpreter = deriveInterpreter(compiler);
 
@@ -46,7 +46,7 @@ export async function play(): Promise<void> {
     // A fresh terminal per Play: disposing any previous one kills a still-running
     // game and resets the cwd, giving a clean build-and-restart each time.
     playTerminal?.dispose();
-    playTerminal = window.createTerminal({ name: 'Alan Play', cwd: dir });
+    playTerminal = window.createTerminal({ name: 'Alan IF Play', cwd: dir });
     playTerminal.show(true);
     playTerminal.sendText(`${buildCmd} && ${runCmd}`);
 }
@@ -60,14 +60,14 @@ export function onTerminalClosed(closed: Terminal): void {
 
 /**
  * Which file to compile-and-play:
- *   1. an explicit `alan.mainFile` (absolute, or relative to its workspace folder);
+ *   1. an explicit `alanif.mainFile` (absolute, or relative to its workspace folder);
  *   2. else the focused editor if it is itself a .alan (authors keep several .alan
  *      as alternate start points -- the focused one wins);
  *   3. else the first .alan beside the focused file (playing from an included .i);
  *   4. else the first .alan anywhere in the workspace.
  */
 async function resolveMain(): Promise<Uri | undefined> {
-    const cfg = workspace.getConfiguration('alan');
+    const cfg = workspace.getConfiguration('alanif');
     const explicit = (cfg.get<string>('mainFile') || '').trim();
     if (explicit) {
         const uri = path.isAbsolute(explicit)

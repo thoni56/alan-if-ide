@@ -3,7 +3,10 @@
 set -e
 cd "$(dirname "$0")"
 VER=$(node -p "require('./package.json').version")
-OUT="$PWD/alan-ide-$VER.vsix"
+NAME=$(node -p "require('./package.json').name")
+DISP=$(node -p "require('./package.json').displayName")
+DESC=$(node -p "require('./package.json').description")
+OUT="$PWD/$NAME-$VER.vsix"
 STAGE=$(mktemp -d)
 mkdir -p "$STAGE/extension"
 cp -r package.json language-configuration.json out syntaxes icons server node_modules "$STAGE/extension/"
@@ -11,10 +14,10 @@ cat > "$STAGE/extension.vsixmanifest" <<XML
 <?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011">
   <Metadata>
-    <Identity Language="en-US" Id="alan-ide" Version="$VER" Publisher="alanif"/>
-    <DisplayName>Alan IDE</DisplayName>
-    <Description>Language support for the Alan interactive-fiction language (Xtext LSP).</Description>
-    <Tags>alan</Tags><Categories>Programming Languages</Categories><GalleryFlags>Public</GalleryFlags>
+    <Identity Language="en-US" Id="$NAME" Version="$VER" Publisher="alanif"/>
+    <DisplayName>$DISP</DisplayName>
+    <Description>$DESC</Description>
+    <Tags>alan,alan-if,interactive-fiction</Tags><Categories>Programming Languages</Categories><GalleryFlags>Public</GalleryFlags>
     <Properties><Property Id="Microsoft.VisualStudio.Code.Engine" Value="^1.75.0"/></Properties>
   </Metadata>
   <Installation><InstallationTarget Id="Microsoft.VisualStudio.Code"/></Installation>

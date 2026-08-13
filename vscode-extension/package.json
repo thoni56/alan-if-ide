@@ -1,48 +1,48 @@
 {
-  "name": "alan-ide",
-  "displayName": "Alan IDE",
-  "description": "Language support for the Alan interactive-fiction language (Xtext LSP).",
-  "version": "0.1.6",
+  "name": "alan-if-ide",
+  "displayName": "Alan IF IDE",
+  "description": "Tooling for the Alan interactive-fiction language (Alan IF): highlighting, navigation, compiler diagnostics, find-references, and play (Xtext LSP).",
+  "version": "0.2.0",
   "publisher": "alanif",
   "engines": { "vscode": "^1.75.0" },
   "categories": ["Programming Languages"],
-  "activationEvents": ["onLanguage:alan"],
+  "activationEvents": ["onLanguage:alanif"],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "alan.play",
+        "command": "alanif.play",
         "title": "Play",
-        "category": "Alan",
+        "category": "Alan IF",
         "icon": "$(play)"
       }
     ],
     "menus": {
       "editor/title": [
         {
-          "command": "alan.play",
-          "when": "resourceLangId == alan",
+          "command": "alanif.play",
+          "when": "resourceLangId == alanif",
           "group": "navigation"
         }
       ],
       "editor/context": [
         {
-          "command": "alan.play",
-          "when": "resourceLangId == alan",
+          "command": "alanif.play",
+          "when": "resourceLangId == alanif",
           "group": "navigation"
         }
       ],
       "commandPalette": [
         {
-          "command": "alan.play",
-          "when": "resourceLangId == alan"
+          "command": "alanif.play",
+          "when": "resourceLangId == alanif"
         }
       ]
     },
     "languages": [
       {
-        "id": "alan",
-        "aliases": ["Alan", "alan"],
+        "id": "alanif",
+        "aliases": ["Alan", "Alan IF"],
         "extensions": [".alan"],
         "configuration": "./language-configuration.json",
         "icon": { "light": "./icons/alan-logo.svg", "dark": "./icons/alan-logo.svg" }
@@ -50,25 +50,25 @@
     ],
     "grammars": [
       {
-        "language": "alan",
-        "scopeName": "source.alan",
+        "language": "alanif",
+        "scopeName": "source.alanif",
         "path": "./syntaxes/alan.tmLanguage.json"
       }
     ],
     "configuration": {
-      "title": "Alan IDE",
+      "title": "Alan IF IDE",
       "properties": {
-        "alan.java.home": {
+        "alanif.java.home": {
           "type": "string",
           "default": "",
           "description": "Path to a JDK/JRE 21+ home. If empty, uses `java` from PATH."
         },
-        "alan.compiler.path": {
+        "alanif.compiler.path": {
           "type": "string",
           "default": "",
           "description": "Path to the Alan compiler for diagnostics. If empty, uses `alan` from PATH. Diagnostics are skipped if it can't be found."
         },
-        "alan.mainFile": {
+        "alanif.mainFile": {
           "type": "string",
           "default": "",
           "description": "The .alan file to compile and Play (absolute, or relative to the workspace folder). If empty, Play uses the focused .alan file, else the first .alan beside it, else the first .alan in the workspace."
@@ -77,7 +77,7 @@
     },
     "configurationDefaults": {
       "files.associations": {
-        "*.i": "alan"
+        "*.i": "alanif"
       }
     }
   },

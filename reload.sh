@@ -9,7 +9,8 @@ cd "$(dirname "$0")"
 ./vscode-extension/package-vsix.sh
 
 VER=$(node -p "require('./vscode-extension/package.json').version")
-VSIX="vscode-extension/alan-ide-$VER.vsix"
+NAME=$(node -p "require('./vscode-extension/package.json').name")
+VSIX="vscode-extension/$NAME-$VER.vsix"
 
 echo ">> installing $VSIX into VS Code"
 code --install-extension "$VSIX" --force
