@@ -4,16 +4,25 @@
 package se.alanif.alan.ide;
 
 import org.eclipse.xtext.ide.server.symbol.DocumentSymbolService;
+import org.eclipse.xtext.ide.server.symbol.HierarchicalDocumentSymbolService;
 
 import se.alanif.alan.ide.symbol.AlanDocumentSymbolService;
+import se.alanif.alan.ide.symbol.AlanHierarchicalDocumentSymbolService;
 
 /**
  * Use this class to register ide components.
  */
 public class AlanIdeModule extends AbstractAlanIdeModule {
 
-	/** Graceful go-to-definition for built-in (synthetic prelude) targets. */
+	/** Graceful go-to-definition for built-in (synthetic prelude) targets, and
+	 *  name-based go-to-definition / find-references over the shallow model. */
 	public Class<? extends DocumentSymbolService> bindDocumentSymbolService() {
 		return AlanDocumentSymbolService.class;
+	}
+
+	/** The document OUTLINE -- clients with hierarchical-symbol support (VS Code)
+	 *  are served by this service, not by DocumentSymbolService above. */
+	public Class<? extends HierarchicalDocumentSymbolService> bindHierarchicalDocumentSymbolService() {
+		return AlanHierarchicalDocumentSymbolService.class;
 	}
 }
