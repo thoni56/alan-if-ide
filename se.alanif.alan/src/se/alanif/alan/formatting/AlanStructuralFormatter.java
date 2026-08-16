@@ -4,10 +4,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.xtext.AbstractRule;
+import org.eclipse.xtext.GrammarUtil;
+import org.eclipse.xtext.Keyword;
 import org.eclipse.xtext.RuleCall;
 import org.eclipse.xtext.nodemodel.ICompositeNode;
 import org.eclipse.xtext.nodemodel.ILeafNode;
@@ -41,6 +44,24 @@ import org.eclipse.xtext.parser.IParseResult;
  */
 public class AlanStructuralFormatter {
 
+	/** How grammar keywords are cased. Alan folds case, so this is purely cosmetic. */
+	public enum KeywordCase {
+		OFF, LOWER, UPPER, CAPITALIZE;
+
+		/** Parse a setting value ("lower"/"upper"/"capitalize"), defaulting to OFF. */
+		public static KeywordCase from(String value) {
+			if (value == null) {
+				return OFF;
+			}
+			switch (value.trim().toLowerCase(Locale.ROOT)) {
+				case "lower":      return LOWER;
+				case "upper":      return UPPER;
+				case "capitalize": return CAPITALIZE;
+				default:           return OFF;
+			}
+		}
+	}
+
 	/** One wrapper per real indent level; pass-through chain nodes are excluded. */
 	private static final Set<String> WRAPPERS = new HashSet<>(Arrays.asList(
 		"Properties", "Statements", "ContainerBody", "StepList",
@@ -57,7 +78,7 @@ public class AlanStructuralFormatter {
 	 * @param unit    one indent level (e.g. {@code "\t"} or N spaces)
 	 * @return the re-indented document
 	 */
-	public String format(IParseResult parse, String source, String unit, int tabSize) {
+	public String format(IParseResult parse, String source, String unit, int tabSize, KeywordCase keywordCase) {
 		this.text = source;
 		buildLineIndex();
 		int n = lines.length;
@@ -66,6 +87,9 @@ public class AlanStructuralFormatter {
 		if (parse != null && parse.getRootNode() != null) {
 			markStringInteriors(parse.getRootNode(), stringOwner);
 			accumulate(parse.getRootNode(), indent);
+			if (keywordCase != KeywordCase.OFF) {
+				applyKeywordCasing(parse.getRootNode(), keywordCase);
+			}
 		}
 		StringBuilder out = new StringBuilder(source.length() + 64);
 		for (int i = 0; i < n; i++) {
@@ -138,6 +162,60 @@ public class AlanStructuralFormatter {
 		}
 		for (INode c : ((ICompositeNode) node).getChildren()) {
 			accumulate(c, indent);
+		}
+	}
+
+	/**
+	 * Rewrite every grammar KEYWORD to the chosen case, in place (casing preserves
+	 * length, so line offsets are unchanged and indentation/strings are untouched).
+	 * Only leaves whose grammar element is a real {@link Keyword} are touched --
+	 * never plain identifiers, never string content, and (crucially) never a SOFT
+	 * keyword used as an identifier: Alan's {@code AlanId} rule accepts words like
+	 * {@code location}, {@code actor}, {@code of}, {@code taking} as names, so a
+	 * built-in class reference ({@code Isa location}) or an attribute named {@code of}
+	 * is left alone, while the same word as a genuine keyword ({@code Current location},
+	 * {@code wheels of car}) is cased.
+	 */
+	private void applyKeywordCasing(ICompositeNode root, KeywordCase kc) {
+		char[][] buf = new char[lines.length][];
+		for (int i = 0; i < lines.length; i++) {
+			buf[i] = lines[i].toCharArray();
+		}
+		for (ILeafNode leaf : root.getLeafNodes()) {
+			if (leaf.isHidden() || !(leaf.getGrammarElement() instanceof Keyword)) {
+				continue;
+			}
+			AbstractRule rule = GrammarUtil.containingRule(leaf.getGrammarElement());
+			if (rule != null && "AlanId".equals(rule.getName())) {
+				continue;   // soft keyword serving as an identifier -> leave it
+			}
+			String cased = applyCase(leaf.getText(), kc);
+			if (cased.equals(leaf.getText())) {
+				continue;
+			}
+			int line = lineOf(leaf.getOffset());
+			int col = leaf.getOffset() - lineStart[line - 1];
+			char[] row = buf[line - 1];
+			for (int k = 0; k < cased.length() && col + k < row.length; k++) {
+				row[col + k] = cased.charAt(k);
+			}
+		}
+		for (int i = 0; i < lines.length; i++) {
+			lines[i] = new String(buf[i]);
+		}
+	}
+
+	private static String applyCase(String s, KeywordCase kc) {
+		switch (kc) {
+			case LOWER:
+				return s.toLowerCase(Locale.ROOT);
+			case UPPER:
+				return s.toUpperCase(Locale.ROOT);
+			case CAPITALIZE:
+				return s.isEmpty() ? s
+					: Character.toUpperCase(s.charAt(0)) + s.substring(1).toLowerCase(Locale.ROOT);
+			default:
+				return s;
 		}
 	}
 

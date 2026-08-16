@@ -72,6 +72,18 @@
           "type": "string",
           "default": "",
           "description": "The .alan file to compile and Play (absolute, or relative to the workspace folder). If empty, Play uses the focused .alan file, else the first .alan beside it, else the first .alan in the workspace."
+        },
+        "alanif.format.keywordCase": {
+          "type": "string",
+          "enum": ["off", "lower", "upper", "capitalize"],
+          "enumDescriptions": [
+            "Leave keyword casing untouched (default)",
+            "lowercase all keywords (if, then, verb)",
+            "UPPERCASE all keywords (IF, THEN, VERB)",
+            "Capitalize all keywords (If, Then, Verb)"
+          ],
+          "default": "off",
+          "markdownDescription": "How **Format Document** cases Alan keywords. Alan folds case, so this is cosmetic; only true keywords are changed (never identifiers or string contents). Changing this takes effect after reloading the window."
         }
       }
     },

@@ -22,12 +22,13 @@ export function activate(context: ExtensionContext) {
     const javaHome = cfg.get<string>('java.home');
     const javaCmd = javaHome ? path.join(javaHome, 'bin', 'java') : 'java';
 
-    // Pass the Alan compiler path to the server (for diagnostics) via env.
+    // Pass server-side config via env (same channel for compiler path + format style).
     const env = { ...process.env };
     const compilerPath = cfg.get<string>('compiler.path');
     if (compilerPath) {
         env.ALAN_COMPILER = compilerPath;
     }
+    env.ALANIF_KEYWORD_CASE = cfg.get<string>('format.keywordCase') || 'off';
     const exec = { command: javaCmd, args: ['-jar', jar], options: { env } };
     const serverOptions: ServerOptions = { run: exec, debug: exec };
 
@@ -56,11 +57,27 @@ export function activate(context: ExtensionContext) {
     };
     updatePlayStatus();
 
+    // The keyword-case style is passed to the server at launch (via env), so a
+    // change only takes effect after the server restarts -- offer to reload.
+    const reloadOnChange = workspace.onDidChangeConfiguration(e => {
+        if (e.affectsConfiguration('alanif.format.keywordCase')) {
+            window.showInformationMessage(
+                'Alan IF: reload the window for the new keyword-case setting to take effect.',
+                'Reload'
+            ).then(choice => {
+                if (choice === 'Reload') {
+                    commands.executeCommand('workbench.action.reloadWindow');
+                }
+            });
+        }
+    });
+
     context.subscriptions.push(
         commands.registerCommand('alanif.play', () => play()),
         window.onDidCloseTerminal(onTerminalClosed),
         playStatus,
-        window.onDidChangeActiveTextEditor(updatePlayStatus)
+        window.onDidChangeActiveTextEditor(updatePlayStatus),
+        reloadOnChange
     );
 }
 
