@@ -1,6 +1,6 @@
 import * as path from 'path';
 import * as fs from 'fs';
-import { ExtensionContext, workspace, window, commands, StatusBarAlignment } from 'vscode';
+import { ExtensionContext, workspace, window, commands, languages, DiagnosticSeverity, StatusBarAlignment } from 'vscode';
 import {
     LanguageClient,
     LanguageClientOptions,
@@ -36,6 +36,24 @@ export function activate(context: ExtensionContext) {
         documentSelector: [{ scheme: 'file', language: 'alanif' }],
         synchronize: {
             fileEvents: workspace.createFileSystemWatcher('**/*.alan')
+        },
+        middleware: {
+            // Format Document silently does nothing when the file has a syntax error
+            // (the parse tree is partial, so re-indenting could misplace lines). Catch
+            // that here -- for every Format path (keybinding, menu, palette) -- and tell
+            // the user why. Only SYNTAX errors block: semantic/compiler errors parse
+            // fine, so those files still format.
+            provideDocumentFormattingEdits: (document, options, token, next) => {
+                const syntaxErrors = languages.getDiagnostics(document.uri).filter(d =>
+                    d.severity === DiagnosticSeverity.Error && codeOf(d).includes('Diagnostic.Syntax'));
+                if (syntaxErrors.length > 0) {
+                    const line = syntaxErrors[0].range.start.line + 1;
+                    window.showWarningMessage(
+                        `Alan IF: not formatted — syntax error on line ${line}. Fix it, then format again.`);
+                    return [];
+                }
+                return next(document, options, token);
+            }
         }
     };
 
@@ -83,4 +101,12 @@ export function activate(context: ExtensionContext) {
 
 export function deactivate(): Thenable<void> | undefined {
     return client?.stop();
+}
+
+/** A diagnostic's code as a string (it may be a string, number, or {value, target}). */
+function codeOf(d: { code?: string | number | { value: string | number } }): string {
+    const c = d.code;
+    if (c === undefined || c === null) { return ''; }
+    if (typeof c === 'object') { return String(c.value); }
+    return String(c);
 }
