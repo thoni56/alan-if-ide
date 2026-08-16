@@ -3,9 +3,11 @@
  */
 package se.alanif.alan.ide;
 
+import org.eclipse.xtext.ide.server.formatting.FormattingService;
 import org.eclipse.xtext.ide.server.symbol.DocumentSymbolService;
 import org.eclipse.xtext.ide.server.symbol.HierarchicalDocumentSymbolService;
 
+import se.alanif.alan.ide.formatting.AlanFormattingService;
 import se.alanif.alan.ide.symbol.AlanDocumentSymbolService;
 import se.alanif.alan.ide.symbol.AlanHierarchicalDocumentSymbolService;
 
@@ -24,5 +26,10 @@ public class AlanIdeModule extends AbstractAlanIdeModule {
 	 *  are served by this service, not by DocumentSymbolService above. */
 	public Class<? extends HierarchicalDocumentSymbolService> bindHierarchicalDocumentSymbolService() {
 		return AlanHierarchicalDocumentSymbolService.class;
+	}
+
+	/** "Format Document": node-model structural indenter (not model-based Formatter2). */
+	public Class<? extends FormattingService> bindFormattingService() {
+		return AlanFormattingService.class;
 	}
 }
