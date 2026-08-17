@@ -5,6 +5,7 @@ cd "$(dirname "$0")"
 echo ">> building the LSP server (Maven)"
 mvn -q -B -DskipTests package
 echo ">> staging server jar into the extension"
+mkdir -p vscode-extension/server   # may not exist on a fresh checkout (its .jar is gitignored)
 cp se.alanif.alan.ide/target/se.alanif.alan.ide-*-ls.jar vscode-extension/server/alan-lsp.jar
 echo ">> building the VS Code extension"
 cd vscode-extension && npm install --no-fund --no-audit && npm run compile
