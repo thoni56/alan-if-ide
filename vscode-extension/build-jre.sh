@@ -5,8 +5,15 @@
 #   ./build-jre.sh --jmods <dir>      # cross-build, using another platform's jmods
 #
 # Cross-building is how one CI runner produces runtimes for every target: jlink can
-# link an image for a foreign platform as long as it is given that platform's jmods
-# and the versions match.
+# link an image for a foreign platform as long as it is given that platform's jmods.
+# A patch-level difference between the host jlink and the target jmods is fine
+# (verified 21.0.11 linking 21.0.12).
+#
+# Note --strip-java-debug-attributes rather than --strip-debug: the latter also strips
+# NATIVE debug symbols, which it does by shelling out to the host's objcopy. That
+# cannot read a foreign binary format, so cross-builds emit "file format not
+# recognized" errors -- and jlink still exits 0, so the failure is easy to miss. The
+# native stripping saved nothing measurable anyway (51 MB either way).
 #
 # The output (jre/) is a build artifact: gitignored, but deliberately NOT in
 # .vscodeignore, because it must ship inside the VSIX.
@@ -37,11 +44,26 @@ fi
 rm -rf jre
 jlink $JMODS \
   --add-modules "$MODULES" \
-  --strip-debug \
+  --strip-java-debug-attributes \
   --no-header-files \
   --no-man-pages \
   --compress=zip-6 \
   --output jre
 
 echo ">> built jre/ ($(du -sh jre | cut -f1))"
-./jre/bin/java -version
+
+if [ -n "$JMODS" ]; then
+  # A cross-built image cannot be run here. jlink's release file records only
+  # JAVA_VERSION and MODULES -- no OS/arch -- so prove the target from the launcher's
+  # actual binary format instead, and fail if it was not produced at all.
+  LAUNCHER=jre/bin/java
+  [ -f jre/bin/java.exe ] && LAUNCHER=jre/bin/java.exe
+  if [ ! -s "$LAUNCHER" ]; then
+    echo "!! no launcher at jre/bin/java[.exe] -- the image is not usable" >&2
+    exit 1
+  fi
+  grep '^JAVA_VERSION=' jre/release
+  command -v file >/dev/null 2>&1 && file "$LAUNCHER"
+else
+  ./jre/bin/java -version
+fi

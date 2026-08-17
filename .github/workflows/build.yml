@@ -12,6 +12,9 @@ permissions:
   contents: write   # needed to attach the VSIX to a Release on tags
 
 jobs:
+  # Builds the language server once, and the platform-neutral VSIX for anyone who
+  # brings their own Java (VS Code prefers a matching platform build and falls back
+  # to this one).
   build:
     runs-on: ubuntu-latest
     steps:
@@ -45,17 +48,115 @@ jobs:
             exit 1
           fi
 
-      - name: Package VSIX
+      - name: Package platform-neutral VSIX
         working-directory: vscode-extension
         run: npx vsce package
 
-      - name: Upload VSIX artifact
+      # The Maven/Xtext build is the slow part, so do it once and let the platform
+      # matrix reuse the jar.
+      - name: Upload server jar
         uses: actions/upload-artifact@v5
         with:
-          name: alan-if-ide-vsix
+          name: server-jar
+          path: vscode-extension/server/alan-lsp.jar
+
+      - name: Upload platform-neutral VSIX
+        uses: actions/upload-artifact@v5
+        with:
+          name: vsix-universal
           path: vscode-extension/*.vsix
 
-      - name: Attach VSIX to release (on tag)
+      - name: Attach to release (on tag)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: vscode-extension/*.vsix
+
+  # One VSIX per platform, each with its own trimmed Java runtime, so an author can
+  # install from the marketplace without ever installing a JDK.
+  #
+  # All of them are linked on a single Linux runner: jlink can build an image for a
+  # foreign platform given that platform's jmods, so there is no need for a runner
+  # per OS (and no runner exists for some of these targets anyway).
+  package:
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: linux-x64
+            jdk_os: linux
+            jdk_arch: x64
+          - target: linux-arm64
+            jdk_os: linux
+            jdk_arch: aarch64
+          - target: darwin-x64
+            jdk_os: mac
+            jdk_arch: x64
+          - target: darwin-arm64
+            jdk_os: mac
+            jdk_arch: aarch64
+          - target: win32-x64
+            jdk_os: windows
+            jdk_arch: x64
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Download server jar
+        uses: actions/download-artifact@v5
+        with:
+          name: server-jar
+          path: vscode-extension/server
+
+      - name: Compile the extension
+        working-directory: vscode-extension
+        run: npm install --no-fund --no-audit && npm run compile
+
+      - name: Fetch ${{ matrix.jdk_os }}/${{ matrix.jdk_arch }} jmods
+        run: |
+          set -e
+          URL="https://api.adoptium.net/v3/binary/latest/21/ga/${{ matrix.jdk_os }}/${{ matrix.jdk_arch }}/jdk/hotspot/normal/eclipse"
+          mkdir -p target-jdk && cd target-jdk
+          if [ "${{ matrix.jdk_os }}" = "windows" ]; then
+            curl -sSL -o jdk.zip "$URL" && unzip -q jdk.zip
+          else
+            curl -sSL -o jdk.tar.gz "$URL" && tar xzf jdk.tar.gz
+          fi
+          # macOS nests jmods under Contents/Home; the others keep it at the root.
+          JMODS=$(find . -maxdepth 4 -type d -name jmods | head -1)
+          if [ -z "$JMODS" ]; then
+            echo "::error::no jmods directory in the ${{ matrix.jdk_os }}/${{ matrix.jdk_arch }} JDK"
+            exit 1
+          fi
+          echo "JMODS=$PWD/${JMODS#./}" >> "$GITHUB_ENV"
+
+      - name: Link the runtime
+        working-directory: vscode-extension
+        run: ./build-jre.sh --jmods "$JMODS"
+
+      - name: Package ${{ matrix.target }} VSIX
+        working-directory: vscode-extension
+        run: npx vsce package --target ${{ matrix.target }}
+
+      - name: Upload ${{ matrix.target }} VSIX
+        uses: actions/upload-artifact@v5
+        with:
+          name: vsix-${{ matrix.target }}
+          path: vscode-extension/*.vsix
+
+      - name: Attach to release (on tag)
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
