@@ -83,11 +83,6 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      # Five jobs starting at once all fetch the same action tarballs from
-      # codeload.github.com, which rate-limits the burst (429/503 in "Set up job",
-      # before any of our own code runs). Stagger them. Each job downloads a ~200 MB
-      # JDK anyway, so serialising a little costs less than it looks.
-      max-parallel: 2
       matrix:
         include:
           - target: linux-x64
