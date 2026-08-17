@@ -7,6 +7,7 @@ import {
     ServerOptions
 } from 'vscode-languageclient/node';
 import { play, onTerminalClosed } from './play';
+import { resolveJava, missingJavaMessage } from './java';
 
 let client: LanguageClient;
 
@@ -17,10 +18,23 @@ export function activate(context: ExtensionContext) {
         return;
     }
 
-    // `java` from the configured JDK home, else PATH.
+    // The configured JDK home, else the runtime bundled in the VSIX, else JAVA_HOME,
+    // else PATH. Without a usable Java there is no language server at all, so say so
+    // plainly rather than letting the client fail somewhere in the Output panel.
     const cfg = workspace.getConfiguration('alanif');
-    const javaHome = cfg.get<string>('java.home');
-    const javaCmd = javaHome ? path.join(javaHome, 'bin', 'java') : 'java';
+    const java = resolveJava(context.extensionPath, cfg.get<string>('java.home'));
+    if (!java.ok) {
+        window.showErrorMessage(missingJavaMessage(java), 'Open Settings').then(choice => {
+            if (choice === 'Open Settings') {
+                commands.executeCommand('workbench.action.openSettings', 'alanif.java.home');
+            }
+        });
+        return;
+    }
+    if (java.warning) {
+        window.showWarningMessage(java.warning);
+    }
+    const javaCmd = java.command;
 
     // Pass server-side config via env (same channel for compiler path + format style).
     const env = { ...process.env };

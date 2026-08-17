@@ -77,7 +77,7 @@
         "alanif.java.home": {
           "type": "string",
           "default": "",
-          "description": "Path to a JDK/JRE 21+ home. If empty, uses `java` from PATH."
+          "markdownDescription": "Path to a JDK/JRE 21+ home for the language server. Leave empty to use the runtime bundled with the extension; if this build has none, `JAVA_HOME` and then `java` on your `PATH` are tried. Set this to override all of them."
         },
         "alanif.compiler.path": {
           "type": "string",
