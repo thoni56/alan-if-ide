@@ -2,7 +2,7 @@
   "name": "alan-if-ide",
   "displayName": "Alan IF IDE",
   "description": "Tooling for the Alan interactive-fiction language (Alan IF): highlighting, navigation, compiler diagnostics, find-references, and play (Xtext LSP).",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "publisher": "alanif",
   "license": "MIT",
   "author": "Thomas Nilefalk",
@@ -11,10 +11,17 @@
     "type": "git",
     "url": "https://github.com/thoni56/alan-if-ide.git"
   },
-  "bugs": { "url": "https://github.com/thoni56/alan-if-ide/issues" },
+  "bugs": {
+    "url": "https://github.com/thoni56/alan-if-ide/issues"
+  },
   "homepage": "https://github.com/thoni56/alan-if-ide#readme",
-  "engines": { "vscode": "^1.75.0" },
-  "categories": ["Programming Languages", "Formatters"],
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Formatters"
+  ],
   "keywords": [
     "alan",
     "alan if",
@@ -22,7 +29,9 @@
     "text adventure",
     "if"
   ],
-  "activationEvents": ["onLanguage:alanif"],
+  "activationEvents": [
+    "onLanguage:alanif"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
@@ -58,10 +67,18 @@
     "languages": [
       {
         "id": "alanif",
-        "aliases": ["Alan", "Alan IF"],
-        "extensions": [".alan"],
+        "aliases": [
+          "Alan",
+          "Alan IF"
+        ],
+        "extensions": [
+          ".alan"
+        ],
         "configuration": "./language-configuration.json",
-        "icon": { "light": "./icons/alan-logo.svg", "dark": "./icons/alan-logo.svg" }
+        "icon": {
+          "light": "./icons/alan-logo.svg",
+          "dark": "./icons/alan-logo.svg"
+        }
       }
     ],
     "grammars": [
@@ -91,7 +108,12 @@
         },
         "alanif.format.keywordCase": {
           "type": "string",
-          "enum": ["off", "lower", "upper", "capitalize"],
+          "enum": [
+            "off",
+            "lower",
+            "upper",
+            "capitalize"
+          ],
           "enumDescriptions": [
             "Leave keyword casing untouched (default)",
             "lowercase all keywords (if, then, verb)",
