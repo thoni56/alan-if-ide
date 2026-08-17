@@ -30,8 +30,9 @@ the language server provides the **ergonomics** (navigation, outline, formatting
 
 ## Requirements
 
-- **Java 21+** — the language server runs on the JVM. (Point `alanif.java.home` at a
-  JDK/JRE, or have `java` on your `PATH`.)
+- **Java 21+** — the language server runs on the JVM. The platform-specific builds
+  bundle a trimmed runtime, so authors need install nothing; the platform-neutral
+  build uses `alanif.java.home`, then `JAVA_HOME`, then `java` on your `PATH`.
 - The **Alan compiler** (`alan`, 3.0beta8) — for diagnostics and Play. Set
   `alanif.compiler.path`, or have `alan` on your `PATH`. Without it, editing features
   still work; diagnostics are simply skipped.
@@ -41,8 +42,10 @@ the language server provides the **ergonomics** (navigation, outline, formatting
 
 Until it is published to a marketplace, install the packaged extension directly:
 
-1. Download `alan-if-ide-<version>.vsix` from the
-   [Releases](https://github.com/thoni56/alan-if-ide/releases) page.
+1. Download the `.vsix` for your platform from the
+   [Releases](https://github.com/thoni56/alan-if-ide/releases) page — e.g.
+   `alan-if-ide-linux-x64-<version>.vsix`. These bundle a Java runtime. The
+   unsuffixed `alan-if-ide-<version>.vsix` does not, and expects Java 21+ of your own.
 2. In VS Code: **Extensions** view → `…` menu → **Install from VSIX…**, and pick the file.
 3. Reload the window.
 
@@ -62,6 +65,14 @@ A plain Maven-Central build (no Tycho). Needs **JDK 21**, **Maven**, and **Node 
 
     ./build.sh                                    # server jar + compiled extension
     cd vscode-extension && npx vsce package       # packages the .vsix
+
+`build.sh` deliberately does not build the bundled Java runtime — the dev loop falls
+back to `java` on your `PATH`, so paying for it on every build would be waste. To
+produce a platform build the way CI does:
+
+    cd vscode-extension
+    ./build-jre.sh                                # jlink a runtime for this machine
+    npx vsce package --target linux-x64
 
 `build.sh` runs the Xtext generator (MWE2), builds the language server, stages its jar
 into the extension, and compiles the TypeScript. `reload.sh` does all of that, packages

@@ -31,16 +31,20 @@ provides the ergonomics — navigation, outline, and formatting.
 
 ## Requirements
 
-This extension is a client for a language server that runs on the JVM, and it drives
-the real Alan toolchain. You will need:
+**Java is included.** The language server runs on the JVM, but the build for your
+platform ships with its own trimmed Java runtime — you do not need to install a JDK.
+If you would rather use your own, point `alanif.java.home` at it. (The
+platform-neutral build carries no runtime and falls back to `JAVA_HOME` or `java` on
+your `PATH`.)
+
+To get diagnostics and Play you also need the Alan toolchain:
 
 | | | |
 | --- | --- | --- |
-| **Java 21+** | required | Runs the language server. Set `alanif.java.home`, or have `java` on your `PATH`. |
-| **`alan`** | recommended | The Alan compiler (3.0beta8), for diagnostics and Play. Set `alanif.compiler.path`, or have it on your `PATH`. |
-| **`arun`** | recommended | The Alan interpreter, for Play. Found next to the compiler, or on `PATH`. |
+| **`alan`** | the compiler (3.0beta8), for diagnostics and Play | Set `alanif.compiler.path`, or have it on your `PATH`. |
+| **`arun`** | the interpreter, for Play | Found next to the compiler, or on `PATH`. |
 
-Without the compiler, editing features still work — diagnostics are simply skipped.
+Without them, editing features still work — diagnostics are simply skipped.
 
 ## Settings
 
