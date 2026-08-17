@@ -4,8 +4,24 @@
   "description": "Tooling for the Alan interactive-fiction language (Alan IF): highlighting, navigation, compiler diagnostics, find-references, and play (Xtext LSP).",
   "version": "0.2.0",
   "publisher": "alanif",
+  "license": "MIT",
+  "author": "Thomas Nilefalk",
+  "icon": "icons/alan-logo-128.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/thoni56/alan-if-ide.git"
+  },
+  "bugs": { "url": "https://github.com/thoni56/alan-if-ide/issues" },
+  "homepage": "https://github.com/thoni56/alan-if-ide#readme",
   "engines": { "vscode": "^1.75.0" },
-  "categories": ["Programming Languages"],
+  "categories": ["Programming Languages", "Formatters"],
+  "keywords": [
+    "alan",
+    "alan if",
+    "interactive fiction",
+    "text adventure",
+    "if"
+  ],
   "activationEvents": ["onLanguage:alanif"],
   "main": "./out/extension.js",
   "contributes": {
@@ -95,7 +111,10 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./"
+    "compile": "tsc -p ./",
+    "package": "vsce package",
+    "publish:vsce": "vsce publish",
+    "publish:ovsx": "ovsx publish"
   },
   "dependencies": {
     "vscode-languageclient": "^9.0.1"
@@ -103,6 +122,8 @@
   "devDependencies": {
     "@types/node": "^18.19.0",
     "@types/vscode": "^1.75.0",
+    "@vscode/vsce": "^3.2.0",
+    "ovsx": "^0.10.1",
     "typescript": "^5.4.0"
   }
 }

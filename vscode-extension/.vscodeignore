@@ -1,5 +1,20 @@
-node_modules/
+# What NOT to ship inside the .vsix.
+#
+# NOTE: do *not* ignore node_modules/ wholesale. vsce ships only the production
+# dependencies, and `vscode-languageclient` is one of them -- excluding the whole
+# tree would produce a VSIX that fails at activation.
+
+# TypeScript sources and build config (out/ is what ships)
 src/
-.gitignore
 tsconfig.json
 **/*.map
+
+# Previously packaged extensions -- must never be nested inside a new one
+*.vsix
+
+# Repo/dev-only artifacts
+.gitignore
+.vscodeignore
+package-lock.json
+alan-profile/
+icons/*.xcf

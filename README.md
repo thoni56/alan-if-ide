@@ -57,14 +57,15 @@ Until it is published to a marketplace, install the packaged extension directly:
 
 ## Build from source
 
-A plain Maven-Central build (no Tycho). Needs **JDK 21**, **Maven**, and **Node 18+**.
+A plain Maven-Central build (no Tycho). Needs **JDK 21**, **Maven**, and **Node 20+**
+(`vsce`, which packages the extension, requires it).
 
-    ./build.sh                      # builds the server jar + compiles the extension
-    ./vscode-extension/package-vsix.sh   # packages the .vsix
+    ./build.sh                                    # server jar + compiled extension
+    cd vscode-extension && npx vsce package       # packages the .vsix
 
 `build.sh` runs the Xtext generator (MWE2), builds the language server, stages its jar
-into the extension, and compiles the TypeScript. `reload.sh` does all of that and
-installs the result into your local VS Code.
+into the extension, and compiles the TypeScript. `reload.sh` does all of that, packages
+the `.vsix`, and installs it into your local VS Code.
 
 ## Layout
 

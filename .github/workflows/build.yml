@@ -23,16 +23,30 @@ jobs:
           java-version: '21'
           cache: maven
 
-      - name: Set up Node 18
+      - name: Set up Node 22
         uses: actions/setup-node@v5
         with:
-          node-version: '18'
+          node-version: '22'
 
       - name: Build server jar + extension
         run: bash build.sh
 
+      # On a tag, make sure v<X.Y.Z> matches the manifest, so the VSIX attached to
+      # the release is not silently named after a stale version.
+      - name: Check tag matches extension version
+        if: startsWith(github.ref, 'refs/tags/v')
+        working-directory: vscode-extension
+        run: |
+          MANIFEST=$(node -p "require('./package.json').version")
+          TAG="${GITHUB_REF_NAME#v}"
+          if [ "$MANIFEST" != "$TAG" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match package.json version $MANIFEST"
+            exit 1
+          fi
+
       - name: Package VSIX
-        run: bash vscode-extension/package-vsix.sh
+        working-directory: vscode-extension
+        run: npx vsce package
 
       - name: Upload VSIX artifact
         uses: actions/upload-artifact@v5
