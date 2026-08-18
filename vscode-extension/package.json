@@ -117,7 +117,7 @@
         "alanif.compiler.path": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Path to the Alan compiler, used for diagnostics and Play. If empty, `alan` on your `PATH` is used, then the usual install locations. Diagnostics are skipped if it cannot be found.\n\n[Browse for the Alan compiler\u2026](command:alanif.locateCompiler) &nbsp;\u00b7&nbsp; [Check setup](command:alanif.checkToolchain)"
+          "markdownDescription": "Path to the Alan compiler, used for diagnostics and Play. If empty, `alan` on your `PATH` is used, then the usual install locations. Diagnostics are skipped if it cannot be found.\n\n**[\u25b8 Browse for the Alan compiler\u2026](command:alanif.locateCompiler)**&nbsp;&nbsp;&nbsp;[Check setup](command:alanif.checkToolchain)"
         },
         "alanif.mainFile": {
           "type": "string",
