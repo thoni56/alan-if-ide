@@ -1,6 +1,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
-import { workspace, window, Uri, Terminal } from 'vscode';
+import { workspace, window, Uri, Terminal, commands } from 'vscode';
+import { resolveCompiler, resolveArun, missingCompilerMessage, missingArunMessage } from './toolchain';
 
 let playTerminal: Terminal | undefined;
 
@@ -30,9 +31,27 @@ export async function play(): Promise<void> {
     // disk by the compiler, so they must be saved too).
     await workspace.saveAll(false);
 
+    // Play is the loudest failure if the toolchain is missing, so resolve properly
+    // and say what is wrong here rather than letting the terminal print
+    // "alan: command not found" and leaving the author to interpret it.
     const cfg = workspace.getConfiguration('alanif');
-    const compiler = cfg.get<string>('compiler.path') || 'alan';
-    const interpreter = deriveInterpreter(compiler);
+    const found = resolveCompiler(cfg.get<string>('compiler.path'));
+    if (!found.ok) {
+        const choice = await window.showErrorMessage(
+            missingCompilerMessage(found), 'Locate Compiler…');
+        if (choice === 'Locate Compiler…') {
+            await commands.executeCommand('alanif.locateCompiler');
+        }
+        return;
+    }
+    const compiler = found.command;
+
+    const arun = resolveArun(compiler);
+    if (!arun.ok) {
+        window.showErrorMessage(missingArunMessage(arun));
+        return;
+    }
+    const interpreter = arun.command;
 
     const dir = path.dirname(main.fsPath);
     const mainName = path.basename(main.fsPath);
@@ -91,20 +110,6 @@ async function resolveMain(): Promise<Uri | undefined> {
 
     const hits = await workspace.findFiles('**/*.alan', '**/node_modules/**', 1);
     return hits[0];
-}
-
-/** Derive the interpreter: `arun` next to the compiler, else `arun` on PATH. */
-function deriveInterpreter(compiler: string): string {
-    if (compiler.includes('/') || compiler.includes('\\')) {
-        const beside = path.join(path.dirname(compiler), 'arun');
-        if (fs.existsSync(beside)) {
-            return beside;
-        }
-        if (fs.existsSync(beside + '.exe')) {
-            return beside + '.exe';
-        }
-    }
-    return 'arun';
 }
 
 function firstAlanIn(dir: string): string | undefined {

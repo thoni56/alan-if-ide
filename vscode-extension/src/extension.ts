@@ -8,6 +8,8 @@ import {
 } from 'vscode-languageclient/node';
 import { play, onTerminalClosed } from './play';
 import { resolveJava, missingJavaMessage } from './java';
+import { resolveCompiler } from './toolchain';
+import { locateCompiler, checkToolchain } from './locate';
 
 let client: LanguageClient;
 
@@ -38,9 +40,13 @@ export function activate(context: ExtensionContext) {
 
     // Pass server-side config via env (same channel for compiler path + format style).
     const env = { ...process.env };
-    const compilerPath = cfg.get<string>('compiler.path');
-    if (compilerPath) {
-        env.ALAN_COMPILER = compilerPath;
+    // Resolve the compiler rather than passing the setting through verbatim: with
+    // the setting empty the server would fall back to bare `alan`, which misses an
+    // SDK that is installed in a standard place but not on PATH -- a common case
+    // now that the SDK ships as an unpacked tarball.
+    const compiler = resolveCompiler(cfg.get<string>('compiler.path'));
+    if (compiler.ok) {
+        env.ALAN_COMPILER = compiler.command;
     }
     env.ALANIF_KEYWORD_CASE = cfg.get<string>('format.keywordCase') || 'off';
     const exec = { command: javaCmd, args: ['-jar', jar], options: { env } };
@@ -104,8 +110,24 @@ export function activate(context: ExtensionContext) {
         }
     });
 
+    // Diagnostics and Play both need the toolchain, so a missing compiler is worth
+    // saying once at startup -- with the fix attached, not just the complaint.
+    if (!compiler.ok) {
+        window.showWarningMessage(
+            'Alan IF IDE could not find the Alan compiler, so diagnostics and Play ' +
+            'are unavailable. Editing, navigation and formatting still work.',
+            'Locate Compiler…'
+        ).then(choice => {
+            if (choice === 'Locate Compiler…') {
+                locateCompiler();
+            }
+        });
+    }
+
     context.subscriptions.push(
         commands.registerCommand('alanif.play', () => play()),
+        commands.registerCommand('alanif.locateCompiler', () => locateCompiler()),
+        commands.registerCommand('alanif.checkToolchain', () => checkToolchain()),
         window.onDidCloseTerminal(onTerminalClosed),
         playStatus,
         window.onDidChangeActiveTextEditor(updatePlayStatus),

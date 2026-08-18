@@ -30,7 +30,9 @@
     "if"
   ],
   "activationEvents": [
-    "onLanguage:alanif"
+    "onLanguage:alanif",
+    "onCommand:alanif.locateCompiler",
+    "onCommand:alanif.checkToolchain"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -40,6 +42,16 @@
         "title": "Play",
         "category": "Alan IF",
         "icon": "$(play)"
+      },
+      {
+        "command": "alanif.locateCompiler",
+        "title": "Locate Alan Compiler\u2026",
+        "category": "Alan IF"
+      },
+      {
+        "command": "alanif.checkToolchain",
+        "title": "Check Setup",
+        "category": "Alan IF"
       }
     ],
     "menus": {
@@ -61,6 +73,12 @@
         {
           "command": "alanif.play",
           "when": "resourceLangId == alanif"
+        },
+        {
+          "command": "alanif.locateCompiler"
+        },
+        {
+          "command": "alanif.checkToolchain"
         }
       ]
     },
