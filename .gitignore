@@ -4,3 +4,6 @@ src-gen/
 node_modules/
 *.vsix
 .antlr-generator*.jar
+
+# Windows alternate-data-stream artefacts from files copied out of NTFS
+*:Zone.Identifier

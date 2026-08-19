@@ -8,6 +8,8 @@ Play, powered by a language server built with [Xtext](https://www.eclipse.org/Xt
 > platform — same name, different language. This extension is for the
 > interactive-fiction Alan.
 
+![Alan IF IDE editing a multi-file adventure, with the outline showing instances and their verbs](https://raw.githubusercontent.com/thoni56/alan-if-ide/main/docs/images/alan-if-ide-overview.png)
+
 ## Features
 
 - **Syntax highlighting** for `.alan` and `.i` files.
@@ -20,11 +22,17 @@ Play, powered by a language server built with [Xtext](https://www.eclipse.org/Xt
 - **Compiler diagnostics** — the real Alan compiler's errors, shown in-editor for a
   whole multi-file adventure. It compiles the *main* file and routes each error back
   to the file it came from, so errors surface in your `.i` imports too.
+
+  ![Compiler message on hover, and the Problems panel routing the same warning to six different .i files](https://raw.githubusercontent.com/thoni56/alan-if-ide/main/docs/images/alan-if-ide-error-location.png)
 - **Play** (▶) — compile the adventure and launch it in an integrated terminal, from
   the editor title bar, the status bar, or the context menu.
+
+  ![The adventure compiled and running in the integrated terminal](https://raw.githubusercontent.com/thoni56/alan-if-ide/main/docs/images/alan-if-ide-run-in-terminal.png)
 - **Format Document** — a structure-aware indenter that takes indentation from real
   block nesting, with optional keyword-case normalization. Multi-line strings move as
   rigid blocks and are never reflowed internally.
+
+  ![Format Document reindenting a file and normalising keyword case](https://raw.githubusercontent.com/thoni56/alan-if-ide/main/docs/images/alan-if-ide-format-document.gif)
 
 The **Alan compiler is the source of truth** for diagnostics; the language server
 provides the ergonomics — navigation, outline, and formatting.

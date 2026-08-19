@@ -9,6 +9,8 @@ older Eclipse-RCP *AlanIDE*.
 > platform — same name, different language. This project is for the interactive-fiction
 > Alan (`alan-if.github.io`).
 
+![Alan IF IDE editing a multi-file adventure](https://raw.githubusercontent.com/thoni56/alan-if-ide/main/docs/images/alan-if-ide-overview.png)
+
 ## Features
 
 - **Syntax highlighting** for `.alan` and `.i` files.
