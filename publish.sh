@@ -57,10 +57,11 @@ for f in "${FILES[@]}"; do
       published+=("$f"); break
     fi
     # "already published, but currently isn't active" means the upload landed and
-    # the registry has not finished processing it yet -- normal, and NOT the same
-    # as being live. Both are terminal for this run; retrying cannot help either.
+    # Open VSX has held it -- /user-settings/extensions shows these as "Under
+    # review". Normal, and nothing a publisher can do but wait, but NOT the same as
+    # being live. Terminal for this run either way; retrying cannot help.
     if echo "$out" | grep -qiE "isn't active|is not active"; then
-      echo "   (uploaded, awaiting activation by the registry)"
+      echo "   (uploaded; held by the registry for review)"
       pending+=("$f"); break
     fi
     if echo "$out" | grep -qiE "already (published|exists)"; then
@@ -87,7 +88,9 @@ printf '  FAILED    : %s\n' "${#failed[@]}";    for f in "${failed[@]:-}";    do
 echo "========================================"
 
 if [ "${#pending[@]}" -gt 0 ]; then
-  echo "Some uploads are still being processed. Check later with:"
+  echo "Some uploads are under review by Open VSX -- see the status at"
+  echo "  https://open-vsx.org/user-settings/extensions"
+  echo "Or check whether one has gone live:"
   echo "  curl -s -o /dev/null -w '%{http_code}\n' \\"
   echo "    https://open-vsx.org/api/alanif/alan-if-ide/universal/$VERSION"
   echo "200 means live; 404 means still not activated."
