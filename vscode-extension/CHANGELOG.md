@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.1 — 2026-08-21
+
+- This changelog now ships with the extension. It existed from 0.5.0 but sat
+  outside the packaged directory, so the registry had nothing to show.
+- Smaller download: the dependency type declarations and package readmes that
+  were being included are not read at runtime and are no longer shipped.
+
 ## 0.5.0 — 2026-08-21
 
 **Making the setup state visible.** Editing works without the Alan toolchain, but
