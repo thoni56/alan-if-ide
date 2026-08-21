@@ -161,3 +161,51 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           files: vscode-extension/*.vsix
+
+  # Publish to Open VSX. TAGS ONLY -- a push to main must never reach the registry,
+  # and a published version cannot be edited or replaced, only superseded.
+  #
+  # A separate job rather than a step in each of the others, because ordering
+  # matters: it waits for all six VSIXes to exist, then publishes them in one place,
+  # platform builds before the universal one. Publishing from inside the matrix
+  # would race, and could leave a half-published release with no single report of
+  # what actually landed.
+  publish:
+    needs: [build, package]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    # publish.sh retries each file with backoff, so a registry outage could otherwise
+    # hold a runner for half an hour. If it does time out, nothing is lost: the
+    # release assets are already attached, and re-running the job skips whatever
+    # already landed.
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      # Use the artifacts the build already produced rather than re-downloading the
+      # release: same bytes, and no dependency on the release existing yet.
+      - name: Collect every VSIX
+        uses: actions/download-artifact@v8
+        with:
+          pattern: vsix-*
+          merge-multiple: true
+          path: vscode-extension
+
+      # So `npx ovsx` runs the version pinned in package.json instead of resolving
+      # whatever is newest on npm at release time.
+      - name: Install the publishing tools
+        working-directory: vscode-extension
+        run: npm install --no-fund --no-audit
+
+      - name: Publish to Open VSX
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+          GH_TOKEN: ${{ github.token }}
+        run: ./publish.sh
