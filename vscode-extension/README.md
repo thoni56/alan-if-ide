@@ -58,10 +58,28 @@ Without them, editing features still work — diagnostics are simply skipped.
 
 | Setting | Purpose |
 | --- | --- |
-| `alanif.java.home` | JDK/JRE 21+ home (else `java` on `PATH`). |
-| `alanif.compiler.path` | Path to the Alan compiler (else `alan` on `PATH`). |
+| `alanif.compiler.path` | Path to the Alan compiler (else found automatically). |
+| `alanif.arun.path` | Path to `arun` (else next to the compiler, or on `PATH`). |
 | `alanif.mainFile` | The `.alan` file to compile and Play (else auto-detected). |
 | `alanif.format.keywordCase` | `off` (default) / `lower` / `upper` / `capitalize`. |
+| `alanif.java.home` | JDK/JRE 21+ home (else the bundled runtime). |
+
+You should not need to set the paths: leave them empty and the tools are found
+automatically. Clearing one always returns to that automatic search.
+
+## Knowing whether it works
+
+While an Alan file is open, the language status bubble (the `{}` beside the
+language mode in the status bar) lists what the extension found:
+
+    Compiler 3.0beta8     ~/alan/bin/alan — PATH
+    Interpreter 3.0beta8  ~/alan/bin/arun — next to the compiler
+    Java 21               from the bundled runtime
+
+If something is missing, a warning appears in the status bar instead — click it,
+or run **Alan IF: Check Setup**, to see all three at once and fix any of them.
+There is also **Alan IF: Locate Alan Compiler…** to browse for the compiler, and
+the same for the interpreter.
 
 ## A note on `.i` files
 

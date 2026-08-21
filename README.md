@@ -61,10 +61,16 @@ then, install the packaged extension directly:
 
 | Setting | Purpose |
 | --- | --- |
-| `alanif.compiler.path` | Path to the Alan compiler (else `alan` on `PATH`). |
-| `alanif.java.home` | JDK/JRE 21+ home (else `java` on `PATH`). |
+| `alanif.compiler.path` | Path to the Alan compiler (else found automatically). |
+| `alanif.arun.path` | Path to `arun` (else next to the compiler, or on `PATH`). |
 | `alanif.mainFile` | The `.alan` file to compile and Play (else auto-detected). |
 | `alanif.format.keywordCase` | `off` (default) / `lower` / `upper` / `capitalize`. |
+| `alanif.java.home` | JDK/JRE 21+ home (else the bundled runtime). |
+
+Every one of these can be left empty; clearing a path setting always returns to
+finding the tool automatically. **Alan IF: Check Setup** (Command Palette) reports
+what was found and where, and the language status bubble in the status bar shows
+the same while an Alan file is open.
 
 ## Build from source
 

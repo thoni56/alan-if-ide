@@ -1,7 +1,8 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import { workspace, window, Uri, Terminal, commands } from 'vscode';
-import { resolveCompiler, resolveArun, missingCompilerMessage, missingArunMessage } from './toolchain';
+import { missingCompilerMessage, missingArunMessage } from './toolchain';
+import { refreshTools } from './environment';
 
 let playTerminal: Terminal | undefined;
 
@@ -34,24 +35,30 @@ export async function play(): Promise<void> {
     // Play is the loudest failure if the toolchain is missing, so resolve properly
     // and say what is wrong here rather than letting the terminal print
     // "alan: command not found" and leaving the author to interpret it.
-    const cfg = workspace.getConfiguration('alanif');
-    const found = resolveCompiler(cfg.get<string>('compiler.path'));
-    if (!found.ok) {
+    //
+    // Re-resolve rather than trusting the cache: an author who has just been told
+    // the compiler is missing may well have installed one, and Play is exactly when
+    // they would try again. This also republishes the state to the status items.
+    const setup = refreshTools();
+    if (!setup.compiler.ok) {
         const choice = await window.showErrorMessage(
-            missingCompilerMessage(found), 'Locate Compiler…');
+            missingCompilerMessage(setup.compiler), 'Locate Compiler…');
         if (choice === 'Locate Compiler…') {
             await commands.executeCommand('alanif.locateCompiler');
         }
         return;
     }
-    const compiler = found.command;
+    const compiler = setup.compiler.command;
 
-    const arun = resolveArun(compiler);
-    if (!arun.ok) {
-        window.showErrorMessage(missingArunMessage(arun));
+    if (!setup.arun.ok) {
+        const choice = await window.showErrorMessage(
+            missingArunMessage(setup.arun), 'Locate Interpreter…');
+        if (choice === 'Locate Interpreter…') {
+            await commands.executeCommand('alanif.locateInterpreter');
+        }
         return;
     }
-    const interpreter = arun.command;
+    const interpreter = setup.arun.command;
 
     const dir = path.dirname(main.fsPath);
     const mainName = path.basename(main.fsPath);

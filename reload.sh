@@ -7,9 +7,10 @@ cd "$(dirname "$0")"
 
 ./build.sh
 
-# vsce requires Node 20+. Use the default node when it is new enough, otherwise
-# borrow a modern one via volta rather than changing the shell's default.
-NODE_MAJOR=$(node -p "process.versions.node.split('.')[0]")
+# vsce requires Node 20+. Probe it IN vscode-extension: volta pins the version per
+# directory (via the "volta" field in its package.json), so the repo root reports
+# the system node and would answer for the wrong directory.
+NODE_MAJOR=$(cd vscode-extension && node -p "process.versions.node.split('.')[0]")
 if [ "$NODE_MAJOR" -ge 20 ]; then
   RUN=""
 elif command -v volta >/dev/null 2>&1; then
@@ -21,12 +22,21 @@ else
   exit 1
 fi
 
-echo ">> packaging the extension"
-(cd vscode-extension && $RUN npx vsce package)
+# A leftover jre/ from build-jre.sh gets bundled by vsce, and the extension prefers
+# a bundled runtime over PATH -- so the dev loop would silently stop exercising the
+# fallback that a normal source build is supposed to use. Say so rather than hide it.
+if [ -d vscode-extension/jre ]; then
+  echo ">> NOTE: vscode-extension/jre exists ($(du -sh vscode-extension/jre | cut -f1))."
+  echo ">>       It will be bundled, and used INSTEAD of java on your PATH."
+  echo ">>       Remove it for a lean dev build that tests the PATH fallback."
+fi
 
-VER=$(node -p "require('./vscode-extension/package.json').version")
-NAME=$(node -p "require('./vscode-extension/package.json').name")
-VSIX="vscode-extension/$NAME-$VER.vsix"
+# A fixed dev name, never the release name: packaging as alan-if-ide-<version>.vsix
+# would overwrite the artifact of that version -- which is the very file that was
+# published, kept here for reference.
+VSIX="vscode-extension/alan-if-ide-dev.vsix"
+echo ">> packaging the extension into $VSIX"
+(cd vscode-extension && $RUN npx vsce package --out "$(basename "$VSIX")")
 
 echo ">> installing $VSIX into VS Code"
 code --install-extension "$VSIX" --force

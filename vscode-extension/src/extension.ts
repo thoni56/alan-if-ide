@@ -7,13 +7,31 @@ import {
     ServerOptions
 } from 'vscode-languageclient/node';
 import { play, onTerminalClosed } from './play';
-import { resolveJava, missingJavaMessage } from './java';
-import { resolveCompiler } from './toolchain';
-import { locateCompiler, checkToolchain } from './locate';
+import { missingJavaMessage } from './java';
+import { initEnvironment } from './environment';
+import { createStatusItems } from './status';
+import { locateCompiler, locateInterpreter, checkToolchain } from './locate';
 
 let client: LanguageClient;
 
+/** Remembers a "don't show again" for the missing-compiler notification. */
+const SUPPRESS_COMPILER_NOTICE = 'alanif.suppressMissingCompilerNotice';
+
 export function activate(context: ExtensionContext) {
+    // Resolve Java and the Alan tools once, and put the answer on screen, BEFORE
+    // anything is allowed to fail. Everything below can bail out; the status items
+    // and the commands that fix them must survive that, or a broken setup becomes
+    // an extension that silently does nothing.
+    const setup = initEnvironment(context);
+    createStatusItems(context);
+    context.subscriptions.push(
+        commands.registerCommand('alanif.play', () => play()),
+        commands.registerCommand('alanif.locateCompiler', () => locateCompiler()),
+        commands.registerCommand('alanif.locateInterpreter', () => locateInterpreter()),
+        commands.registerCommand('alanif.checkToolchain', () => checkToolchain()),
+        window.onDidCloseTerminal(onTerminalClosed),
+    );
+
     const jar = context.asAbsolutePath(path.join('server', 'alan-lsp.jar'));
     if (!fs.existsSync(jar)) {
         window.showErrorMessage(`Alan IF IDE: language server jar not found at ${jar}`);
@@ -23,33 +41,30 @@ export function activate(context: ExtensionContext) {
     // The configured JDK home, else the runtime bundled in the VSIX, else JAVA_HOME,
     // else PATH. Without a usable Java there is no language server at all, so say so
     // plainly rather than letting the client fail somewhere in the Output panel.
-    const cfg = workspace.getConfiguration('alanif');
-    const java = resolveJava(context.extensionPath, cfg.get<string>('java.home'));
-    if (!java.ok) {
-        window.showErrorMessage(missingJavaMessage(java), 'Open Settings').then(choice => {
+    if (!setup.java.ok) {
+        window.showErrorMessage(missingJavaMessage(setup.java), 'Open Settings').then(choice => {
             if (choice === 'Open Settings') {
                 commands.executeCommand('workbench.action.openSettings', 'alanif.java.home');
             }
         });
         return;
     }
-    if (java.warning) {
-        window.showWarningMessage(java.warning);
+    if (setup.java.warning) {
+        window.showWarningMessage(setup.java.warning);
     }
-    const javaCmd = java.command;
 
     // Pass server-side config via env (same channel for compiler path + format style).
+    const cfg = workspace.getConfiguration('alanif');
     const env = { ...process.env };
-    // Resolve the compiler rather than passing the setting through verbatim: with
-    // the setting empty the server would fall back to bare `alan`, which misses an
-    // SDK that is installed in a standard place but not on PATH -- a common case
-    // now that the SDK ships as an unpacked tarball.
-    const compiler = resolveCompiler(cfg.get<string>('compiler.path'));
-    if (compiler.ok) {
-        env.ALAN_COMPILER = compiler.command;
+    // Hand the server a RESOLVED compiler rather than the setting verbatim: with the
+    // setting empty the server would fall back to bare `alan`, which misses an SDK
+    // installed in a standard place but not on PATH -- a common case now that the
+    // SDK ships as an unpacked tarball.
+    if (setup.compiler.ok) {
+        env.ALAN_COMPILER = setup.compiler.command;
     }
     env.ALANIF_KEYWORD_CASE = cfg.get<string>('format.keywordCase') || 'off';
-    const exec = { command: javaCmd, args: ['-jar', jar], options: { env } };
+    const exec = { command: setup.java.command, args: ['-jar', jar], options: { env } };
     const serverOptions: ServerOptions = { run: exec, debug: exec };
 
     const clientOptions: LanguageClientOptions = {
@@ -111,24 +126,24 @@ export function activate(context: ExtensionContext) {
     });
 
     // Diagnostics and Play both need the toolchain, so a missing compiler is worth
-    // saying once at startup -- with the fix attached, not just the complaint.
-    if (!compiler.ok) {
+    // saying once -- with the fix attached. The language status item now carries the
+    // same state persistently, so an author who has seen it and chosen to work
+    // without a compiler can stop being told on every window.
+    if (!setup.compiler.ok && !context.globalState.get<boolean>(SUPPRESS_COMPILER_NOTICE)) {
         window.showWarningMessage(
             'Alan IF IDE could not find the Alan compiler, so diagnostics and Play ' +
             'are unavailable. Editing, navigation and formatting still work.',
-            'Locate Compiler…'
+            'Locate Compiler…', "Don't Show Again"
         ).then(choice => {
             if (choice === 'Locate Compiler…') {
                 locateCompiler();
+            } else if (choice === "Don't Show Again") {
+                context.globalState.update(SUPPRESS_COMPILER_NOTICE, true);
             }
         });
     }
 
     context.subscriptions.push(
-        commands.registerCommand('alanif.play', () => play()),
-        commands.registerCommand('alanif.locateCompiler', () => locateCompiler()),
-        commands.registerCommand('alanif.checkToolchain', () => checkToolchain()),
-        window.onDidCloseTerminal(onTerminalClosed),
         playStatus,
         window.onDidChangeActiveTextEditor(updatePlayStatus),
         reloadOnChange

@@ -6,9 +6,10 @@ import { spawnSync } from 'child_process';
 /** Where a tool was found. Reported to the user so the choice is never magic. */
 export type ToolSource =
     | 'the alanif.compiler.path setting'
+    | 'the alanif.arun.path setting'
     | 'a standard install location'
     | 'PATH'
-    | 'beside the compiler';
+    | 'next to the compiler';
 
 export interface ToolFound {
     ok: true;
@@ -25,6 +26,12 @@ export interface ToolMissing {
 
 export type ToolResult = ToolFound | ToolMissing;
 
+/** A place worth looking, and what finding it there would mean. */
+interface Candidate {
+    command: string;
+    source: ToolSource;
+}
+
 const EXE = process.platform === 'win32' ? '.exe' : '';
 
 /**
@@ -39,71 +46,72 @@ const EXE = process.platform === 'win32' ? '.exe' : '';
  * question when the answer we actually want is "does it work, and which one".
  */
 export function resolveCompiler(configured?: string): ToolResult {
-    const candidates: string[] = [];
+    const candidates: Candidate[] = [];
     if (configured && configured.trim()) {
-        candidates.push(configured.trim());
+        candidates.push({ command: configured.trim(), source: 'the alanif.compiler.path setting' });
     }
-    candidates.push('alan' + EXE);
+    candidates.push({ command: 'alan' + EXE, source: 'PATH' });
     candidates.push(...standardLocations('alan'));
 
-    return probeAll(candidates, configured, 'compiler');
+    return probeAll(candidates);
 }
 
 /**
- * Find arun. It normally sits beside the compiler -- but not always: on macOS the
- * interpreter has historically been a separate download from the SDK, so falling
- * through to PATH and the standard locations is a real case, not paranoia.
+ * Find arun. It normally sits next to the compiler -- but not always: on macOS the
+ * interpreter has historically been a separate download from the SDK, so an
+ * explicit setting, PATH and the standard locations are all real cases.
  */
-export function resolveArun(compiler?: string): ToolResult {
-    const candidates: string[] = [];
-    if (compiler && (compiler.includes('/') || compiler.includes('\\'))) {
-        candidates.push(path.join(path.dirname(compiler), 'arun' + EXE));
+export function resolveArun(compiler?: string, configured?: string): ToolResult {
+    const candidates: Candidate[] = [];
+    if (configured && configured.trim()) {
+        candidates.push({ command: configured.trim(), source: 'the alanif.arun.path setting' });
     }
-    candidates.push('arun' + EXE);
+    if (compiler && (compiler.includes('/') || compiler.includes('\\'))) {
+        candidates.push({
+            command: path.join(path.dirname(compiler), 'arun' + EXE),
+            source: 'next to the compiler'
+        });
+    }
+    candidates.push({ command: 'arun' + EXE, source: 'PATH' });
     candidates.push(...standardLocations('arun'));
 
-    return probeAll(candidates, undefined, 'interpreter');
+    return probeAll(candidates);
 }
 
-function probeAll(candidates: string[], configured: string | undefined, _what: string): ToolResult {
+/**
+ * Each candidate carries its own source rather than having it inferred from the
+ * shape of the path afterwards: inference cannot tell "next to the compiler" from
+ * "a standard install location", and that distinction is now shown to the user.
+ */
+function probeAll(candidates: Candidate[]): ToolResult {
     const tried: string[] = [];
     for (const candidate of candidates) {
-        const version = probeVersion(candidate);
-        tried.push(candidate);
+        const version = probeVersion(candidate.command);
+        tried.push(candidate.command);
         if (version !== undefined) {
-            return { ok: true, command: candidate, version, source: sourceOf(candidate, configured) };
+            return { ok: true, command: candidate.command, version, source: candidate.source };
         }
     }
     return { ok: false, tried };
 }
 
-function sourceOf(command: string, configured?: string): ToolSource {
-    if (configured && command === configured.trim()) {
-        return 'the alanif.compiler.path setting';
-    }
-    if (!command.includes('/') && !command.includes('\\')) {
-        return 'PATH';
-    }
-    return 'a standard install location';
-}
-
 /** Where an Alan toolchain tends to end up when it was not put on PATH. */
-function standardLocations(tool: string): string[] {
+function standardLocations(tool: string): Candidate[] {
     const home = os.homedir();
-    if (process.platform === 'win32') {
-        return [
+    const paths = process.platform === 'win32'
+        ? [
             path.join('C:', 'Program Files', 'Alan', 'bin', tool + EXE),
             path.join('C:', 'Alan', 'bin', tool + EXE),
             path.join(home, 'Alan', 'bin', tool + EXE),
+        ]
+        : [
+            path.join('/usr', 'local', 'bin', tool),
+            path.join('/opt', 'alan', 'bin', tool),
+            path.join('/usr', 'bin', tool),
+            path.join(home, 'alan', 'bin', tool),
+            path.join(home, 'Alan', 'bin', tool),
         ];
-    }
-    return [
-        path.join('/usr', 'local', 'bin', tool),
-        path.join('/opt', 'alan', 'bin', tool),
-        path.join('/usr', 'bin', tool),
-        path.join(home, 'alan', 'bin', tool),
-        path.join(home, 'Alan', 'bin', tool),
-    ];
+    return paths.map(command => ({ command, source: 'a standard install location' as const }));
 }
 
 /**
@@ -138,6 +146,6 @@ export function missingCompilerMessage(missing: ToolMissing): string {
 
 export function missingArunMessage(missing: ToolMissing): string {
     return 'Alan IF IDE could not find arun, the Alan interpreter, so Play cannot ' +
-        'start the game. It is normally installed beside the compiler. ' +
+        'start the game. It is normally installed next to the compiler. ' +
         `(Looked in: ${missing.tried.join(', ')})`;
 }

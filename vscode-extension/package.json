@@ -32,6 +32,7 @@
   "activationEvents": [
     "onLanguage:alanif",
     "onCommand:alanif.locateCompiler",
+    "onCommand:alanif.locateInterpreter",
     "onCommand:alanif.checkToolchain"
   ],
   "main": "./out/extension.js",
@@ -46,6 +47,11 @@
       {
         "command": "alanif.locateCompiler",
         "title": "Locate Alan Compiler…",
+        "category": "Alan IF"
+      },
+      {
+        "command": "alanif.locateInterpreter",
+        "title": "Locate Alan Interpreter…",
         "category": "Alan IF"
       },
       {
@@ -76,6 +82,9 @@
         },
         {
           "command": "alanif.locateCompiler"
+        },
+        {
+          "command": "alanif.locateInterpreter"
         },
         {
           "command": "alanif.checkToolchain"
@@ -109,20 +118,23 @@
     "configuration": {
       "title": "Alan IF IDE",
       "properties": {
-        "alanif.java.home": {
-          "type": "string",
-          "default": "",
-          "markdownDescription": "Path to a JDK/JRE 21+ home for the language server. Leave empty to use the runtime bundled with the extension; if this build has none, `JAVA_HOME` and then `java` on your `PATH` are tried. Set this to override all of them."
-        },
         "alanif.compiler.path": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Path to the Alan compiler, used for diagnostics and Play. If empty, `alan` on your `PATH` is used, then the usual install locations. Diagnostics are skipped if it cannot be found.\n\n**[▸ Browse for the Alan compiler…](command:alanif.locateCompiler)**&nbsp;&nbsp;&nbsp;[Check setup](command:alanif.checkToolchain)"
+          "markdownDescription": "Path to the Alan compiler, used for diagnostics and Play. Leave empty to find it automatically: `alan` on your `PATH`, then the usual install locations. Clearing this always returns to finding it automatically.\n\n**[▸ Browse for the Alan compiler…](command:alanif.locateCompiler)**&nbsp;&nbsp;&nbsp;[Check setup](command:alanif.checkToolchain)",
+          "order": 1
+        },
+        "alanif.arun.path": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Path to `arun`, the Alan interpreter, used by Play. Leave empty to find it automatically: next to the compiler, then on your `PATH`, then the usual install locations. Set this only if your interpreter lives elsewhere — on macOS it has historically been a separate download from the SDK. Clearing this always returns to finding it automatically.\n\n**[▸ Browse for the Alan interpreter…](command:alanif.locateInterpreter)**&nbsp;&nbsp;&nbsp;[Check setup](command:alanif.checkToolchain)",
+          "order": 2
         },
         "alanif.mainFile": {
           "type": "string",
           "default": "",
-          "description": "The .alan file to compile and Play (absolute, or relative to the workspace folder). If empty, Play uses the focused .alan file, else the first .alan beside it, else the first .alan in the workspace."
+          "description": "The .alan file to compile and Play (absolute, or relative to the workspace folder). If empty, Play uses the focused .alan file, else the first .alan beside it, else the first .alan in the workspace.",
+          "order": 3
         },
         "alanif.format.keywordCase": {
           "type": "string",
@@ -139,7 +151,14 @@
             "Capitalize all keywords (If, Then, Verb)"
           ],
           "default": "off",
-          "markdownDescription": "How **Format Document** cases Alan keywords. Alan folds case, so this is cosmetic; only true keywords are changed (never identifiers or string contents). Changing this takes effect after reloading the window."
+          "markdownDescription": "How **Format Document** cases Alan keywords. Alan folds case, so this is cosmetic; only true keywords are changed (never identifiers or string contents). Changing this takes effect after reloading the window.",
+          "order": 4
+        },
+        "alanif.java.home": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Path to a JDK/JRE 21+ home for the language server. Leave empty to use the runtime bundled with the extension; if this build has none, `JAVA_HOME` and then `java` on your `PATH` are tried. Most authors never need to set this.\n\n[Check setup](command:alanif.checkToolchain)",
+          "order": 5
         }
       }
     },
