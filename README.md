@@ -42,7 +42,13 @@ the language server provides the **ergonomics** (navigation, outline, formatting
 
 ## Install
 
-Until it is published to a marketplace, install the packaged extension directly:
+From the [Open VSX Registry](https://open-vsx.org/extension/alanif/alan-if-ide) — search
+for **Alan IF IDE** in the Extensions view of VSCodium, Gitpod, Cursor or any editor that
+uses Open VSX. The build for your platform is selected automatically, and it bundles a
+Java runtime, so there is nothing else to install.
+
+VS Code itself uses Microsoft's Marketplace, which this is not published to yet. Until
+then, install the packaged extension directly:
 
 1. Download the `.vsix` for your platform from the
    [Releases](https://github.com/thoni56/alan-if-ide/releases) page — e.g.
