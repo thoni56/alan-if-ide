@@ -85,13 +85,13 @@ export async function locateInterpreter(): Promise<void> {
 export async function checkToolchain(): Promise<void> {
     const env = refreshEnvironment();
     const items = [javaItem(env), compilerItem(env), arunItem(env)];
-    const missing = items.filter(i => i.broken).length;
+    const wanting = items.filter(i => i.attention).length;
 
     const pick = await window.showQuickPick(items, {
         title: 'Alan IF — setup',
-        placeHolder: missing === 0
+        placeHolder: wanting === 0
             ? 'Everything is in place. Select an entry to change it.'
-            : `${missing} of 3 missing. Select an entry to fix it.`,
+            : `${wanting} of 3 need attention. Select an entry to fix it.`,
         matchOnDetail: true,
     });
     await pick?.run();
@@ -99,17 +99,17 @@ export async function checkToolchain(): Promise<void> {
 
 /** A row in the setup check: what it is, what we found, and what to do about it. */
 interface SetupItem extends QuickPickItem {
-    broken: boolean;
+    attention: boolean;
     run(): Promise<void> | void;
 }
 
 function javaItem(env: Environment): SetupItem {
     if (env.java.ok) {
         return {
-            label: '$(check) Java',
+            label: env.java.warning ? '$(warning) Java' : '$(check) Java',
             description: String(env.java.version),
-            detail: `${env.java.command} — ${env.java.source}`,
-            broken: false,
+            detail: env.java.warning ?? `${env.java.command} — ${env.java.source}`,
+            attention: env.java.warning !== undefined,
             run: () => openSetting('alanif.java.home'),
         };
     }
@@ -118,7 +118,7 @@ function javaItem(env: Environment): SetupItem {
         label: '$(error) Java',
         description: old ? `${old.version} — too old` : 'not found',
         detail: `Java ${MINIMUM_JAVA}+ is required; the language server cannot run without it`,
-        broken: true,
+        attention: true,
         run: () => openSetting('alanif.java.home'),
     };
 }
@@ -126,10 +126,10 @@ function javaItem(env: Environment): SetupItem {
 function compilerItem(env: Environment): SetupItem {
     if (env.compiler.ok) {
         return {
-            label: '$(check) Compiler',
+            label: env.compiler.warning ? '$(warning) Compiler' : '$(check) Compiler',
             description: env.compiler.version,
-            detail: `${env.compiler.command} — ${env.compiler.source}`,
-            broken: false,
+            detail: env.compiler.warning ?? `${env.compiler.command} — ${env.compiler.source}`,
+            attention: env.compiler.warning !== undefined,
             run: () => openSetting('alanif.compiler.path'),
         };
     }
@@ -137,7 +137,7 @@ function compilerItem(env: Environment): SetupItem {
         label: '$(warning) Compiler',
         description: 'not found',
         detail: `Diagnostics and Play unavailable. Looked in: ${env.compiler.tried.join(', ')}`,
-        broken: true,
+        attention: true,
         run: locateCompiler,
     };
 }
@@ -145,10 +145,10 @@ function compilerItem(env: Environment): SetupItem {
 function arunItem(env: Environment): SetupItem {
     if (env.arun.ok) {
         return {
-            label: '$(check) Interpreter',
+            label: env.arun.warning ? '$(warning) Interpreter' : '$(check) Interpreter',
             description: env.arun.version,
-            detail: `${env.arun.command} — ${env.arun.source}`,
-            broken: false,
+            detail: env.arun.warning ?? `${env.arun.command} — ${env.arun.source}`,
+            attention: env.arun.warning !== undefined,
             run: () => openSetting('alanif.arun.path'),
         };
     }
@@ -156,7 +156,7 @@ function arunItem(env: Environment): SetupItem {
         label: '$(warning) Interpreter',
         description: 'not found',
         detail: `Play cannot start the game. Looked in: ${env.arun.tried.join(', ')}`,
-        broken: true,
+        attention: true,
         run: locateInterpreter,
     };
 }

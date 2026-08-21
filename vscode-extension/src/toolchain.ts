@@ -16,12 +16,16 @@ export interface ToolFound {
     command: string;
     version: string;
     source: ToolSource;
+    /** Set when we fell back past an explicit setting that did not work. */
+    warning?: string;
 }
 
 export interface ToolMissing {
     ok: false;
     /** Everything that was tried, for a message that says more than "not found". */
     tried: string[];
+    /** An explicit setting that was tried and did not run either. */
+    ignoredSetting?: string;
 }
 
 export type ToolResult = ToolFound | ToolMissing;
@@ -29,6 +33,14 @@ export type ToolResult = ToolFound | ToolMissing;
 /** A place worth looking, and what finding it there would mean. */
 interface Candidate {
     command: string;
+    source: ToolSource;
+}
+
+/** An explicit path the user set, so falling past it can be reported. */
+interface ConfiguredSetting {
+    value: string;
+    setting: string;
+    what: string;
     source: ToolSource;
 }
 
@@ -47,13 +59,15 @@ const EXE = process.platform === 'win32' ? '.exe' : '';
  */
 export function resolveCompiler(configured?: string): ToolResult {
     const candidates: Candidate[] = [];
-    if (configured && configured.trim()) {
-        candidates.push({ command: configured.trim(), source: 'the alanif.compiler.path setting' });
+    const setting = settingOf(configured, 'alanif.compiler.path', 'the Alan compiler',
+        'the alanif.compiler.path setting');
+    if (setting) {
+        candidates.push({ command: setting.value, source: setting.source });
     }
     candidates.push({ command: 'alan' + EXE, source: 'PATH' });
     candidates.push(...standardLocations('alan'));
 
-    return probeAll(candidates);
+    return probeAll(candidates, setting);
 }
 
 /**
@@ -63,8 +77,10 @@ export function resolveCompiler(configured?: string): ToolResult {
  */
 export function resolveArun(compiler?: string, configured?: string): ToolResult {
     const candidates: Candidate[] = [];
-    if (configured && configured.trim()) {
-        candidates.push({ command: configured.trim(), source: 'the alanif.arun.path setting' });
+    const setting = settingOf(configured, 'alanif.arun.path', 'the Alan interpreter',
+        'the alanif.arun.path setting');
+    if (setting) {
+        candidates.push({ command: setting.value, source: setting.source });
     }
     if (compiler && (compiler.includes('/') || compiler.includes('\\'))) {
         candidates.push({
@@ -75,7 +91,13 @@ export function resolveArun(compiler?: string, configured?: string): ToolResult 
     candidates.push({ command: 'arun' + EXE, source: 'PATH' });
     candidates.push(...standardLocations('arun'));
 
-    return probeAll(candidates);
+    return probeAll(candidates, setting);
+}
+
+function settingOf(value: string | undefined, setting: string, what: string,
+    source: ToolSource): ConfiguredSetting | undefined {
+    const trimmed = value?.trim();
+    return trimmed ? { value: trimmed, setting, what, source } : undefined;
 }
 
 /**
@@ -83,16 +105,27 @@ export function resolveArun(compiler?: string, configured?: string): ToolResult 
  * shape of the path afterwards: inference cannot tell "next to the compiler" from
  * "a standard install location", and that distinction is now shown to the user.
  */
-function probeAll(candidates: Candidate[]): ToolResult {
+function probeAll(candidates: Candidate[], setting?: ConfiguredSetting): ToolResult {
     const tried: string[] = [];
     for (const candidate of candidates) {
         const version = probeVersion(candidate.command);
         tried.push(candidate.command);
         if (version !== undefined) {
-            return { ok: true, command: candidate.command, version, source: candidate.source };
+            // Falling back is the friendly behaviour, but doing it silently would hide
+            // a typo in the user's own setting -- the tool works, so nothing else would
+            // ever tell them the path they deliberately set is being ignored.
+            const ignored = setting !== undefined && candidate.source !== setting.source;
+            return {
+                ok: true, command: candidate.command, version, source: candidate.source,
+                warning: ignored
+                    ? `Alan IF IDE: ${setting.setting} (${setting.value}) does not run as `
+                        + `${setting.what}, so ${candidate.command} was used instead `
+                        + `(${candidate.source}).`
+                    : undefined
+            };
         }
     }
-    return { ok: false, tried };
+    return { ok: false, tried, ignoredSetting: setting?.value };
 }
 
 /** Where an Alan toolchain tends to end up when it was not put on PATH. */
@@ -139,13 +172,21 @@ export function probeVersion(command: string): string | undefined {
 
 /** A message that says what is missing, where we looked, and what to do about it. */
 export function missingCompilerMessage(missing: ToolMissing): string {
-    return 'Alan IF IDE could not find the Alan compiler, so diagnostics and Play ' +
-        'are unavailable. Locate it, or set alanif.compiler.path. ' +
-        `(Looked in: ${missing.tried.join(', ')})`;
+    const head = 'Alan IF IDE could not find the Alan compiler, so diagnostics and Play are unavailable.';
+    const tail = `(Looked in: ${missing.tried.join(', ')})`;
+    if (missing.ignoredSetting) {
+        return `${head} alanif.compiler.path (${missing.ignoredSetting}) does not run as ` +
+            `the Alan compiler, and nothing else was found. ${tail}`;
+    }
+    return `${head} Locate it, or set alanif.compiler.path. ${tail}`;
 }
 
 export function missingArunMessage(missing: ToolMissing): string {
-    return 'Alan IF IDE could not find arun, the Alan interpreter, so Play cannot ' +
-        'start the game. It is normally installed next to the compiler. ' +
-        `(Looked in: ${missing.tried.join(', ')})`;
+    const head = 'Alan IF IDE could not find arun, the Alan interpreter, so Play cannot start the game.';
+    const tail = `(Looked in: ${missing.tried.join(', ')})`;
+    if (missing.ignoredSetting) {
+        return `${head} alanif.arun.path (${missing.ignoredSetting}) does not run as ` +
+            `the Alan interpreter, and nothing else was found. ${tail}`;
+    }
+    return `${head} It is normally installed next to the compiler. ${tail}`;
 }

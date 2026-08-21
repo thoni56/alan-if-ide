@@ -51,8 +51,12 @@ export function createStatusItems(context: ExtensionContext): void {
         // all, so nothing else in this list can even be true.
         if (env.java.ok) {
             java.text = `Java ${env.java.version}`;
-            java.detail = `from ${env.java.source}`;
-            java.severity = LanguageStatusSeverity.Information;
+            java.detail = env.java.warning
+                ? `alanif.java.home ignored — using ${env.java.source}`
+                : `from ${env.java.source}`;
+            java.severity = env.java.warning
+                ? LanguageStatusSeverity.Warning
+                : LanguageStatusSeverity.Information;
             java.command = settingsCommand('alanif.java.home');
         } else {
             const old = env.java.tooOld[0];
@@ -64,8 +68,12 @@ export function createStatusItems(context: ExtensionContext): void {
 
         if (env.compiler.ok) {
             compiler.text = `Compiler ${env.compiler.version}`;
-            compiler.detail = where(env.compiler.command, env.compiler.source);
-            compiler.severity = LanguageStatusSeverity.Information;
+            compiler.detail = env.compiler.warning
+                ? `alanif.compiler.path ignored — using ${shortenPath(env.compiler.command)}`
+                : where(env.compiler.command, env.compiler.source);
+            compiler.severity = env.compiler.warning
+                ? LanguageStatusSeverity.Warning
+                : LanguageStatusSeverity.Information;
             compiler.command = settingsCommand('alanif.compiler.path');
         } else {
             compiler.text = 'Compiler not found';
@@ -76,8 +84,12 @@ export function createStatusItems(context: ExtensionContext): void {
 
         if (env.arun.ok) {
             arun.text = `Interpreter ${env.arun.version}`;
-            arun.detail = where(env.arun.command, env.arun.source);
-            arun.severity = LanguageStatusSeverity.Information;
+            arun.detail = env.arun.warning
+                ? `alanif.arun.path ignored — using ${shortenPath(env.arun.command)}`
+                : where(env.arun.command, env.arun.source);
+            arun.severity = env.arun.warning
+                ? LanguageStatusSeverity.Warning
+                : LanguageStatusSeverity.Information;
             arun.command = settingsCommand('alanif.arun.path');
         } else {
             arun.text = 'Interpreter not found';
@@ -90,15 +102,29 @@ export function createStatusItems(context: ExtensionContext): void {
             env.java.ok ? undefined : 'Java',
             env.compiler.ok ? undefined : 'the Alan compiler',
             env.arun.ok ? undefined : 'arun',
-        ].filter(Boolean);
+        ].filter(Boolean) as string[];
 
-        if (missing.length === 0) {
+        // A setting that was set and then quietly stepped over is a failure too --
+        // the tool works, so nothing else would ever mention it.
+        const ignored = [
+            env.java.ok && env.java.warning ? 'alanif.java.home' : undefined,
+            env.compiler.ok && env.compiler.warning ? 'alanif.compiler.path' : undefined,
+            env.arun.ok && env.arun.warning ? 'alanif.arun.path' : undefined,
+        ].filter(Boolean) as string[];
+
+        if (missing.length === 0 && ignored.length === 0) {
             alarm.hide();
             return;
         }
         alarm.text = `$(warning) Alan setup`;
-        alarm.tooltip = `Alan IF cannot find ${list(missing as string[])}. Click to fix.`;
+        alarm.tooltip = [
+            missing.length ? `Alan IF cannot find ${list(missing)}.` : '',
+            ignored.length ? `Alan IF is ignoring ${list(ignored)}.` : '',
+            'Click to fix.',
+        ].filter(Boolean).join(' ');
         // Java missing is fatal (no server at all); the tools are degradation.
+        // Red only when Java is absent: that is the one failure that leaves no
+        // language server at all. Everything else still leaves a working editor.
         alarm.backgroundColor = new ThemeColor(env.java.ok
             ? 'statusBarItem.warningBackground'
             : 'statusBarItem.errorBackground');

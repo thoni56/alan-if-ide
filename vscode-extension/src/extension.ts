@@ -49,8 +49,21 @@ export function activate(context: ExtensionContext) {
         });
         return;
     }
-    if (setup.java.warning) {
-        window.showWarningMessage(setup.java.warning);
+    // A path setting that was set and then quietly stepped over: the tool works, so
+    // without this nothing would ever reveal that the path the author deliberately
+    // chose is not the one in use.
+    for (const warning of [
+        setup.java.warning,
+        setup.compiler.ok ? setup.compiler.warning : undefined,
+        setup.arun.ok ? setup.arun.warning : undefined,
+    ]) {
+        if (warning) {
+            window.showWarningMessage(warning, 'Open Settings').then(choice => {
+                if (choice === 'Open Settings') {
+                    commands.executeCommand('workbench.action.openSettings', 'alanif');
+                }
+            });
+        }
     }
 
     // Pass server-side config via env (same channel for compiler path + format style).
