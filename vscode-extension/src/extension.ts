@@ -11,17 +11,16 @@ import { missingJavaMessage } from './java';
 import { initEnvironment } from './environment';
 import { createStatusItems } from './status';
 import { locateCompiler, locateInterpreter, checkToolchain } from './locate';
+import { initNotices, compilerNoticeSuppressed, suppressCompilerNotice } from './notices';
 
 let client: LanguageClient;
-
-/** Remembers a "don't show again" for the missing-compiler notification. */
-const SUPPRESS_COMPILER_NOTICE = 'alanif.suppressMissingCompilerNotice';
 
 export function activate(context: ExtensionContext) {
     // Resolve Java and the Alan tools once, and put the answer on screen, BEFORE
     // anything is allowed to fail. Everything below can bail out; the status items
     // and the commands that fix them must survive that, or a broken setup becomes
     // an extension that silently does nothing.
+    initNotices(context);
     const setup = initEnvironment(context);
     createStatusItems(context);
     context.subscriptions.push(
@@ -142,7 +141,7 @@ export function activate(context: ExtensionContext) {
     // saying once -- with the fix attached. The language status item now carries the
     // same state persistently, so an author who has seen it and chosen to work
     // without a compiler can stop being told on every window.
-    if (!setup.compiler.ok && !context.globalState.get<boolean>(SUPPRESS_COMPILER_NOTICE)) {
+    if (!setup.compiler.ok && !compilerNoticeSuppressed()) {
         window.showWarningMessage(
             'Alan IF IDE could not find the Alan compiler, so diagnostics and Play ' +
             'are unavailable. Editing, navigation and formatting still work.',
@@ -151,7 +150,7 @@ export function activate(context: ExtensionContext) {
             if (choice === 'Locate Compiler…') {
                 locateCompiler();
             } else if (choice === "Don't Show Again") {
-                context.globalState.update(SUPPRESS_COMPILER_NOTICE, true);
+                suppressCompilerNotice();
             }
         });
     }

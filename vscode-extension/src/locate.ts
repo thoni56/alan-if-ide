@@ -2,6 +2,7 @@ import { window, workspace, commands, ConfigurationTarget, QuickPickItem, Uri } 
 import { probeVersion } from './toolchain';
 import { Environment, getEnvironment, refreshEnvironment } from './environment';
 import { MINIMUM_JAVA } from './java';
+import { restoreCompilerNotice } from './notices';
 import * as path from 'path';
 
 /**
@@ -83,6 +84,13 @@ export async function locateInterpreter(): Promise<void> {
  * two things fixed one and was ambushed by the other.
  */
 export async function checkToolchain(): Promise<void> {
+    // Asking about the setup is a statement that you want to hear about the setup,
+    // so it undoes an earlier "Don't Show Again" -- which has no other way back.
+    if (restoreCompilerNotice()) {
+        window.showInformationMessage(
+            'Alan IF: startup warnings about a missing compiler are switched back on.');
+    }
+
     const env = refreshEnvironment();
     const items = [javaItem(env), compilerItem(env), arunItem(env)];
     const wanting = items.filter(i => i.attention).length;
