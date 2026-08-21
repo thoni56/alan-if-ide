@@ -18,3 +18,17 @@ tsconfig.json
 package-lock.json
 alan-profile/
 icons/*.xcf
+
+# Dead weight inside the shipped dependency tree. Type declarations are never
+# read at runtime, and neither are the packages' own readmes or funding files.
+#
+# NOT excluded, deliberately: License.txt and thirdpartynotices.txt (we
+# redistribute this code, so its notices ship with it), node.cmd, and
+# lib/node/terminateProcess.sh -- vscode-languageclient runs that one to stop
+# the language server, so a blanket *.sh rule would break shutdown.
+node_modules/**/*.d.ts
+node_modules/**/*.md
+node_modules/**/.github/**
+
+# A build script for producing the bundled runtime; it is not part of the extension.
+build-jre.sh
