@@ -51,8 +51,14 @@ Java runtime, so there is nothing else to install.
 from the release page. It installs this extension *and* a calmer, prose-oriented VS Code
 set up for writing adventures rather than code. Import it with **File → Preferences →
 Profiles → Import Profile…**. It resolves the extension through whatever registry your
-editor uses, so it is one-click on Open VSX-based editors; on stock VS Code the settings
-apply but the extension is not found, until this is on Microsoft's Marketplace.
+editor uses, so it is one-click on Open VSX-based editors.
+
+> **Not yet for stock VS Code.** VS Code looks the extension up in Microsoft's
+> Marketplace, does not find it, and skips it without saying so — and because a
+> profile decides which extensions are switched on, the result is a profile with
+> Alan settings and **no Alan extension**: `.i` files go back to being C, and
+> nothing else works either. Until this is on the Marketplace, VS Code users should
+> install the extension from a `.vsix` and skip the profile.
 
 VS Code itself uses Microsoft's Marketplace, which this is not published to yet. Until
 then, install the packaged extension directly:
