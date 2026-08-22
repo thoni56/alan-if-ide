@@ -70,7 +70,13 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v3
         with:
-          files: vscode-extension/*.vsix
+          # The author profile rides along with the release rather than inside the
+          # VSIX: its whole purpose is to be handed to someone who has nothing yet,
+          # and it now installs the extension itself, so shipping it inside the
+          # extension would be circular.
+          files: |
+            vscode-extension/*.vsix
+            vscode-extension/alan-profile/alanif.code-profile
 
   # One VSIX per platform, each with its own trimmed Java runtime, so an author can
   # install from the marketplace without ever installing a JDK.
