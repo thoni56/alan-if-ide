@@ -64,11 +64,65 @@ public class AlanResourceValidator extends ResourceValidatorImpl {
             issues.add(issue);
         }
         try {
+            // Independent of the compiler: a character above U+00FF is a fact about
+            // the text, so it is worth reporting whether or not a toolchain is
+            // installed -- and it is the reason a compile would fail if one were.
+            issues.addAll(encodingIssues(resource));
+        } catch (RuntimeException e) {
+            // never let a scan break normal validation
+        }
+        try {
             issues.addAll(compilerIssues(resource));
         } catch (RuntimeException e) {
             // never let the external tool break normal validation
         }
         return issues;
+    }
+
+    /**
+     * Report every character the Alan compiler cannot represent, at its exact
+     * position.
+     *
+     * <p>What the compiler gives instead is one error at line 0 of the MAIN reading
+     * "SYSTEM ERROR: error converting from UTF-8 ... converter.c:133" -- naming the
+     * main even when the character is in an import, and taking every other
+     * diagnostic in the project down with it, since the compile is abandoned.
+     *
+     * <p>This runs on the live buffer rather than the file, so an offending
+     * character is marked as it is typed or pasted, before it is ever saved.
+     */
+    private List<Issue> encodingIssues(Resource resource) {
+        List<Issue> result = new ArrayList<>();
+        URI uri = resource.getURI();
+        if (!isAlanSource(uri) || !uri.isFile()) {
+            return result;
+        }
+        String text = resourceText(resource, Paths.get(uri.toFileString()));
+        if (text == null) {
+            return result;
+        }
+        List<Latin1Check.Finding> findings = Latin1Check.scan(text);
+        if (findings.isEmpty()) {
+            return result;
+        }
+        LineMap lines = new LineMap(text);
+        for (Latin1Check.Finding f : findings) {
+            Issue.IssueImpl issue = new Issue.IssueImpl();
+            issue.setMessage(Latin1Check.message(f.codePoint));
+            issue.setSeverity(Severity.ERROR);
+            issue.setCode("alanif.encoding.unrepresentable");
+            issue.setUriToProblem(uri);
+            issue.setOffset(f.offset);
+            issue.setLength(f.length);
+            int[] start = lines.lineColumn(f.offset);
+            int[] end = lines.lineColumn(f.offset + f.length);
+            issue.setLineNumber(start[0]);
+            issue.setColumn(start[1]);
+            issue.setLineNumberEnd(end[0]);
+            issue.setColumnEnd(end[1]);
+            result.add(issue);
+        }
+        return result;
     }
 
     private List<Issue> compilerIssues(Resource resource) {
@@ -119,12 +173,36 @@ public class AlanResourceValidator extends ResourceValidatorImpl {
             }
             diags = projectDiagnostics(dir, main);
         }
+        boolean scannedClean = Latin1Check.scan(resourceText).isEmpty();
         for (AlanCompilerRunner.Diagnostic d : diags) {
             if (!resourceName.equalsIgnoreCase(baseName(d.file))) {
                 continue; // an error in some other file; it belongs to that document
             }
+            String message = d.message;
+            if (isConversionFailure(d)) {
+                // The compiler's own words here are "SYSTEM ERROR: error converting
+                // from UTF-8 in 'readWithConversionFromUtf8()', converter.c:133", at
+                // line 0 -- a C source location, which tells an author nothing.
+                if (!scannedClean) {
+                    continue;   // we are already marking the exact characters
+                }
+                // The compiler blames the main whatever file it was actually reading,
+                // so say what is wrong instead of naming a C source line. TWO causes
+                // produce this identical error and we cannot yet tell them apart:
+                // a character above U+00FF (which we mark, in whichever file has it),
+                // or a source file that is not UTF-8 at all -- legal ISO-8859-1 fails
+                // exactly the same way, because we ask for utf8 unconditionally. Say
+                // both rather than send the author hunting for a character that may
+                // not exist. Distinguishing them is #33.
+                message = "The Alan compiler could not read this project, so no other "
+                        + "errors can be reported. Either a source file contains a "
+                        + "character that cannot be represented in ISO-8859-1 -- those are "
+                        + "marked where they occur -- or a source file is not UTF-8. Older "
+                        + "Alan sources are ISO-8859-1; check the encoding shown in the "
+                        + "status bar.";
+            }
             Issue.IssueImpl issue = new Issue.IssueImpl();
-            issue.setMessage(d.message);
+            issue.setMessage(message);
             issue.setSeverity(toXtext(d.severity));
             issue.setCode("alan.compiler." + d.code);
             issue.setUriToProblem(uri);
@@ -139,6 +217,16 @@ public class AlanResourceValidator extends ResourceValidatorImpl {
             result.add(issue);
         }
         return result;
+    }
+
+    /**
+     * The compiler's transcoding abort, which is a character problem wearing the
+     * clothes of an internal failure. Matched on the function name rather than the
+     * 997 code alone, since 997 is the generic system-error number and is used for
+     * unrelated internal errors too.
+     */
+    private static boolean isConversionFailure(AlanCompilerRunner.Diagnostic d) {
+        return d.message != null && d.message.contains("readWithConversionFromUtf8");
     }
 
     /**
