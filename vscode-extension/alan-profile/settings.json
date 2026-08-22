@@ -22,13 +22,25 @@
   // Forgiving for non-programmers: save quietly, skip the scary prompts.
   "files.autoSave": "afterDelay",
   "files.autoSaveDelay": 800,
+
+  // Guess the encoding when opening, instead of assuming UTF-8.
+  //
+  // Older Alan sources are ISO-8859-1. Opening one as UTF-8 turns every high byte
+  // into U+FFFD, and with the auto-save above that corruption is written back to
+  // disk about a second later, without a keystroke -- the original bytes are gone.
+  //
+  // Guessing does not have to be RIGHT to be safe, only single-byte: decoding and
+  // re-encoding through any single-byte charset round-trips the file exactly, even
+  // if it picks cp1252 for an ISO-8859-1 file. UTF-8 is the only candidate here that
+  // can fail to decode, and it is the only one whose failure loses data.
+  "files.autoGuessEncoding": true,
   "security.workspace.trust.enabled": false,
   "telemetry.telemetryLevel": "off",
   "update.showReleaseNotes": false,
 
   // Alan-specific editor behaviour: our language server supplies the completions,
   // so don't clutter them with random words from the buffer.
-  "[alan]": {
+  "[alanif]": {
     "editor.wordWrap": "on",
     "editor.suggest.showWords": false
   }
