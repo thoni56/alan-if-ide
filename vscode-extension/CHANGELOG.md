@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.6.0 — 2026-08-23
+
+**Getting the encoding out of the way.** Alan works internally in ISO-8859-1, and its
+compiler has to be told which encoding a source file is in. Guessing wrong fails in
+two directions, one of which is invisible — and neither told you anything useful.
+
+- **Characters the compiler cannot represent are marked where they are.** A curly
+  quote or an ellipsis — which macOS and word processors insert on their own — used to
+  abort the compile with an internal error naming a line of C, reported against the
+  wrong file, taking every other diagnostic in the project with it. Now each one is
+  underlined in place, with the plain-text replacement offered as a Quick Fix.
+- **Sources in an older encoding are detected and converted.** If a project's files
+  are not UTF-8, the extension says so and offers to convert them. It is lossless, the
+  game it builds is identical, and line endings are untouched.
+- **An Encoding entry in the language status bubble**, so the offer is never a dead
+  end if the notification is dismissed.
+
+Without this, opening an older adventure showed replacement characters in the editor
+and reported nothing at all from the compiler.
+
 ## 0.5.1 — 2026-08-21
 
 - This changelog now ships with the extension. It existed from 0.5.0 but sat
