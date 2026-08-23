@@ -11,6 +11,8 @@ import { missingJavaMessage } from './java';
 import { initEnvironment } from './environment';
 import { createStatusItems } from './status';
 import { locateCompiler, locateInterpreter, checkToolchain } from './locate';
+import { ensureUtf8Sources } from './convert';
+import { registerEncodingFixes } from './quickfix';
 import { initNotices, compilerNoticeSuppressed, suppressCompilerNotice } from './notices';
 
 let client: LanguageClient;
@@ -23,11 +25,13 @@ export function activate(context: ExtensionContext) {
     initNotices(context);
     const setup = initEnvironment(context);
     createStatusItems(context);
+    registerEncodingFixes(context);
     context.subscriptions.push(
         commands.registerCommand('alanif.play', () => play()),
         commands.registerCommand('alanif.locateCompiler', () => locateCompiler()),
         commands.registerCommand('alanif.locateInterpreter', () => locateInterpreter()),
         commands.registerCommand('alanif.checkToolchain', () => checkToolchain()),
+        commands.registerCommand('alanif.convertSources', () => ensureUtf8Sources()),
         window.onDidCloseTerminal(onTerminalClosed),
     );
 
@@ -154,6 +158,11 @@ export function activate(context: ExtensionContext) {
             }
         });
     }
+
+    // Settle the project's encoding before the author edits anything: a file shown
+    // with replacement characters is one save away from losing its real ones. Not
+    // awaited -- activation should not wait on a scan of the workspace.
+    ensureUtf8Sources();
 
     context.subscriptions.push(
         playStatus,

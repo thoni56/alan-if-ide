@@ -71,10 +71,10 @@ final class Latin1Check {
             // it is an EDIT followed by a save that writes the placeholder back over
             // them. A clean buffer is not rewritten by an ordinary save.
             return "This file was read with the wrong encoding: U+FFFD is a placeholder, "
-                    + "not the character the file really contains. Reopen it with the right "
-                    + "encoding -- click the encoding in the status bar, then \"Reopen with "
-                    + "Encoding\"; older Alan sources are usually ISO-8859-1 (Western). "
-                    + "Editing this file and saving would write the placeholder to disk and "
+                    + "not the character the file really contains. Run \"Alan IF: Convert "
+                    + "Sources to UTF-8\" to repair the project -- reopening the file with "
+                    + "another encoding only fixes the view until the tab is closed. Editing "
+                    + "and saving this file first would write the placeholder to disk and "
                     + "lose the original for good.";
         }
         String replacement = plainEquivalent(codePoint);

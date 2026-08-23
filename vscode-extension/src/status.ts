@@ -4,6 +4,7 @@ import {
     languages, window
 } from 'vscode';
 import { Environment, getEnvironment, onEnvironmentChanged } from './environment';
+import { legacyFiles, onEncodingChanged } from './convert';
 import { MINIMUM_JAVA } from './java';
 
 /**
@@ -41,6 +42,28 @@ export function createStatusItems(context: ExtensionContext): void {
 
     const compiler = languages.createLanguageStatusItem('alanif.status.1-compiler', SELECTOR);
     compiler.name = 'Alan IF: Compiler';
+
+    // The way back to an offer the author dismissed, or never managed to read before
+    // it faded. Absent entirely once the sources are UTF-8, which is the normal case.
+    const encoding = languages.createLanguageStatusItem('alanif.status.0-encoding', SELECTOR);
+    encoding.name = 'Alan IF: Encoding';
+    const renderEncoding = () => {
+        const legacy = legacyFiles();
+        if (legacy.length === 0) {
+            encoding.text = 'UTF-8';
+            encoding.detail = 'all sources';
+            encoding.severity = LanguageStatusSeverity.Information;
+            encoding.command = undefined;
+            return;
+        }
+        encoding.text = `${legacy.length} file${legacy.length === 1 ? '' : 's'} not UTF-8`;
+        encoding.detail = 'the compiler cannot read them';
+        encoding.severity = LanguageStatusSeverity.Error;
+        encoding.command = {
+            command: 'alanif.convertSources', title: 'Convert…'
+        };
+    };
+    renderEncoding();
 
     // Sits just right of Play, and only while an Alan file is in front.
     const alarm = window.createStatusBarItem(StatusBarAlignment.Left, 99);
@@ -133,7 +156,8 @@ export function createStatusItems(context: ExtensionContext): void {
 
     render(getEnvironment());
     context.subscriptions.push(
-        java, compiler, arun, alarm,
+        java, compiler, arun, alarm, encoding,
+        onEncodingChanged(renderEncoding),
         onEnvironmentChanged(render),
         window.onDidChangeActiveTextEditor(() => {
             if (alarm.text) {
