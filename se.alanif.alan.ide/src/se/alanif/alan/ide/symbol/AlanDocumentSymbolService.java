@@ -101,6 +101,13 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 			return lexical;
 		}
 
+		// A verb name is a stack of declarations, not a set of them. Answer with the
+		// chain that decides its behaviour rather than every same-named site merged.
+		List<Location> chain = verbChainDefinitions(resource, offset);
+		if (chain != null && !chain.isEmpty()) {
+			return chain;
+		}
+
 		EObject target = offsetHelper.getElementWithNameAt(resource, offset);
 		List<Location> results = new ArrayList<>();
 
@@ -582,6 +589,206 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 	}
 
 	/**
+	 * Everything that decides what this verb does here, least specific first.
+	 *
+	 * <p>A verb is not one declaration but a stack of them: the syntax says how the
+	 * player types it and where the parameters come from, a global verb gives the
+	 * default, and each class or instance down the chain may override it. That stack IS
+	 * Alan's lookup order, so listing it in order answers "what influences this?"
+	 * rather than "where does this word appear?" -- which matters when the flat answer
+	 * is 367 entries, as it is for `examine` in a real adventure.
+	 *
+	 * <p>Upward only, and that is the language rather than a shortcut: from a class
+	 * there is no way to know which subclass or instance was meant, so downward is an
+	 * unbounded fan-out. Upward is a single determined path.
+	 *
+	 * @return the chain, or null when the cursor is not on a verb name.
+	 */
+	private List<Location> verbChainDefinitions(XtextResource resource, int offset) {
+		if (resource.getParseResult() == null) {
+			return null;
+		}
+		ILeafNode leaf = NodeModelUtils.findLeafNodeAtOffset(
+				resource.getParseResult().getRootNode(), offset);
+		if (leaf == null || leaf.isHidden() || !isVerbNameSite(leaf)) {
+			return null;
+		}
+		Path dir = dirOf(resource.getURI());
+		if (dir == null || resource.getResourceSet() == null) {
+			return null;
+		}
+		nodeIndex(dir, resource.getResourceSet());   // builds/refreshes both maps
+		NodeIndex index = NODE_INDEX.get(dir);
+		if (index == null) {
+			return null;
+		}
+		String name = unquote(leaf.getText().trim());
+		List<VerbSite> sites = index.verbSites.get(name.toLowerCase(Locale.ROOT));
+		if (sites == null || sites.isEmpty()) {
+			return null;
+		}
+
+		List<Location> chain = new ArrayList<>();
+		for (VerbSite site : sites) {           // 1. the syntax
+			if (site.isSyntax) {
+				addUnique(chain, site.location);
+			}
+		}
+		for (VerbSite site : sites) {           // 2. the global default, if any
+			if (!site.isSyntax && site.entity == null) {
+				addUnique(chain, site.location);
+			}
+		}
+		// 3. the entity chain, outermost ancestor first, ending where the cursor is.
+		List<String> entities = entityChainNames(leaf, index.superclassOf);
+		Collections.reverse(entities);
+		for (String entity : entities) {
+			for (VerbSite site : sites) {
+				if (!site.isSyntax && entity.equalsIgnoreCase(site.entity)) {
+					addUnique(chain, site.location);
+				}
+			}
+		}
+		return chain;
+	}
+
+	/** True when this identifier IS a verb name being declared -- in a verb header or
+	 *  as the subject of a syntax. Those are the only places a verb name is written. */
+	private boolean isVerbNameSite(ILeafNode leaf) {
+		EObject verbNames = grammar.getVerbHeaderAccess().getIdListParserRuleCall_2();
+		EObject syntaxName = grammar.getSyntaxItemAccess().getAlanIdParserRuleCall_0();
+		for (INode n = leaf; n != null; n = n.getParent()) {
+			EObject element = n.getGrammarElement();
+			if (element == verbNames || element == syntaxName) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * The entity holding the cursor and every class above it, innermost first.
+	 *
+	 * <p>{@code isa} is a real cross-reference, so this crosses files by itself. The
+	 * walk stops at the synthetic prelude: its classes have no user-written verbs and
+	 * are not navigable anyway.
+	 */
+	private List<String> entityChainNames(INode leaf, Map<String, String> superclassOf) {
+		List<String> names = new ArrayList<>();
+		String current = enclosingEntityName(leaf);
+		// A cycle in the isa graph is a program error, not our problem to diagnose, but
+		// it must not hang the editor -- so stop on a repeat rather than trusting it.
+		while (current != null && !names.contains(current)) {
+			names.add(current);
+			current = superclassOf.get(current.toLowerCase(Locale.ROOT));
+		}
+		return names;
+	}
+
+	private static void addUnique(List<Location> into, Location location) {
+		if (location != null && !into.contains(location)) {
+			into.add(location);
+		}
+	}
+
+	/**
+	 * Record each entity's declared superclass BY NAME.
+	 *
+	 * <p>Read from the node model rather than the resolved reference, because the
+	 * reference does not resolve across files -- the text is there either way, and the
+	 * text is what a name-based chain needs.
+	 */
+	private void collectHeritage(XtextResource resource, Map<String, String> into) {
+		for (Iterator<EObject> it = resource.getAllContents(); it.hasNext(); ) {
+			EObject o = it.next();
+			boolean isEntity = o instanceof se.alanif.alan.alan.Class
+					|| o instanceof se.alanif.alan.alan.Instance;
+			if (!isEntity) {
+				continue;   // additions attach to an existing entity; they do not re-parent it
+			}
+			EStructuralFeature nameFeature = o.eClass().getEStructuralFeature("name");
+			Object name = nameFeature == null ? null : o.eGet(nameFeature);
+			if (name == null) {
+				continue;
+			}
+			EStructuralFeature heritageFeature = o.eClass().getEStructuralFeature("heritage");
+			Object heritage = heritageFeature == null ? null : o.eGet(heritageFeature);
+			if (!(heritage instanceof EObject)) {
+				continue;
+			}
+			EObject h = (EObject) heritage;
+			EStructuralFeature superFeature = h.eClass().getEStructuralFeature("superclass");
+			if (superFeature == null) {
+				continue;
+			}
+			List<INode> nodes = NodeModelUtils.findNodesForFeature(h, superFeature);
+			if (nodes.isEmpty()) {
+				continue;
+			}
+			String superName = unquote(nodes.get(0).getText().trim());
+			if (!superName.isEmpty()) {
+				into.putIfAbsent(name.toString().toLowerCase(Locale.ROOT),
+						superName.toLowerCase(Locale.ROOT));
+			}
+		}
+	}
+
+	/** Receives a verb-name declaration: its name, whether it is the syntax, the
+	 *  entity whose body holds it (null at top level), and the declaring node. */
+	private interface VerbSiteSink {
+		void accept(String name, boolean isSyntax, String entity, INode node);
+	}
+
+	/**
+	 * Walk the node model reporting where verb names are declared, classified.
+	 *
+	 * <p>The flat declaration index answers "where is this name declared" and is right
+	 * for classes, whose parts are equal and unordered. Verbs are not like that: a
+	 * syntax, a global default and a stack of overrides are LEVELS, and flattening them
+	 * discards the only thing that makes a list of 367 comprehensible.
+	 */
+	private void walkVerbSites(ICompositeNode root, VerbSiteSink sink) {
+		EObject verbNames = grammar.getVerbHeaderAccess().getIdListParserRuleCall_2();
+		EObject syntaxName = grammar.getSyntaxItemAccess().getAlanIdParserRuleCall_0();
+
+		for (INode node : root.getAsTreeIterable()) {
+			EObject element = node.getGrammarElement();
+			if (element == syntaxName) {
+				sink.accept(unquote(node.getText().trim()), true, null, node);
+			} else if (element == verbNames) {
+				String entity = enclosingEntityName(node);
+				for (INode child : node.getAsTreeIterable()) {
+					if (child instanceof ILeafNode && !((ILeafNode) child).isHidden()) {
+						String text = child.getText().trim();
+						if (!text.equals(",")) {
+							sink.accept(unquote(text), false, entity, child);
+						}
+					}
+				}
+			}
+		}
+	}
+
+	/**
+	 * The name of the class or instance whose body holds this node, or null at the top
+	 * level. An {@code add to every X} reports X, which is what makes an addition's
+	 * verbs land at X's level of the chain rather than a level of their own.
+	 */
+	private static String enclosingEntityName(INode node) {
+		for (INode n = node; n != null; n = n.getParent()) {
+			EObject semantic = n.hasDirectSemanticElement() ? n.getSemanticElement() : null;
+			if (semantic instanceof se.alanif.alan.alan.Class
+					|| semantic instanceof se.alanif.alan.alan.Instance
+					|| semantic instanceof se.alanif.alan.alan.Addition) {
+				EStructuralFeature nameFeature = semantic.eClass().getEStructuralFeature("name");
+				Object name = nameFeature == null ? null : semantic.eGet(nameFeature);
+				return name == null ? null : name.toString();
+			}
+		}
+		return null;
+	}
+
+	/**
 	 * Cross-file navigation for node-scanned symbols (verbs/scripts/syntax/synonyms),
 	 * which aren't in Xtext's index. We keep our own per-directory index of every
 	 * such declaration, rebuilt when any source file's timestamp changes, and look
@@ -619,6 +826,8 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 				return cached.byName;
 			}
 			Map<String, List<Location>> map = new HashMap<>();
+			Map<String, List<VerbSite>> sites = new HashMap<>();
+			Map<String, String> supers = new HashMap<>();
 			try (Stream<Path> files = Files.list(dir)) {
 				files.filter(AlanDocumentSymbolService::isAlanSource).forEach(p -> {
 					try {
@@ -626,6 +835,16 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 						if (r instanceof XtextResource) {
 							IParseResult parse = ((XtextResource) r).getParseResult();
 							if (parse != null && parse.getRootNode() != null) {
+								collectHeritage((XtextResource) r, supers);
+								walkVerbSites(parse.getRootNode(), (declared, isSyntax, entity, node) -> {
+									Location loc = documentExtensions.newLocation((XtextResource) r,
+											new TextRegion(node.getOffset(), node.getLength()));
+									if (loc != null) {
+										sites.computeIfAbsent(declared.toLowerCase(Locale.ROOT),
+												k -> new ArrayList<>())
+												.add(new VerbSite(isSyntax, entity, loc));
+									}
+								});
 								walkNodeDeclarations(parse.getRootNode(), (declared, node) -> {
 									if (!declared.isEmpty()) {
 										Location loc = documentExtensions.newLocation((XtextResource) r,
@@ -645,7 +864,7 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 			} catch (IOException ignored) {
 				// directory gone -- return whatever we have
 			}
-			NODE_INDEX.put(dir, new NodeIndex(signature, map));
+			NODE_INDEX.put(dir, new NodeIndex(signature, map, sites, supers));
 			return map;
 		}
 	}
@@ -693,10 +912,38 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 	private static final class NodeIndex {
 		final String signature;
 		final Map<String, List<Location>> byName;
+		/** The same walk, keeping what the flat index throws away: whether a
+		 *  declaration is the syntax or an implementation, and whose body it is in. */
+		final Map<String, List<VerbSite>> verbSites;
+		/** entity name -> the name it declares with 'isa', lowercased.
+		 *
+		 *  <p>By NAME, not by cross-reference. Alan splices imports at scan time, so an
+		 *  'isa' pointing at a class in another file stays an unresolved proxy -- which
+		 *  is why every other cross-file feature here is name-based too. In a real
+		 *  adventure the classes live in one file and the instances in eighty others,
+		 *  so resolving through the model would find nothing at all. */
+		final Map<String, String> superclassOf;
 
-		NodeIndex(String signature, Map<String, List<Location>> byName) {
+		NodeIndex(String signature, Map<String, List<Location>> byName,
+				Map<String, List<VerbSite>> verbSites, Map<String, String> superclassOf) {
 			this.signature = signature;
 			this.byName = byName;
+			this.verbSites = verbSites;
+			this.superclassOf = superclassOf;
+		}
+	}
+
+	/** Where a verb name is declared, and at what level of the hierarchy. */
+	private static final class VerbSite {
+		final boolean isSyntax;
+		/** The entity whose body holds it; null for a verb declared at the top level. */
+		final String entity;
+		final Location location;
+
+		VerbSite(boolean isSyntax, String entity, Location location) {
+			this.isSyntax = isSyntax;
+			this.entity = entity;
+			this.location = location;
 		}
 	}
 
