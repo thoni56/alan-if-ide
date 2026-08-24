@@ -22,6 +22,7 @@ import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.lsp4j.Location;
 import org.eclipse.xtext.Keyword;
+import org.eclipse.xtext.RuleCall;
 import org.eclipse.xtext.findReferences.IReferenceFinder;
 import org.eclipse.xtext.ide.server.DocumentExtensions;
 import org.eclipse.xtext.ide.server.symbol.DocumentSymbolService;
@@ -87,6 +88,19 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 	@Override
 	public List<? extends Location> getDefinitions(XtextResource resource, int offset,
 			IReferenceFinder.IResourceAccess resourceAccess, CancelIndicator cancelIndicator) {
+		// RUNG 1 -- LEXICAL LOCALS SHADOW EVERYTHING GLOBAL. A loop variable or 'this'
+		// is bound by the text around it, so a global of the same name is simply the
+		// wrong answer. Returning here rather than merging is the whole point: this
+		// establishes the resolution ORDER that verb parameters (rung 2) and the type
+		// model (rung 3) will extend.
+		//
+		// null means "not a local matter, carry on"; an EMPTY list means "local, and
+		// deliberately no target" -- see 'current actor' below.
+		List<Location> lexical = lexicalDefinitions(resource, offset);
+		if (lexical != null) {
+			return lexical;
+		}
+
 		EObject target = offsetHelper.getElementWithNameAt(resource, offset);
 		List<Location> results = new ArrayList<>();
 
@@ -113,6 +127,112 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 			}
 		}
 		return results;
+	}
+
+	/**
+	 * Resolve an identifier that is bound lexically rather than declared globally.
+	 *
+	 * <p>Alan's statements live in datatype-only rules, so none of this reaches the
+	 * semantic model and the walk is over the NODE model. Ancestor nodes carry the
+	 * {@link RuleCall} that invoked a rule, not the rule itself, which is why the
+	 * enclosing loop is recognised by the rule its call points at.
+	 *
+	 * @return the binder's location; an empty list to mean "resolved, no target";
+	 *         or null to mean "not lexical -- fall through to the global search".
+	 */
+	private List<Location> lexicalDefinitions(XtextResource resource, int offset) {
+		if (resource.getParseResult() == null) {
+			return null;
+		}
+		ILeafNode leaf = NodeModelUtils.findLeafNodeAtOffset(
+				resource.getParseResult().getRootNode(), offset);
+		if (leaf == null || leaf.isHidden()) {
+			return null;
+		}
+		String name = unquote(leaf.getText().trim());
+		if (name.isEmpty()) {
+			return null;
+		}
+
+		if ("this".equalsIgnoreCase(name)) {
+			return enclosingEntityDefinition(resource, leaf);
+		}
+		// 'current actor' / 'current location' are RUNTIME context, not lexical
+		// bindings -- there is no declaration to jump to. Resolving them to nothing is
+		// the useful answer: without this the name-based pass would happily jump to
+		// whatever global happens to be called 'actor'.
+		if (isCurrentPhrase(leaf, name)) {
+			return Collections.emptyList();
+		}
+
+		EObject binderCall = grammar.getRepetitionStatementAccess().getAlanIdParserRuleCall_1();
+
+		// Standing on the binder itself: answer with it, so that the declaration of a
+		// loop variable does not fall through and jump to a same-named global.
+		for (INode n = leaf; n != null && n != resource.getParseResult().getRootNode(); n = n.getParent()) {
+			if (n.getGrammarElement() == binderCall) {
+				return locationOf(resource, n);
+			}
+		}
+
+		// Otherwise walk outwards; the innermost enclosing loop that binds this name
+		// wins, which gives correct shadowing for nested loops at no extra cost.
+		for (INode n = leaf.getParent(); n != null; n = n.getParent()) {
+			if (!isRuleCallTo(n.getGrammarElement(), grammar.getRepetitionStatementRule())) {
+				continue;
+			}
+			for (INode child : ((ICompositeNode) n).getChildren()) {
+				if (child.getGrammarElement() == binderCall
+						&& name.equalsIgnoreCase(unquote(child.getText().trim()))) {
+					return locationOf(resource, child);
+				}
+			}
+		}
+		return null;
+	}
+
+	/** 'this' means the class or instance whose body encloses it. */
+	private List<Location> enclosingEntityDefinition(XtextResource resource, INode leaf) {
+		for (INode n = leaf; n != null; n = n.getParent()) {
+			EObject semantic = n.hasDirectSemanticElement() ? n.getSemanticElement() : null;
+			if (semantic instanceof se.alanif.alan.alan.Class
+					|| semantic instanceof se.alanif.alan.alan.Instance
+					|| semantic instanceof se.alanif.alan.alan.Addition) {
+				List<INode> nameNodes =
+						NodeModelUtils.findNodesForFeature(semantic,
+								semantic.eClass().getEStructuralFeature("name"));
+				if (!nameNodes.isEmpty()) {
+					return locationOf(resource, nameNodes.get(0));
+				}
+			}
+		}
+		return Collections.emptyList();   // 'this' outside any entity: no target, but not global either
+	}
+
+	/** True for the 'actor'/'location' of a 'current actor' / 'current location'. */
+	private boolean isCurrentPhrase(ILeafNode leaf, String name) {
+		if ("current".equalsIgnoreCase(name)) {
+			return true;
+		}
+		if (!"actor".equalsIgnoreCase(name) && !"location".equalsIgnoreCase(name)) {
+			return false;
+		}
+		for (INode n = leaf.getParent(); n != null; n = n.getParent()) {
+			if (isRuleCallTo(n.getGrammarElement(), grammar.getSimpleWhatRule())) {
+				return n.getText().trim().toLowerCase().startsWith("current");
+			}
+		}
+		return false;
+	}
+
+	private static boolean isRuleCallTo(EObject grammarElement, EObject rule) {
+		return grammarElement instanceof RuleCall && ((RuleCall) grammarElement).getRule() == rule;
+	}
+
+	private List<Location> locationOf(XtextResource resource, INode node) {
+		List<Location> single = new ArrayList<>(1);
+		addNodeLocation(resource, node, single);
+		return single;
 	}
 
 	/**
