@@ -130,6 +130,29 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 	}
 
 	/**
+	 * A name that is bound by the text around it: where it is declared, and the region
+	 * that binding covers.
+	 *
+	 * <p>Both go-to-definition and find-references need this, and they must agree --
+	 * an IDE that says "this name is bound here" and then lists uses that cannot refer
+	 * to it has taught the author that one of the two answers is a lie.
+	 *
+	 * <p>{@code token} is what to search for, which is not always the declared name:
+	 * {@code this} is declared by an entity's name but written as the word "this".
+	 */
+	private static final class Binding {
+		final INode declaration;
+		final INode scope;
+		final String token;
+
+		Binding(INode declaration, INode scope, String token) {
+			this.declaration = declaration;
+			this.scope = scope;
+			this.token = token;
+		}
+	}
+
+	/**
 	 * Resolve an identifier that is bound lexically rather than declared globally.
 	 *
 	 * <p>Alan's statements live in datatype-only rules, so none of this reaches the
@@ -137,15 +160,17 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 	 * {@link RuleCall} that invoked a rule, not the rule itself, which is why the
 	 * enclosing loop is recognised by the rule its call points at.
 	 *
-	 * @return the binder's location; an empty list to mean "resolved, no target";
-	 *         or null to mean "not lexical -- fall through to the global search".
+	 * @return the binding; {@link #NO_BINDING} to mean "lexical, but nothing to point
+	 *         at"; or null to mean "not lexical -- fall through to the global search".
 	 */
-	private List<Location> lexicalDefinitions(XtextResource resource, int offset) {
+	private static final Binding NO_BINDING = new Binding(null, null, null);
+
+	private Binding lexicalBinding(XtextResource resource, int offset) {
 		if (resource.getParseResult() == null) {
 			return null;
 		}
-		ILeafNode leaf = NodeModelUtils.findLeafNodeAtOffset(
-				resource.getParseResult().getRootNode(), offset);
+		ICompositeNode root = resource.getParseResult().getRootNode();
+		ILeafNode leaf = NodeModelUtils.findLeafNodeAtOffset(root, offset);
 		if (leaf == null || leaf.isHidden()) {
 			return null;
 		}
@@ -155,58 +180,126 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 		}
 
 		if ("this".equalsIgnoreCase(name)) {
-			return enclosingEntityDefinition(resource, leaf);
+			return enclosingEntityBinding(leaf);
 		}
 		// 'current actor' / 'current location' are RUNTIME context, not lexical
 		// bindings -- there is no declaration to jump to. Resolving them to nothing is
 		// the useful answer: without this the name-based pass would happily jump to
 		// whatever global happens to be called 'actor'.
 		if (isCurrentPhrase(leaf, name)) {
-			return Collections.emptyList();
+			return NO_BINDING;
 		}
 
 		EObject binderCall = grammar.getRepetitionStatementAccess().getAlanIdParserRuleCall_1();
 
-		// Standing on the binder itself: answer with it, so that the declaration of a
-		// loop variable does not fall through and jump to a same-named global.
-		for (INode n = leaf; n != null && n != resource.getParseResult().getRootNode(); n = n.getParent()) {
+		// Standing on the binder itself, or anywhere inside a loop that binds this
+		// name: the innermost enclosing loop wins, which gives correct shadowing for
+		// nested loops at no extra cost.
+		for (INode n = leaf; n != null && n != root; n = n.getParent()) {
 			if (n.getGrammarElement() == binderCall) {
-				return locationOf(resource, n);
+				return new Binding(n, n.getParent(), name);
 			}
 		}
-
-		// Otherwise walk outwards; the innermost enclosing loop that binds this name
-		// wins, which gives correct shadowing for nested loops at no extra cost.
 		for (INode n = leaf.getParent(); n != null; n = n.getParent()) {
 			if (!isRuleCallTo(n.getGrammarElement(), grammar.getRepetitionStatementRule())) {
 				continue;
 			}
-			for (INode child : ((ICompositeNode) n).getChildren()) {
-				if (child.getGrammarElement() == binderCall
-						&& name.equalsIgnoreCase(unquote(child.getText().trim()))) {
-					return locationOf(resource, child);
-				}
+			INode binder = binderOf(n, binderCall);
+			if (binder != null && name.equalsIgnoreCase(unquote(binder.getText().trim()))) {
+				return new Binding(binder, n, name);
 			}
 		}
 		return null;
 	}
 
-	/** 'this' means the class or instance whose body encloses it. */
-	private List<Location> enclosingEntityDefinition(XtextResource resource, INode leaf) {
+	/** The identifier a loop binds, or null if this node is not a loop. */
+	private INode binderOf(INode loop, EObject binderCall) {
+		if (!(loop instanceof ICompositeNode)) {
+			return null;
+		}
+		for (INode child : ((ICompositeNode) loop).getChildren()) {
+			if (child.getGrammarElement() == binderCall) {
+				return child;
+			}
+		}
+		return null;
+	}
+
+	private List<Location> lexicalDefinitions(XtextResource resource, int offset) {
+		Binding binding = lexicalBinding(resource, offset);
+		if (binding == null) {
+			return null;
+		}
+		if (binding.declaration == null) {
+			return Collections.emptyList();
+		}
+		return locationOf(resource, binding.declaration);
+	}
+
+	/**
+	 * The occurrences a lexically-bound name actually has: the ones inside its own
+	 * scope, and no others. A nested loop that rebinds the same name starts a new
+	 * scope, so its uses belong to the inner binding and are skipped whole.
+	 */
+	private List<Location> lexicalReferences(XtextResource resource, int offset) {
+		Binding binding = lexicalBinding(resource, offset);
+		if (binding == null) {
+			return null;
+		}
+		List<Location> hits = new ArrayList<>();
+		if (binding.scope != null) {
+			collectInScope(resource, binding.scope, binding.token, true, hits);
+		}
+		return hits;
+	}
+
+	private void collectInScope(XtextResource resource, INode node, String token,
+			boolean isScopeRoot, List<Location> hits) {
+		if (!isScopeRoot && rebinds(node, token)) {
+			return; // an inner loop over the same name: a different variable entirely
+		}
+		if (node instanceof ILeafNode) {
+			ILeafNode leaf = (ILeafNode) node;
+			if (!leaf.isHidden() && !(leaf.getGrammarElement() instanceof Keyword)
+					&& unquote(leaf.getText().trim()).equalsIgnoreCase(token)) {
+				addNodeLocation(resource, leaf, hits);
+			}
+			return;
+		}
+		if (node instanceof ICompositeNode) {
+			for (INode child : ((ICompositeNode) node).getChildren()) {
+				collectInScope(resource, child, token, false, hits);
+			}
+		}
+	}
+
+	private boolean rebinds(INode node, String token) {
+		if (!isRuleCallTo(node.getGrammarElement(), grammar.getRepetitionStatementRule())) {
+			return false;
+		}
+		INode binder = binderOf(node,
+				grammar.getRepetitionStatementAccess().getAlanIdParserRuleCall_1());
+		return binder != null && token.equalsIgnoreCase(unquote(binder.getText().trim()));
+	}
+
+	/**
+	 * 'this' means the class or instance whose body encloses it -- so its definition is
+	 * that entity's name, and its references are the other 'this' in the same body.
+	 */
+	private Binding enclosingEntityBinding(INode leaf) {
 		for (INode n = leaf; n != null; n = n.getParent()) {
 			EObject semantic = n.hasDirectSemanticElement() ? n.getSemanticElement() : null;
 			if (semantic instanceof se.alanif.alan.alan.Class
 					|| semantic instanceof se.alanif.alan.alan.Instance
 					|| semantic instanceof se.alanif.alan.alan.Addition) {
-				List<INode> nameNodes =
-						NodeModelUtils.findNodesForFeature(semantic,
-								semantic.eClass().getEStructuralFeature("name"));
+				List<INode> nameNodes = NodeModelUtils.findNodesForFeature(semantic,
+						semantic.eClass().getEStructuralFeature("name"));
 				if (!nameNodes.isEmpty()) {
-					return locationOf(resource, nameNodes.get(0));
+					return new Binding(nameNodes.get(0), n, "this");
 				}
 			}
 		}
-		return Collections.emptyList();   // 'this' outside any entity: no target, but not global either
+		return NO_BINDING;   // 'this' outside any entity: no target, but not global either
 	}
 
 	/** True for the 'actor'/'location' of a 'current actor' / 'current location'. */
@@ -246,11 +339,23 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 	 * from "Find All References". It's an approximation: it's name-scoped, so two
 	 * unrelated things sharing a name would be listed together. Precise references
 	 * need the full semantic model.
+	 *
+	 * <p>Names that ARE bound lexically no longer take this path -- see
+	 * {@link #lexicalReferences}. Those have a real scope, and using the by-name sweep
+	 * on them would contradict what go-to-definition just said about the same token.
 	 */
 	@Override
 	public List<? extends Location> getReferences(XtextResource resource, int offset,
 			IReferenceFinder.IResourceAccess resourceAccess, IResourceDescriptions indexData,
 			CancelIndicator cancelIndicator) {
+		// A lexically-bound name has real references, and they are not the project-wide
+		// set: go-to-definition already says the name is bound here, so listing every
+		// same-named identifier in every file would contradict it.
+		List<Location> lexical = lexicalReferences(resource, offset);
+		if (lexical != null) {
+			return lexical;
+		}
+
 		String name = nameUnderCursor(resource, offset);
 		if (name == null) {
 			return Collections.emptyList();
@@ -299,9 +404,17 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 			if (leaf.isHidden() || leaf.getGrammarElement() instanceof Keyword) {
 				continue;
 			}
-			if (unquote(leaf.getText().trim()).equalsIgnoreCase(name)) {
-				addNodeLocation(resource, leaf, hits);
+			if (!unquote(leaf.getText().trim()).equalsIgnoreCase(name)) {
+				continue;
 			}
+			// Shadowing, seen from the other side. This sweep answers "where is the
+			// GLOBAL of this name used", so an occurrence that is bound by a loop
+			// around it is a different variable that merely spells the same -- and one
+			// go-to-definition would send somewhere else entirely.
+			if (lexicalBinding(resource, leaf.getOffset()) != null) {
+				continue;
+			}
+			addNodeLocation(resource, leaf, hits);
 		}
 	}
 
