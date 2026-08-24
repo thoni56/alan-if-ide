@@ -237,6 +237,45 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 	}
 
 	/**
+	 * The occurrences of the name at {@code offset} within THIS document, and which of
+	 * them declares it.
+	 *
+	 * <p>Exists for document highlight, which is per-document by definition and so
+	 * cannot reuse find-references directly -- but must agree with it, or the soft
+	 * highlight under the cursor would contradict the list Shift+F12 gives.
+	 */
+	public static final class Occurrences {
+		/** The declaring occurrence, or null when the name is not bound in this file. */
+		public final Location declaration;
+		public final List<Location> all;
+
+		Occurrences(Location declaration, List<Location> all) {
+			this.declaration = declaration;
+			this.all = all;
+		}
+	}
+
+	public Occurrences occurrencesInDocument(XtextResource resource, int offset) {
+		Binding binding = lexicalBinding(resource, offset);
+		if (binding != null) {
+			if (binding.scope == null) {
+				return new Occurrences(null, Collections.emptyList());
+			}
+			List<Location> hits = new ArrayList<>();
+			collectInScope(resource, binding.scope, binding.token, true, hits);
+			List<Location> declared = locationOf(resource, binding.declaration);
+			return new Occurrences(declared.isEmpty() ? null : declared.get(0), hits);
+		}
+		String name = nameUnderCursor(resource, offset);
+		if (name == null) {
+			return new Occurrences(null, Collections.emptyList());
+		}
+		List<Location> hits = new ArrayList<>();
+		collectNameOccurrences(resource, name, hits);
+		return new Occurrences(null, hits);
+	}
+
+	/**
 	 * The occurrences a lexically-bound name actually has: the ones inside its own
 	 * scope, and no others. A nested loop that rebinds the same name starts a new
 	 * scope, so its uses belong to the inner binding and are skipped whole.

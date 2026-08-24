@@ -4,10 +4,12 @@
 package se.alanif.alan.ide;
 
 import org.eclipse.xtext.ide.server.formatting.FormattingService;
+import org.eclipse.xtext.ide.server.occurrences.IDocumentHighlightService;
 import org.eclipse.xtext.ide.server.symbol.DocumentSymbolService;
 import org.eclipse.xtext.ide.server.symbol.HierarchicalDocumentSymbolService;
 
 import se.alanif.alan.ide.formatting.AlanFormattingService;
+import se.alanif.alan.ide.symbol.AlanDocumentHighlightService;
 import se.alanif.alan.ide.symbol.AlanDocumentSymbolService;
 import se.alanif.alan.ide.symbol.AlanHierarchicalDocumentSymbolService;
 
@@ -26,6 +28,12 @@ public class AlanIdeModule extends AbstractAlanIdeModule {
 	 *  are served by this service, not by DocumentSymbolService above. */
 	public Class<? extends HierarchicalDocumentSymbolService> bindHierarchicalDocumentSymbolService() {
 		return AlanHierarchicalDocumentSymbolService.class;
+	}
+
+	/** Highlighting other occurrences of the name under the cursor. Xtext's default is
+	 *  model-based and so silent for Alan; ours shares the go-to-definition resolver. */
+	public Class<? extends IDocumentHighlightService> bindIDocumentHighlightService() {
+		return AlanDocumentHighlightService.class;
 	}
 
 	/** "Format Document": node-model structural indenter (not model-based Formatter2). */
