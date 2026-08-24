@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.7.0 — 2026-08-23
+
+**Navigation that knows what a name means.** Until now every feature matched names by
+text, across the whole project. That is right for classes, whose `every X` and
+`add to every X` really are parts of one thing — and wrong for everything else.
+
+- **Go to Definition on a loop variable** goes to its `for each`, not to an unrelated
+  instance elsewhere that happens to share the name. A nested loop over the same name
+  shadows the outer one, as it does when the game runs. `this` goes to the class or
+  instance whose body it is in.
+- **Find All References agrees with it.** Inside a loop you get that loop's uses;
+  outside it, only the global's. Previously the two features contradicted each other.
+- **Occurrences under the cursor are highlighted** — the declaration marked differently
+  from the uses. This did nothing at all before.
+- **Go to Definition on a verb shows what decides its behaviour**: the syntax that says
+  how the player phrases it, then each class down the hierarchy that overrides it,
+  ending where you are. In a real adventure that is six entries instead of 367 — and in
+  the order Alan itself consults them. Find All References still lists every
+  implementation, which is the question it answers.
+- `current actor` and `current location` no longer jump anywhere. They are decided while
+  the game runs, and guessing at an instance that shares the name was worse than saying
+  nothing.
+
 ## 0.6.0 — 2026-08-23
 
 **Getting the encoding out of the way.** Alan works internally in ISO-8859-1, and its
