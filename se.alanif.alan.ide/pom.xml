@@ -21,6 +21,15 @@
   -->
 
   <dependencies>
+    <!-- Navigation has become intricate enough that its negative rules (what a name
+         must NOT resolve to) need asserting on every build, rather than once by hand
+         on the day each was written. -->
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>5.11.3</version>
+      <scope>test</scope>
+    </dependency>
     <dependency>
       <groupId>se.alanif</groupId>
       <artifactId>se.alanif.alan</artifactId>
@@ -35,6 +44,9 @@
 
   <build>
     <sourceDirectory>src</sourceDirectory>
+    <!-- Xtext lays sources out as src/ and src-gen/ rather than Maven's default, so
+         the test directory has to be named explicitly too. -->
+    <testSourceDirectory>src-test</testSourceDirectory>
     <resources>
       <resource>
         <directory>src</directory>

@@ -3,7 +3,9 @@
 set -e
 cd "$(dirname "$0")"
 echo ">> building the LSP server (Maven)"
-mvn -q -B -DskipTests package
+# Tests run here rather than being skipped: they are the navigation rules, they take
+# about three seconds, and skipping them is how a regression reaches the editor.
+mvn -q -B package
 echo ">> staging server jar into the extension"
 mkdir -p vscode-extension/server   # may not exist on a fresh checkout (its .jar is gitignored)
 cp se.alanif.alan.ide/target/se.alanif.alan.ide-*-ls.jar vscode-extension/server/alan-lsp.jar
