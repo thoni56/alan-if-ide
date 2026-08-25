@@ -101,6 +101,13 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 			return lexical;
 		}
 
+		// RUNG 2 -- a verb parameter is bound by its syntax, not by the text around it
+		// and not by the global namespace. Between lexical and global in the order.
+		List<Location> parameter = verbParameterDefinitions(resource, offset);
+		if (parameter != null) {
+			return parameter;
+		}
+
 		// A verb name is a stack of declarations, not a set of them. Answer with the
 		// chain that decides its behaviour rather than every same-named site merged.
 		List<Location> chain = verbChainDefinitions(resource, offset);
@@ -278,7 +285,7 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 			return new Occurrences(null, Collections.emptyList());
 		}
 		List<Location> hits = new ArrayList<>();
-		collectNameOccurrences(resource, name, hits);
+		collectNameOccurrences(resource, name, hits, indexFor(resource));
 		return new Occurrences(null, hits);
 	}
 
@@ -401,13 +408,18 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 		if (lexical != null) {
 			return lexical;
 		}
+		List<Location> parameter = verbParameterReferences(resource, offset);
+		if (parameter != null) {
+			return parameter;
+		}
 
 		String name = nameUnderCursor(resource, offset);
 		if (name == null) {
 			return Collections.emptyList();
 		}
 		List<Location> hits = new ArrayList<>();
-		collectNameOccurrences(resource, name, hits);
+		NodeIndex index = indexFor(resource);
+		collectNameOccurrences(resource, name, hits, index);
 
 		Path dir = dirOf(resource.getURI());
 		if (dir != null && resource.getResourceSet() != null) {
@@ -421,7 +433,7 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 					try {
 						Resource r = resource.getResourceSet().getResource(uri, true);
 						if (r instanceof XtextResource) {
-							collectNameOccurrences((XtextResource) r, name, hits);
+							collectNameOccurrences((XtextResource) r, name, hits, index);
 						}
 					} catch (RuntimeException ignored) {
 						// unreadable/unparseable file -- skip it
@@ -437,7 +449,8 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 	/** Add every non-hidden identifier leaf in {@code resource} whose (unquoted)
 	 *  text case-insensitively equals {@code name}. Keywords, comments, whitespace
 	 *  and string literals are skipped, so only real identifier mentions match. */
-	private void collectNameOccurrences(XtextResource resource, String name, List<Location> hits) {
+	private void collectNameOccurrences(XtextResource resource, String name, List<Location> hits,
+			NodeIndex index) {
 		IParseResult parse = resource.getParseResult();
 		if (parse == null || parse.getRootNode() == null) {
 			return;
@@ -457,7 +470,8 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 			// GLOBAL of this name used", so an occurrence that is bound by a loop
 			// around it is a different variable that merely spells the same -- and one
 			// go-to-definition would send somewhere else entirely.
-			if (lexicalBinding(resource, leaf.getOffset()) != null) {
+			if (lexicalBinding(resource, leaf.getOffset()) != null
+					|| verbParameterAt(resource, leaf.getOffset(), index) != null) {
 				continue;
 			}
 			addNodeLocation(resource, leaf, hits);
@@ -586,6 +600,235 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 				sink.accept(unquote(node.getText().trim()), node);
 			}
 		}
+	}
+
+	/**
+	 * Resolve a verb parameter -- {@code obj}, {@code act} -- to where its syntax
+	 * declares it.
+	 *
+	 * <p>Rung 2, and the reason it needs its own rung: a parameter's scope is neither
+	 * lexical nor global. It is DECLARED in {@code syntax examine = examine (obj)} and
+	 * USED in the global {@code verb examine} body and in every entity-local override,
+	 * none of which contain the syntax. So there is nothing to walk up to; the link is
+	 * the verb's NAME, and resolution is a lookup through it.
+	 *
+	 * <p>Without this, {@code obj} resolved by name to whatever instance in the game
+	 * happened to be called obj -- and parameter names come from a tiny shared
+	 * vocabulary, so that is a coin flip rather than a rare accident.
+	 *
+	 * @return where the parameter is declared, or null when this is not one.
+	 */
+	private List<Location> verbParameterDefinitions(XtextResource resource, int offset) {
+		ParameterBinding bound = verbParameterAt(resource, offset, indexFor(resource));
+		return bound == null ? null : Collections.singletonList(bound.declaration.location);
+	}
+
+	/** A parameter, and the verb whose bodies may refer to it. */
+	private static final class ParameterBinding {
+		final String verb;
+		final Parameter declaration;
+
+		ParameterBinding(String verb, Parameter declaration) {
+			this.verb = verb;
+			this.declaration = declaration;
+		}
+	}
+
+	/** The project index for this resource, or null when there is no project. */
+	private NodeIndex indexFor(XtextResource resource) {
+		Path dir = dirOf(resource.getURI());
+		if (dir == null || resource.getResourceSet() == null) {
+			return null;
+		}
+		nodeIndex(dir, resource.getResourceSet());
+		return NODE_INDEX.get(dir);
+	}
+
+	private ParameterBinding verbParameterAt(XtextResource resource, int offset, NodeIndex index) {
+		if (resource.getParseResult() == null) {
+			return null;
+		}
+		ILeafNode leaf = NodeModelUtils.findLeafNodeAtOffset(
+				resource.getParseResult().getRootNode(), offset);
+		if (leaf == null || leaf.isHidden()) {
+			return null;
+		}
+		String name = unquote(leaf.getText().trim());
+		if (name.isEmpty()) {
+			return null;
+		}
+		if (index == null) {
+			return null;
+		}
+
+		// Inside the syntax that declares it -- either standing on the declaration, or
+		// in a Where clause, which restricts the parameter and so refers to it too.
+		for (String verb : enclosingSyntaxNames(leaf)) {
+			Parameter here = parameterOf(index, verb, name);
+			if (here != null) {
+				return new ParameterBinding(verb, here);
+			}
+		}
+		// Otherwise: which verb's body are we in, and does its syntax declare this name?
+		for (String verb : enclosingVerbNames(leaf)) {
+			Parameter declared = parameterOf(index, verb, name);
+			if (declared != null) {
+				return new ParameterBinding(verb, declared);
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * A parameter's references: every mention of it inside that verb's syntax or inside
+	 * any body of that verb, project-wide.
+	 *
+	 * <p>Not the file, and not the project's every {@code obj}. One parameter is shared
+	 * by the global verb and every entity-local override, so the scope is "this verb,
+	 * everywhere" -- a shape neither the lexical scope nor the by-name sweep can
+	 * express, which is why rung 2 needs its own collector as well as its own resolver.
+	 */
+	private List<Location> verbParameterReferences(XtextResource resource, int offset) {
+		NodeIndex index = indexFor(resource);
+		ParameterBinding bound = verbParameterAt(resource, offset, index);
+		if (bound == null) {
+			return null;
+		}
+		String name = bound.declaration.name;
+		List<Location> hits = new ArrayList<>();
+		forEachProjectResource(resource, r -> collectParameterUses(r, bound.verb, name, hits));
+		return hits;
+	}
+
+	private void collectParameterUses(XtextResource resource, String verb, String name,
+			List<Location> hits) {
+		IParseResult parse = resource.getParseResult();
+		if (parse == null || parse.getRootNode() == null) {
+			return;
+		}
+		EObject verbNames = grammar.getVerbHeaderAccess().getIdListParserRuleCall_2();
+		EObject syntaxName = grammar.getSyntaxItemAccess().getAlanIdParserRuleCall_0();
+
+		for (INode node : parse.getRootNode().getAsTreeIterable()) {
+			boolean isVerb = isRuleCallTo(node.getGrammarElement(), grammar.getVerbRule());
+			boolean isSyntax = isRuleCallTo(node.getGrammarElement(), grammar.getSyntaxItemRule());
+			if ((!isVerb && !isSyntax) || !(node instanceof ICompositeNode)) {
+				continue;
+			}
+			if (!declares(node, isVerb ? verbNames : syntaxName, verb)) {
+				continue;
+			}
+			for (INode inner : ((ICompositeNode) node).getAsTreeIterable()) {
+				if (inner instanceof ILeafNode && !((ILeafNode) inner).isHidden()
+						&& !(inner.getGrammarElement() instanceof Keyword)
+						&& unquote(inner.getText().trim()).equalsIgnoreCase(name)) {
+					addNodeLocation(resource, inner, hits);
+				}
+			}
+		}
+	}
+
+	/** True when this verb or syntax node names {@code verb} in its header. */
+	private boolean declares(INode node, EObject nameElement, String verb) {
+		for (INode inner : ((ICompositeNode) node).getAsTreeIterable()) {
+			if (inner.getGrammarElement() != nameElement) {
+				continue;
+			}
+			for (INode word : inner.getAsTreeIterable()) {
+				if (word instanceof ILeafNode && !((ILeafNode) word).isHidden()
+						&& verb.equalsIgnoreCase(unquote(word.getText().trim()))) {
+					return true;
+				}
+			}
+			if (verb.equalsIgnoreCase(unquote(inner.getText().trim()))) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/** Run something over every Alan source in the project, current resource first. */
+	private void forEachProjectResource(XtextResource resource,
+			java.util.function.Consumer<XtextResource> action) {
+		action.accept(resource);
+		Path dir = dirOf(resource.getURI());
+		if (dir == null || resource.getResourceSet() == null) {
+			return;
+		}
+		URI current = resource.getURI();
+		try (Stream<Path> files = Files.list(dir)) {
+			files.filter(AlanDocumentSymbolService::isAlanSource).forEach(p -> {
+				URI uri = URI.createFileURI(p.toString());
+				if (uri.equals(current)) {
+					return;
+				}
+				try {
+					Resource r = resource.getResourceSet().getResource(uri, true);
+					if (r instanceof XtextResource) {
+						action.accept((XtextResource) r);
+					}
+				} catch (RuntimeException ignored) {
+					// unreadable/unparseable file -- skip it
+				}
+			});
+		} catch (IOException ignored) {
+			// directory gone -- use what we have
+		}
+	}
+
+	private static Parameter parameterOf(NodeIndex index, String verb, String name) {
+		List<Parameter> declared = index.parameters.get(verb.toLowerCase(Locale.ROOT));
+		if (declared == null) {
+			return null;
+		}
+		for (Parameter p : declared) {
+			if (name.equalsIgnoreCase(p.name)) {
+				return p;
+			}
+		}
+		return null;
+	}
+
+	/** The name(s) on the header of the verb whose body holds this node. */
+	private List<String> enclosingVerbNames(INode leaf) {
+		EObject verbNames = grammar.getVerbHeaderAccess().getIdListParserRuleCall_2();
+		for (INode n = leaf.getParent(); n != null; n = n.getParent()) {
+			if (!isRuleCallTo(n.getGrammarElement(), grammar.getVerbRule())
+					|| !(n instanceof ICompositeNode)) {
+				continue;
+			}
+			List<String> names = new ArrayList<>();
+			for (INode inner : ((ICompositeNode) n).getAsTreeIterable()) {
+				if (inner.getGrammarElement() == verbNames) {
+					for (INode word : inner.getAsTreeIterable()) {
+						if (word instanceof ILeafNode && !((ILeafNode) word).isHidden()
+								&& !word.getText().trim().equals(",")) {
+							names.add(unquote(word.getText().trim()));
+						}
+					}
+				}
+			}
+			return names;   // the innermost verb wins; verbs do not nest
+		}
+		return Collections.emptyList();
+	}
+
+	/** The verb a syntax is defining, when the cursor is inside that syntax. */
+	private List<String> enclosingSyntaxNames(INode leaf) {
+		EObject syntaxName = grammar.getSyntaxItemAccess().getAlanIdParserRuleCall_0();
+		for (INode n = leaf.getParent(); n != null; n = n.getParent()) {
+			if (!isRuleCallTo(n.getGrammarElement(), grammar.getSyntaxItemRule())
+					|| !(n instanceof ICompositeNode)) {
+				continue;
+			}
+			for (INode inner : ((ICompositeNode) n).getAsTreeIterable()) {
+				if (inner.getGrammarElement() == syntaxName) {
+					return Collections.singletonList(unquote(inner.getText().trim()));
+				}
+			}
+			return Collections.emptyList();
+		}
+		return Collections.emptyList();
 	}
 
 	/**
@@ -733,6 +976,45 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 		}
 	}
 
+	/**
+	 * Record, for each syntax, the parameters it declares.
+	 *
+	 * <p>{@code SyntaxElement: AlanId | '(' AlanId ')' OptionalIndicators} -- so a
+	 * parameter is the identifier inside the parentheses, told apart from the literal
+	 * words of the phrase by its grammar element rather than by looking for brackets.
+	 */
+	private void collectSyntaxParameters(XtextResource resource, ICompositeNode root,
+			Map<String, List<Parameter>> into) {
+		EObject syntaxName = grammar.getSyntaxItemAccess().getAlanIdParserRuleCall_0();
+		EObject parameter = grammar.getSyntaxElementAccess().getAlanIdParserRuleCall_1_1();
+
+		for (INode node : root.getAsTreeIterable()) {
+			if (!isRuleCallTo(node.getGrammarElement(), grammar.getSyntaxItemRule())
+					|| !(node instanceof ICompositeNode)) {
+				continue;
+			}
+			String verb = null;
+			List<Parameter> found = new ArrayList<>();
+			for (INode inner : ((ICompositeNode) node).getAsTreeIterable()) {
+				if (verb == null && inner.getGrammarElement() == syntaxName) {
+					verb = unquote(inner.getText().trim());
+				} else if (inner.getGrammarElement() == parameter) {
+					Location loc = documentExtensions.newLocation(resource,
+							new TextRegion(inner.getOffset(), inner.getLength()));
+					if (loc != null) {
+						found.add(new Parameter(unquote(inner.getText().trim()), loc));
+					}
+				}
+			}
+			if (verb != null && !found.isEmpty()) {
+				// A verb may have several syntaxes ('examine (obj)', 'look at (obj)'),
+				// each declaring its own parameters; they accumulate under the name.
+				into.computeIfAbsent(verb.toLowerCase(Locale.ROOT), k -> new ArrayList<>())
+						.addAll(found);
+			}
+		}
+	}
+
 	/** Receives a verb-name declaration: its name, whether it is the syntax, the
 	 *  entity whose body holds it (null at top level), and the declaring node. */
 	private interface VerbSiteSink {
@@ -828,6 +1110,7 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 			Map<String, List<Location>> map = new HashMap<>();
 			Map<String, List<VerbSite>> sites = new HashMap<>();
 			Map<String, String> supers = new HashMap<>();
+			Map<String, List<Parameter>> params = new HashMap<>();
 			try (Stream<Path> files = Files.list(dir)) {
 				files.filter(AlanDocumentSymbolService::isAlanSource).forEach(p -> {
 					try {
@@ -836,6 +1119,7 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 							IParseResult parse = ((XtextResource) r).getParseResult();
 							if (parse != null && parse.getRootNode() != null) {
 								collectHeritage((XtextResource) r, supers);
+								collectSyntaxParameters((XtextResource) r, parse.getRootNode(), params);
 								walkVerbSites(parse.getRootNode(), (declared, isSyntax, entity, node) -> {
 									Location loc = documentExtensions.newLocation((XtextResource) r,
 											new TextRegion(node.getOffset(), node.getLength()));
@@ -864,7 +1148,7 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 			} catch (IOException ignored) {
 				// directory gone -- return whatever we have
 			}
-			NODE_INDEX.put(dir, new NodeIndex(signature, map, sites, supers));
+			NODE_INDEX.put(dir, new NodeIndex(signature, map, sites, supers, params));
 			return map;
 		}
 	}
@@ -923,13 +1207,33 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 		 *  adventure the classes live in one file and the instances in eighty others,
 		 *  so resolving through the model would find nothing at all. */
 		final Map<String, String> superclassOf;
+		/** verb name -> the parameters its syntax declares, e.g. examine -> [obj].
+		 *
+		 *  <p>A parameter is declared in the SYNTAX and used in verb bodies that do not
+		 *  contain it -- the global verb and every entity-local override -- so there is
+		 *  no containment to walk. The link is the verb's NAME, which is why this is a
+		 *  lookup rather than a tree walk. */
+		final Map<String, List<Parameter>> parameters;
 
 		NodeIndex(String signature, Map<String, List<Location>> byName,
-				Map<String, List<VerbSite>> verbSites, Map<String, String> superclassOf) {
+				Map<String, List<VerbSite>> verbSites, Map<String, String> superclassOf,
+				Map<String, List<Parameter>> parameters) {
 			this.signature = signature;
 			this.byName = byName;
 			this.verbSites = verbSites;
 			this.superclassOf = superclassOf;
+			this.parameters = parameters;
+		}
+	}
+
+	/** A parameter a syntax declares, and where it says so. */
+	private static final class Parameter {
+		final String name;
+		final Location location;
+
+		Parameter(String name, Location location) {
+			this.name = name;
+			this.location = location;
 		}
 	}
 
