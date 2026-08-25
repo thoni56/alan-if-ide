@@ -69,22 +69,23 @@ export function activate(context: ExtensionContext) {
         }
     }
 
-    // Pass server-side config via env (same channel for compiler path + format style).
     const cfg = workspace.getConfiguration('alanif');
-    const env = { ...process.env };
-    // Hand the server a RESOLVED compiler rather than the setting verbatim: with the
-    // setting empty the server would fall back to bare `alan`, which misses an SDK
-    // installed in a standard place but not on PATH -- a common case now that the
-    // SDK ships as an unpacked tarball.
-    if (setup.compiler.ok) {
-        env.ALAN_COMPILER = setup.compiler.command;
-    }
-    env.ALANIF_KEYWORD_CASE = cfg.get<string>('format.keywordCase') || 'off';
-    const exec = { command: setup.java.command, args: ['-jar', jar], options: { env } };
+    const exec = { command: setup.java.command, args: ['-jar', jar] };
     const serverOptions: ServerOptions = { run: exec, debug: exec };
 
     const clientOptions: LanguageClientOptions = {
         documentSelector: [{ scheme: 'file', language: 'alanif' }],
+        // Configuration travels over LSP, not as environment variables the launcher
+        // sets. That is what keeps the server usable from Emacs, Neovim or Helix
+        // without any of them knowing how this extension happens to start it.
+        //
+        // The compiler is passed RESOLVED rather than as the raw setting: left empty
+        // the server would fall back to bare `alan`, which misses an SDK installed in
+        // a standard place but not on PATH -- common, now that it ships as a tarball.
+        initializationOptions: {
+            compilerPath: setup.compiler.ok ? setup.compiler.command : undefined,
+            keywordCase: cfg.get<string>('format.keywordCase') || 'off',
+        },
         synchronize: {
             fileEvents: workspace.createFileSystemWatcher('**/*.alan')
         },

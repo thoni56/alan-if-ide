@@ -3,6 +3,7 @@
  */
 package se.alanif.alan.ide;
 
+import org.eclipse.xtext.ide.server.ILanguageServerExtension;
 import org.eclipse.xtext.ide.server.formatting.FormattingService;
 import org.eclipse.xtext.ide.server.occurrences.IDocumentHighlightService;
 import org.eclipse.xtext.ide.server.symbol.DocumentSymbolService;
@@ -28,6 +29,12 @@ public class AlanIdeModule extends AbstractAlanIdeModule {
 	 *  are served by this service, not by DocumentSymbolService above. */
 	public Class<? extends HierarchicalDocumentSymbolService> bindHierarchicalDocumentSymbolService() {
 		return AlanHierarchicalDocumentSymbolService.class;
+	}
+
+	/** Reads the workspace configuration from LSP initializationOptions, so the server
+	 *  does not depend on a launcher setting environment variables for it. */
+	public Class<? extends ILanguageServerExtension> bindILanguageServerExtension() {
+		return AlanServerExtension.class;
 	}
 
 	/** Highlighting other occurrences of the name under the cursor. Xtext's default is

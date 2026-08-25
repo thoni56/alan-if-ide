@@ -44,7 +44,7 @@ import se.alanif.alan.compiler.AlanCompilerRunner;
  */
 public class AlanResourceValidator extends ResourceValidatorImpl {
 
-    private final AlanCompilerRunner compiler = AlanCompilerRunner.fromEnvironment();
+    private final AlanCompilerRunner compiler = AlanCompilerRunner.fromConfiguration();
 
     /** One cached project compile per directory, keyed by the source files' state. */
     private static final Map<Path, ProjectCompile> CACHE = new ConcurrentHashMap<>();

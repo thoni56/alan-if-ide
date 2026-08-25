@@ -85,6 +85,52 @@ finding the tool automatically. **Alan IF: Check Setup** (Command Palette) repor
 what was found and where, and the language status bubble in the status bar shows
 the same while an Alan file is open.
 
+## Using the server from another editor
+
+The language server is a plain LSP server — `java -jar alan-lsp.jar`, speaking over
+stdio — and knows nothing about VS Code. Configuration arrives as LSP
+**initializationOptions**, so any client can supply it in its own idiom:
+
+| key | meaning |
+| --- | --- |
+| `compilerPath` | Path to the Alan compiler. Omit and the server tries `alan` on `PATH`. |
+| `keywordCase` | `off` / `lower` / `upper` / `capitalize` for Format Document. |
+
+The jar is inside any release VSIX (a `.vsix` is a zip) at `extension/server/alan-lsp.jar`,
+or `./build.sh` produces it. It needs Java 21+.
+
+Starting points for three clients — **untested by us**, so corrections are welcome:
+
+```elisp
+;; Emacs, eglot
+(add-to-list 'eglot-server-programs
+             '(alan-mode . ("java" "-jar" "/path/to/alan-lsp.jar"
+                            :initializationOptions
+                            (:compilerPath "/usr/local/bin/alan" :keywordCase "off"))))
+```
+
+```lua
+-- Neovim 0.11+
+vim.lsp.config('alanif', {
+  cmd = { 'java', '-jar', '/path/to/alan-lsp.jar' },
+  filetypes = { 'alan' },
+  init_options = { compilerPath = '/usr/local/bin/alan', keywordCase = 'off' },
+})
+```
+
+```toml
+# Helix, languages.toml
+[language-server.alan-if]
+command = "java"
+args = ["-jar", "/path/to/alan-lsp.jar"]
+config = { compilerPath = "/usr/local/bin/alan", keywordCase = "off" }
+```
+
+Two things do not travel. **Syntax highlighting** is a TextMate grammar that only VS Code
+reads, so other editors need their own until the server offers semantic tokens. And
+**Play** is a VS Code command, because only the client can host an interactive terminal —
+elsewhere, run `arun` yourself.
+
 ## Build from source
 
 A plain Maven-Central build (no Tycho). Needs **JDK 21**, **Maven**, and **Node 20+**

@@ -59,8 +59,8 @@ public final class AlanCompilerRunner {
     }
 
     /** Locate the compiler: the ALAN_COMPILER env var, else {@code alan} on PATH. */
-    public static AlanCompilerRunner fromEnvironment() {
-        String p = System.getenv("ALAN_COMPILER");
+    public static AlanCompilerRunner fromConfiguration() {
+        String p = se.alanif.alan.AlanConfiguration.compiler();
         return new AlanCompilerRunner(p != null && !p.isEmpty() ? p : "alan");
     }
 

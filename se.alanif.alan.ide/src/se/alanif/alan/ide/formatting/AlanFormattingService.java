@@ -43,7 +43,7 @@ public class AlanFormattingService extends FormattingService {
 		// Keyword-case style reaches the server via env (same channel as ALAN_COMPILER);
 		// migrates to proper LSP config with the client-agnostic-config work (#11).
 		AlanStructuralFormatter.KeywordCase keywordCase =
-				AlanStructuralFormatter.KeywordCase.from(System.getenv("ALANIF_KEYWORD_CASE"));
+				AlanStructuralFormatter.KeywordCase.from(se.alanif.alan.AlanConfiguration.keywordCase());
 		String formatted = new AlanStructuralFormatter()
 				.format(parse, original, indentUnit(options), tabSize, keywordCase);
 		if (formatted.equals(original)) {
