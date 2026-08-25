@@ -280,12 +280,27 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 			List<Location> declared = locationOf(resource, binding.declaration);
 			return new Occurrences(declared.isEmpty() ? null : declared.get(0), hits);
 		}
+		NodeIndex index = indexFor(resource);
+		// A parameter is not lexically bound, so without this it fell through to the
+		// by-name sweep -- which EXCLUDES parameter occurrences, and would therefore
+		// have highlighted nothing at all, not even the token under the cursor.
+		ParameterBinding parameter = verbParameterAt(resource, offset, index);
+		if (parameter != null) {
+			List<Location> hits = new ArrayList<>();
+			collectParameterUses(resource, parameter.verb, parameter.declaration.name, hits);
+			// Marked as the declaration only when the syntax is in THIS file; a
+			// highlight never leaves the document it was asked about.
+			Location declared = hits.contains(parameter.declaration.location)
+					? parameter.declaration.location : null;
+			return new Occurrences(declared, hits);
+		}
+
 		String name = nameUnderCursor(resource, offset);
 		if (name == null) {
 			return new Occurrences(null, Collections.emptyList());
 		}
 		List<Location> hits = new ArrayList<>();
-		collectNameOccurrences(resource, name, hits, indexFor(resource));
+		collectNameOccurrences(resource, name, hits, index);
 		return new Occurrences(null, hits);
 	}
 
