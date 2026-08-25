@@ -22,10 +22,10 @@ older Eclipse-RCP *AlanIDE*.
   by name across the project, which is right for classes and instances because those
   names are global in Alan — and it works from the many places Alan references them:
   `isa`, `locate`, `describe`, exits, and so on.
-- **Go to Definition on a verb** shows what decides its behaviour: the syntax that
-  says how the player phrases it, then each class down the hierarchy that overrides
-  it, ending where you are — in Alan's own lookup order, rather than every
-  declaration of the name at once.
+- **Go to Definition on a verb** shows what decides its behaviour: the `syntax` that
+  says how the player phrases it, then the `verb` in each class down the hierarchy
+  that overrides it, ending where you are — in Alan's own lookup order, rather than
+  every declaration of the name at once.
 - **Find All References** (Shift+F12) — scoped the same way, so it agrees with Go to
   Definition: inside a loop you get that loop's uses, outside it the global's. On a
   verb it still lists every implementation, which is the question it answers.
