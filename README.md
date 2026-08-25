@@ -78,8 +78,13 @@ then, install the packaged extension directly:
    [Releases](https://github.com/thoni56/alan-if-ide/releases) page — e.g.
    `alan-if-ide-linux-x64-<version>.vsix`. These bundle a Java runtime. The
    unsuffixed `alan-if-ide-<version>.vsix` does not, and expects Java 21+ of your own.
-2. In VS Code: **Extensions** view → `…` menu → **Install from VSIX…**, and pick the file.
-3. Reload the window.
+2. In VS Code, press **Ctrl+Shift+P** (**Cmd+Shift+P** on a Mac), type `vsix`, and
+   choose **Extensions: Install from VSIX…**. Then pick the file you downloaded.
+
+   That command is also in the **Extensions** view under the `…` menu at the top of
+   the panel, but it is a small unlabelled button and easy to miss — the palette is
+   the surer route.
+3. Reload the window when prompted.
 
 ## Settings
 
