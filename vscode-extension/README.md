@@ -15,10 +15,21 @@ Play, powered by a language server built with [Xtext](https://www.eclipse.org/Xt
 - **Syntax highlighting** for `.alan` and `.i` files.
 - **Document outline** — classes, instances, additions, events, imports, verbs,
   syntax, scripts and synonyms, nested and with distinct icons.
-- **Go to Definition** (`F12`) — across files, for every declaration kind, resolved
-  by name. Works from the many places Alan references things: `isa`, `locate`,
-  `describe`, exits, and so on.
-- **Find All References** (`Shift+F12`) — by name, across the project.
+- **Go to Definition** (`F12`) — across files, and aware of what a name means. A loop
+  variable resolves to its `for each` rather than to an instance elsewhere that shares
+  the name, and `this` resolves to the class or instance you are inside. Everything
+  else resolves by name across the project — right for classes and instances, whose
+  names are global in Alan — and works from `isa`, `locate`, `describe`, exits and the
+  rest.
+- **On a verb**, Go to Definition shows what decides its behaviour: the syntax that
+  says how the player phrases it, then each class down the hierarchy that overrides
+  it, ending where you are. In Alan's own lookup order, instead of every declaration
+  of that name at once.
+- **Find All References** (`Shift+F12`) — scoped to agree with Go to Definition:
+  inside a loop, that loop's uses; outside it, the global's. On a verb it still lists
+  every implementation, which is what that question means.
+- **Occurrences of the name under the cursor are highlighted**, the declaration marked
+  differently from the uses.
 - **Compiler diagnostics** — the real Alan compiler's errors, shown in-editor for a
   whole multi-file adventure. It compiles the *main* file and routes each error back
   to the file it came from, so errors surface in your `.i` imports too.
