@@ -53,37 +53,26 @@ the language server provides the **ergonomics** (navigation, outline, formatting
 
 ## Install
 
-From the [Open VSX Registry](https://open-vsx.org/extension/alanif/alan-if-ide) — search
-for **Alan IF IDE** in the Extensions view of VSCodium, Gitpod, Cursor or any editor that
-uses Open VSX. The build for your platform is selected automatically, and it bundles a
-Java runtime, so there is nothing else to install.
+**Search for "Alan IF IDE" in the Extensions view and click Install.** That works in
+VS Code, and in VSCodium, Gitpod, Cursor or anything else built on Open VSX — the
+extension is published to both registries. The build for your platform is chosen
+automatically and bundles a Java runtime, so there is nothing else to install.
 
 **Or import the author profile** — [`alanif.code-profile`](https://github.com/thoni56/alan-if-ide/releases/latest)
-from the release page. It installs this extension *and* a calmer, prose-oriented VS Code
-set up for writing adventures rather than code. Import it with **File → Preferences →
-Profiles → Import Profile…**. It resolves the extension through whatever registry your
-editor uses, so it is one-click on Open VSX-based editors.
+from the release page. It installs this extension *and* a calmer, prose-oriented editor
+set up for writing adventures rather than code: no minimap, no breadcrumbs, word wrap on,
+and the enclosing `every X` or `verb Y` kept in view while you scroll. Import it with
+**File → Preferences → Profiles → Import Profile…**.
 
-> **Not yet for stock VS Code.** VS Code looks the extension up in Microsoft's
-> Marketplace, does not find it, and skips it without saying so — and because a
-> profile decides which extensions are switched on, the result is a profile with
-> Alan settings and **no Alan extension**: `.i` files go back to being C, and
-> nothing else works either. Until this is on the Marketplace, VS Code users should
-> install the extension from a `.vsix` and skip the profile.
-
-VS Code itself uses Microsoft's Marketplace, which this is not published to yet. Until
-then, install the packaged extension directly:
+If you would rather install a file directly — for an older version, or a machine without
+marketplace access — every release also carries the packaged extensions:
 
 1. Download the `.vsix` for your platform from the
-   [Releases](https://github.com/thoni56/alan-if-ide/releases) page — e.g.
-   `alan-if-ide-linux-x64-<version>.vsix`. These bundle a Java runtime. The
-   unsuffixed `alan-if-ide-<version>.vsix` does not, and expects Java 21+ of your own.
-2. In VS Code, press **Ctrl+Shift+P** (**Cmd+Shift+P** on a Mac), type `vsix`, and
-   choose **Extensions: Install from VSIX…**. Then pick the file you downloaded.
-
-   That command is also in the **Extensions** view under the `…` menu at the top of
-   the panel, but it is a small unlabelled button and easy to miss — the palette is
-   the surer route.
+   [Releases](https://github.com/thoni56/alan-if-ide/releases) page, e.g.
+   `alan-if-ide-win32-x64-<version>.vsix`. These bundle a Java runtime; the unsuffixed
+   `alan-if-ide-<version>.vsix` does not, and expects Java 21+ of your own.
+2. Press **Ctrl+Shift+P** (**Cmd+Shift+P** on a Mac), type `vsix`, and choose
+   **Extensions: Install from VSIX…**. Then pick the file you downloaded.
 3. Reload the window when prompted.
 
 ## Settings

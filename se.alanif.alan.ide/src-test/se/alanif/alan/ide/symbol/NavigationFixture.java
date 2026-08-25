@@ -106,6 +106,18 @@ final class NavigationFixture {
 		return found;
 	}
 
+	/** 1-based lines highlighted as DECLARATIONS (Write) at marker {@code n}, sorted. */
+	List<Integer> declarationsAt(int n) {
+		List<Integer> found = new ArrayList<>();
+		highlights.getDocumentHighlights(resource, offsets.get(n)).forEach(h -> {
+			if (h.getKind() == org.eclipse.lsp4j.DocumentHighlightKind.Write) {
+				found.add(h.getRange().getStart().getLine() + 1);
+			}
+		});
+		found.sort(Integer::compareTo);
+		return found;
+	}
+
 	/** The text of a 1-based line, for failure messages that say what was found. */
 	String line(int number) {
 		return source.split("\n", -1)[number - 1].trim();

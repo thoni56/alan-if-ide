@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.7.1 — 2026-08-25
+
+- **Now on the Visual Studio Marketplace**, so VS Code can find it by searching the
+  Extensions view. No download, no picking a file for your platform, and updates arrive
+  on their own. It remains on Open VSX for VSCodium, Gitpod and the rest.
+- The author profile therefore works in VS Code too — importing it installs the
+  extension along with the settings, which it previously could not do there.
+- Where a name is **declared** is now marked differently from where it is used, for
+  instances and classes as well as for loop variables and verb parameters. Alan spreads
+  one entity across several declaring sites — an `every X` and each `add to every X` —
+  and all of them read as declarations.
+
 ## 0.7.0 — 2026-08-23
 
 **Navigation that knows what a name means.** Until now every feature matched names by

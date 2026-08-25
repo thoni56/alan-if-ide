@@ -37,8 +37,8 @@ public class AlanDocumentHighlightService extends DefaultDocumentHighlightServic
 			// The binder gets Write so it reads as the place the name comes from; VS
 			// Code renders the two differently, which is most of the value when one
 			// word means different things a few lines apart.
-			boolean isDeclaration = found.declaration != null
-					&& found.declaration.getRange().equals(hit.getRange());
+			boolean isDeclaration = found.declarations.stream()
+					.anyMatch(d -> d.getRange().equals(hit.getRange()));
 			highlights.add(new DocumentHighlight(hit.getRange(),
 					isDeclaration ? DocumentHighlightKind.Write : DocumentHighlightKind.Read));
 		}

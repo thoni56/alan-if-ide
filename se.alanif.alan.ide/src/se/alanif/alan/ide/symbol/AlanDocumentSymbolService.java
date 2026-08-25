@@ -259,12 +259,18 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 	 * highlight under the cursor would contradict the list Shift+F12 gives.
 	 */
 	public static final class Occurrences {
-		/** The declaring occurrence, or null when the name is not bound in this file. */
-		public final Location declaration;
+		/**
+		 * The occurrences that DECLARE the name rather than use it.
+		 *
+		 * <p>A list, not one: Alan spreads a single entity across several declaring
+		 * sites -- an {@code every X} and each of its {@code add to every X} -- and all
+		 * of them declare it.
+		 */
+		public final List<Location> declarations;
 		public final List<Location> all;
 
-		Occurrences(Location declaration, List<Location> all) {
-			this.declaration = declaration;
+		Occurrences(List<Location> declarations, List<Location> all) {
+			this.declarations = declarations;
 			this.all = all;
 		}
 	}
@@ -273,12 +279,11 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 		Binding binding = lexicalBinding(resource, offset);
 		if (binding != null) {
 			if (binding.scope == null) {
-				return new Occurrences(null, Collections.emptyList());
+				return new Occurrences(Collections.emptyList(), Collections.emptyList());
 			}
 			List<Location> hits = new ArrayList<>();
 			collectInScope(resource, binding.scope, binding.token, true, hits);
-			List<Location> declared = locationOf(resource, binding.declaration);
-			return new Occurrences(declared.isEmpty() ? null : declared.get(0), hits);
+			return new Occurrences(locationOf(resource, binding.declaration), hits);
 		}
 		NodeIndex index = indexFor(resource);
 		// A parameter is not lexically bound, so without this it fell through to the
@@ -290,18 +295,53 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 			collectParameterUses(resource, parameter.verb, parameter.declaration.name, hits);
 			// Marked as the declaration only when the syntax is in THIS file; a
 			// highlight never leaves the document it was asked about.
-			Location declared = hits.contains(parameter.declaration.location)
-					? parameter.declaration.location : null;
+			List<Location> declared = hits.contains(parameter.declaration.location)
+					? Collections.singletonList(parameter.declaration.location)
+					: Collections.<Location>emptyList();
 			return new Occurrences(declared, hits);
 		}
 
 		String name = nameUnderCursor(resource, offset);
 		if (name == null) {
-			return new Occurrences(null, Collections.emptyList());
+			return new Occurrences(Collections.emptyList(), Collections.emptyList());
 		}
 		List<Location> hits = new ArrayList<>();
 		collectNameOccurrences(resource, name, hits, index);
-		return new Occurrences(null, hits);
+		// Globals are declared where they are declared: an entity's name=, and the
+		// node-model declarations (verb, script, syntax, synonym). Without this every
+		// occurrence of an instance rendered identically, while loop variables and
+		// parameters already showed their declaration apart from their uses.
+		List<Location> declarations = new ArrayList<>();
+		collectDeclarationSites(resource, name, declarations);
+		declarations.retainAll(hits);
+		return new Occurrences(declarations, hits);
+	}
+
+	/** Where {@code name} is DECLARED in this resource, modelled and node-scanned alike. */
+	private void collectDeclarationSites(XtextResource resource, String name, List<Location> into) {
+		IParseResult parse = resource.getParseResult();
+		if (parse == null || parse.getRootNode() == null) {
+			return;
+		}
+		for (Iterator<EObject> it = resource.getAllContents(); it.hasNext(); ) {
+			EObject o = it.next();
+			EStructuralFeature nameFeature = o.eClass().getEStructuralFeature("name");
+			if (nameFeature == null || !EcorePackage.Literals.ESTRING.equals(nameFeature.getEType())) {
+				continue;
+			}
+			Object value = o.eGet(nameFeature);
+			if (value == null || !name.equalsIgnoreCase(unquote(value.toString()))) {
+				continue;
+			}
+			for (INode node : NodeModelUtils.findNodesForFeature(o, nameFeature)) {
+				addNodeLocation(resource, node, into);
+			}
+		}
+		walkNodeDeclarations(parse.getRootNode(), (declared, node) -> {
+			if (name.equalsIgnoreCase(declared)) {
+				addNodeLocation(resource, node, into);
+			}
+		});
 	}
 
 	/**

@@ -220,6 +220,58 @@ class NavigationTest {
 	}
 
 	@Nested
+	@DisplayName("a declaration reads differently from a use")
+	class Declarations {
+
+		@Test
+		@DisplayName("a global's declaring sites are marked, not just its uses")
+		void globalDeclarationsAreMarked() throws Exception {
+			NavigationFixture program = NavigationFixture.of(
+					"The gadget IsA object",                 // 1  declares it
+					"End the gadget.",                       // 2
+					"",
+					"Add to every gadget",                   // 4  ALSO declares it
+					"  Has weight 3.",
+					"End add.",
+					"",
+					"The kitchen IsA location",
+					"End the kitchen.",
+					"",
+					"Every thing IsA object",
+					"  Verb poke",
+					"    Does",
+					"      Locate <1>gadget in kitchen.",    // 14 a use
+					"  End verb.",
+					"End every.",
+					"",
+					"Start at kitchen.");
+			// Both declaring sites read as declarations; the use does not.
+			assertEquals(List.of(1, 4), program.declarationsAt(1));
+			assertEquals(List.of(1, 2, 4, 14), program.highlightsAt(1));
+		}
+
+		@Test
+		@DisplayName("a loop variable's binder is its declaration")
+		void loopBinderIsADeclaration() throws Exception {
+			NavigationFixture program = NavigationFixture.of(
+					"The kitchen IsA location",
+					"End the kitchen.",
+					"",
+					"Every thing IsA object",
+					"  Verb poke",
+					"    Does",
+					"      For each gadget do",              // 7 the binder
+					"        Locate <1>gadget in kitchen.",  // 8
+					"      End each.",
+					"  End verb.",
+					"End every.",
+					"",
+					"Start at kitchen.");
+			assertEquals(List.of(7), program.declarationsAt(1));
+		}
+	}
+
+	@Nested
 	@DisplayName("names that mean nothing to jump to")
 	class NoTarget {
 
