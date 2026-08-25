@@ -215,3 +215,27 @@ jobs:
           OVSX_PAT: ${{ secrets.OVSX_PAT }}
           GH_TOKEN: ${{ github.token }}
         run: ./publish.sh
+
+      # Separate step, and always(): a failure at one registry must not decide whether
+      # the extension reaches the other. They fail independently in practice -- Open VSX
+      # had a day-long outage during 0.4.0, and the Marketplace token carries both an
+      # expiry and a scope deprecation (2026-12-01).
+      - name: Publish to the Microsoft Marketplace
+        if: always()
+        working-directory: vscode-extension
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          set -e
+          VERSION=$(node -p "require('./package.json').version")
+          # One call: --packagePath takes several VSIXes, and each already carries its
+          # own TargetPlatform, so --target would be saying again what the file says.
+          # Platform builds first and the universal one last, as publish.sh does -- if
+          # this dies partway, the targeted builds are the ones authors install.
+          npx vsce publish --packagePath \
+            "alan-if-ide-linux-x64-$VERSION.vsix" \
+            "alan-if-ide-linux-arm64-$VERSION.vsix" \
+            "alan-if-ide-darwin-arm64-$VERSION.vsix" \
+            "alan-if-ide-darwin-x64-$VERSION.vsix" \
+            "alan-if-ide-win32-x64-$VERSION.vsix" \
+            "alan-if-ide-$VERSION.vsix"
