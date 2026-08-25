@@ -16,10 +16,21 @@ older Eclipse-RCP *AlanIDE*.
 - **Syntax highlighting** for `.alan` and `.i` files.
 - **Document outline** — classes, instances, additions, events, imports, verbs,
   syntax, scripts and synonyms, nested and with distinct icons.
-- **Go to Definition** (F12) — across files, for every declaration kind, resolved
-  by name (works from the many places Alan references things: `isa`, `locate`,
-  `describe`, exits, …).
-- **Find All References** (Shift+F12) — by name, across the project.
+- **Go to Definition** (F12) — across files, and aware of what a name means. A loop
+  variable resolves to its `for each`, not to an instance elsewhere that shares the
+  name; `this` resolves to the enclosing class or instance. Everything else resolves
+  by name across the project, which is right for classes and instances because those
+  names are global in Alan — and it works from the many places Alan references them:
+  `isa`, `locate`, `describe`, exits, and so on.
+- **Go to Definition on a verb** shows what decides its behaviour: the syntax that
+  says how the player phrases it, then each class down the hierarchy that overrides
+  it, ending where you are — in Alan's own lookup order, rather than every
+  declaration of the name at once.
+- **Find All References** (Shift+F12) — scoped the same way, so it agrees with Go to
+  Definition: inside a loop you get that loop's uses, outside it the global's. On a
+  verb it still lists every implementation, which is the question it answers.
+- **Highlighting the name under the cursor**, with the declaration marked apart from
+  the uses.
 - **Compiler diagnostics** — the real Alan compiler's errors, in-editor, for a whole
   multi-file adventure (it compiles the *main* and routes each error to its file).
 - **Run / Play** (▶) — compile the project and launch the game in an integrated
