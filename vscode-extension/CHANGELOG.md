@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.2 — 2026-08-26
+
+- **Play now works on Windows.** It was building its command line for bash, so on
+  Windows — where the terminal is PowerShell — it failed before starting, with
+  `Unexpected token '-encoding'`. Reported by an author on Windows. The command is now
+  written for whichever shell the terminal is actually running: PowerShell, `cmd.exe`,
+  or a POSIX shell including Git Bash on Windows.
+
 ## 0.7.1 — 2026-08-25
 
 - **Now on the Visual Studio Marketplace**, so VS Code can find it by searching the

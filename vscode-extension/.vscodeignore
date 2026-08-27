@@ -32,3 +32,7 @@ node_modules/**/.github/**
 
 # A build script for producing the bundled runtime; it is not part of the extension.
 build-jre.sh
+
+# Tests are built alongside the sources; they are not part of the extension.
+out/**/*.test.js
+out/**/*.test.js.map

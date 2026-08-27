@@ -2,7 +2,7 @@
   "name": "alan-if-ide",
   "displayName": "Alan IF IDE",
   "description": "Tooling for the Alan interactive-fiction language (Alan IF): highlighting, navigation, compiler diagnostics, find-references, and play (Xtext LSP).",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "publisher": "alanif",
   "license": "MIT",
   "author": "Thomas Nilefalk",
@@ -182,7 +182,8 @@
     "compile": "tsc -p ./",
     "package": "vsce package",
     "publish:vsce": "vsce publish",
-    "publish:ovsx": "ovsx publish"
+    "publish:ovsx": "ovsx publish",
+    "test": "tsc -p ./ && node --test \"out/**/*.test.js\""
   },
   "dependencies": {
     "vscode-languageclient": "^9.0.1"
