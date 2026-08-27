@@ -39,6 +39,8 @@ public final class FilePaths {
 		try {
 			return Paths.get(repair(file));
 		} catch (InvalidPathException e) {
+			AlanLog.warn("Cannot use '" + file + "' as a file path (" + e.getMessage()
+					+ "), so nothing that needs the file on disk will run for " + uri);
 			return null;
 		}
 	}

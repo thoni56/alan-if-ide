@@ -84,6 +84,30 @@ jobs:
   # All of them are linked on a single Linux runner: jlink can build an image for a
   # foreign platform given that platform's jmods, so there is no need for a runner
   # per OS (and no runner exists for some of these targets anyway).
+  # The one job that runs on Windows. Nothing else here does -- the win32 VSIX is
+  # cross-built on Linux -- and that is precisely how compiler diagnostics and
+  # cross-file navigation stayed broken on Windows from 0.2.0 to 0.7.4: the paths a
+  # Linux runner produces have no drive letter, so the code that mishandled drive
+  # letters was never asked to. This starts a real server as a real process and reads
+  # its diagnostics off the wire, which is the shape of test that would have caught it.
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      # No Alan compiler on the runner, and none needed: the round-trip test supplies
+      # a stub, because what is under test is whether the server runs what it is told
+      # to run and reports what comes back.
+      - name: Run the Java tests on Windows
+        run: mvn -B -ntp test
+
   package:
     needs: build
     runs-on: ubuntu-latest
@@ -177,7 +201,9 @@ jobs:
   # would race, and could leave a half-published release with no single report of
   # what actually landed.
   publish:
-    needs: [build, package]
+    # windows is in here deliberately: a release that breaks Windows should not reach
+    # a registry, and until 0.7.4 nothing in CI could have told us that it had.
+    needs: [build, package, windows]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     # publish.sh retries each file with backoff, so a registry outage could otherwise

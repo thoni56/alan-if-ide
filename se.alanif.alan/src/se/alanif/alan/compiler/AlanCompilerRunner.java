@@ -64,6 +64,11 @@ public final class AlanCompilerRunner {
         return new AlanCompilerRunner(p != null && !p.isEmpty() ? p : "alan");
     }
 
+    /** The command this runner would invoke -- for messages that must name it. */
+    public String path() {
+        return compilerPath;
+    }
+
     public boolean isAvailable() {
         if (compilerPath == null) {
             return false;
@@ -108,6 +113,8 @@ public final class AlanCompilerRunner {
             byte[] outBytes = proc.getInputStream().readAllBytes();
             if (!proc.waitFor(60, TimeUnit.SECONDS)) {
                 proc.destroyForcibly();
+                se.alanif.alan.util.AlanLog.warn("The Alan compiler did not finish within 60 "
+                        + "seconds and was stopped; no diagnostics for this compile.");
                 return out;
             }
             for (String raw : new String(outBytes, StandardCharsets.UTF_8).split("\n")) {
@@ -129,7 +136,11 @@ public final class AlanCompilerRunner {
                         severity(m.group("sev")), m.group("code"), m.group("msg")));
             }
         } catch (IOException | InterruptedException e) {
-            // Compiler missing/failed: surface nothing rather than break validation.
+            // Still no diagnostics rather than a broken validation -- but say so. An
+            // author whose compiler path is wrong sees an empty Problems panel, which
+            // is indistinguishable from a clean project unless we name the reason.
+            se.alanif.alan.util.AlanLog.warn("Could not run the Alan compiler '" + compilerPath
+                    + "': " + e + ". No compiler diagnostics will be reported.");
             if (e instanceof InterruptedException) {
                 Thread.currentThread().interrupt();
             }

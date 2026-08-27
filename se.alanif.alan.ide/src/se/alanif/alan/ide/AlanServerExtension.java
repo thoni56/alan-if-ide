@@ -27,8 +27,11 @@ public class AlanServerExtension implements ILanguageServerExtension {
             Object options = access.getInitializeParams() == null
                     ? null : access.getInitializeParams().getInitializationOptions();
             AlanConfiguration.set(stringAt(options, "compilerPath"), stringAt(options, "keywordCase"));
-        } catch (RuntimeException ignored) {
-            // A malformed option is not worth refusing to start over; the fallbacks hold.
+        } catch (RuntimeException e) {
+            // A malformed option is not worth refusing to start over; the fallbacks
+            // hold. Saying so costs nothing and spares the next person the guess.
+            se.alanif.alan.util.AlanLog.warn("Could not read the client's "
+                    + "initializationOptions (" + e + "); falling back to the environment.");
         }
     }
 

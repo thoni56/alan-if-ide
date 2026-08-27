@@ -24,6 +24,7 @@ import org.eclipse.xtext.validation.Issue;
 import org.eclipse.xtext.validation.ResourceValidatorImpl;
 
 import se.alanif.alan.compiler.AlanCompilerRunner;
+import se.alanif.alan.util.AlanLog;
 import se.alanif.alan.util.FilePaths;
 
 /**
@@ -129,7 +130,15 @@ public class AlanResourceValidator extends ResourceValidatorImpl {
     private List<Issue> compilerIssues(Resource resource) {
         List<Issue> result = new ArrayList<>();
         URI uri = resource.getURI();
-        if (!compiler.isAvailable() || !isAlanSource(uri) || !uri.isFile()) {
+        if (!compiler.isAvailable()) {
+            // The commonest reason an author sees an empty Problems panel, and the one
+            // that looks most like "my project is fine". Worth saying out loud.
+            AlanLog.warn("No Alan compiler available (looked for '" + compiler.path()
+                    + "'), so no compiler diagnostics will be reported. Set "
+                    + "alanif.compiler.path, or put the compiler on PATH.");
+            return result;
+        }
+        if (!isAlanSource(uri) || !uri.isFile()) {
             return result;
         }
         Path dir = fileDirOf(uri);
@@ -309,6 +318,7 @@ public class AlanResourceValidator extends ResourceValidatorImpl {
         try {
             return Files.readString(file, StandardCharsets.UTF_8);
         } catch (IOException e) {
+            AlanLog.warn("Could not read " + file + " (" + e + "), so it was not validated.");
             return null;
         }
     }
@@ -321,6 +331,8 @@ public class AlanResourceValidator extends ResourceValidatorImpl {
                     .findFirst()
                     .orElse(null);
         } catch (IOException e) {
+            AlanLog.warn("Could not list " + dir + " (" + e + "), so the project's main "
+                    + "file could not be found and imports were not validated.");
             return null;
         }
     }

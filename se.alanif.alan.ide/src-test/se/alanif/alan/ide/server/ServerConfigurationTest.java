@@ -16,8 +16,6 @@ import java.util.List;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.DisabledOnOs;
-import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
@@ -44,9 +42,11 @@ class ServerConfigurationTest {
 
 	private static final String STUB_MESSAGE = "Stub compiler was here.";
 
+	private static final boolean WINDOWS = System.getProperty("os.name", "")
+			.toLowerCase(java.util.Locale.ROOT).startsWith("windows");
+
 	@Test
 	@DisplayName("reports diagnostics from the compiler named in its environment")
-	@DisabledOnOs(value = OS.WINDOWS, disabledReason = "the stub compiler is a shell script")
 	void usesTheConfiguredCompiler(@TempDir Path project) throws Exception {
 		Path source = project.resolve("game.alan");
 		Files.writeString(source, String.join("\n",
@@ -62,18 +62,21 @@ class ServerConfigurationTest {
 	}
 
 	/**
-	 * A compiler that always reports one error, at the top of whatever file it was
-	 * handed last. The real compiler is passed a temp copy of the buffer and names
-	 * that copy in its output, so the stub echoes back its own last argument.
+	 * A compiler that always reports one error against game.alan.
+	 *
+	 * <p>It names the source file directly rather than echoing back the temp copy it
+	 * was handed, which spares the stub any argument parsing and so lets the same
+	 * three lines be written for both a POSIX shell and cmd.exe.
 	 */
 	private Path stubCompilerIn(Path dir) throws IOException {
+		String line = "\"game.alan\", line 1 0-3: 999 E : " + STUB_MESSAGE;
+		if (WINDOWS) {
+			Path stub = dir.resolve("stub-alan.cmd");
+			Files.writeString(stub, "@echo off\r\necho " + line + "\r\n");
+			return stub;
+		}
 		Path stub = dir.resolve("stub-alan");
-		Files.writeString(stub, String.join("\n",
-				"#!/bin/sh",
-				"for a; do last=$a; done",
-				"base=${last##*/}",
-				"echo \"\\\"$base\\\", line 1 0-3: 999 E : " + STUB_MESSAGE + "\"",
-				""));
+		Files.writeString(stub, "#!/bin/sh\necho '" + line + "'\n");
 		Files.setPosixFilePermissions(stub, PosixFilePermissions.fromString("rwxr-xr-x"));
 		return stub;
 	}
@@ -88,9 +91,12 @@ class ServerConfigurationTest {
 				Path.of(System.getProperty("java.home"), "bin", "java").toString(),
 				"-cp", System.getProperty("java.class.path"),
 				"org.eclipse.xtext.ide.server.ServerLauncher");
-		// PATH is emptied so a developer's own `alan` cannot rescue a server that
-		// ignored its configuration -- which is exactly how the bug stayed hidden.
-		pb.environment().put("PATH", "");
+		// PATH is stripped of anything that could answer to `alan`, so a developer's
+		// own installation cannot rescue a server that ignored its configuration --
+		// which is exactly how the bug stayed hidden. Windows cannot have it emptied
+		// outright: running a .cmd needs cmd.exe, which lives on PATH, so there it is
+		// narrowed to System32 instead -- which has never held an Alan compiler.
+		pb.environment().put("PATH", WINDOWS ? System.getenv("SystemRoot") + "\\System32" : "");
 		pb.environment().put("ALAN_COMPILER", compiler.toString());
 		pb.redirectError(ProcessBuilder.Redirect.DISCARD);
 		Process server = pb.start();
