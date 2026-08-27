@@ -44,6 +44,7 @@ import org.eclipse.xtext.util.TextRegion;
 import com.google.inject.Inject;
 
 import se.alanif.alan.services.AlanGrammarAccess;
+import se.alanif.alan.util.FilePaths;
 
 /**
  * Go-to-definition for Alan, with two behaviours the base handler lacks.
@@ -1214,14 +1215,7 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 	}
 
 	private static Path dirOf(URI uri) {
-		if (uri == null || !uri.isFile()) {
-			return null;
-		}
-		try {
-			return Paths.get(uri.toFileString()).getParent();
-		} catch (RuntimeException e) {
-			return null;
-		}
+		return FilePaths.dirOf(uri);
 	}
 
 	private static boolean isAlanSource(Path p) {

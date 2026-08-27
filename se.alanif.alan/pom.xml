@@ -21,6 +21,15 @@
   -->
 
   <dependencies>
+    <!-- The Windows-only path bug (see FilePaths) could not be caught by anything we
+         run, so its repair is a pure function with tests of its own. -->
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>5.11.3</version>
+      <scope>test</scope>
+    </dependency>
+
     <!-- Runtime API the generated parser/model + services compile against.
          The xtext-dev-bom manages MWE2/EMF versions but not these top-level
          org.eclipse.xtext.* artifacts, so pin them to ${xtext.version}. -->
@@ -63,6 +72,7 @@
   <build>
     <!-- Grammar + hand-written sources live in src/ (Xtext convention). -->
     <sourceDirectory>src</sourceDirectory>
+    <testSourceDirectory>src-test</testSourceDirectory>
     <!-- The serialized grammar (Alan.xtextbin) and ANTLR .tokens generated into
          src-gen are loaded from the classpath at runtime, so copy the non-Java
          files from src/ and src-gen/ into the jar. -->

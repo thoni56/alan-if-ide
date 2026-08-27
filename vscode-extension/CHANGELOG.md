@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.7.4 — 2026-08-27
+
+- **Compiler errors now appear on Windows — they never had.** Not since 0.7.1, and not
+  since 0.7.3 either: since diagnostics were first added in 0.2.0. VS Code identifies a
+  file as `file:///c:/...`, whose empty authority EMF reads as a network host, handing
+  the server back `\\\c:\Users\...` — three leading backslashes. Windows rejects that as
+  a path, and the error was swallowed as "no such directory", so validation quietly
+  produced nothing. An empty Problems panel was the only symptom.
+- **Go to Definition across files works on Windows** for the same reason: it looks for
+  the project's other files through the same broken path, found none, and reported no
+  definition. A name defined in another file simply had nowhere to be found.
+- Every place needing a file on disk now shares one repair, with tests — written as a
+  pure function over strings so a Linux CI can assert a Windows-only bug. That it could
+  not was why this survived eight releases: the paths our machines produce have no drive
+  letter to trip over.
+
 ## 0.7.3 — 2026-08-27
 
 - **Compiler errors are back in the Problems panel.** Since 0.7.1 it stayed empty for

@@ -24,6 +24,7 @@ import org.eclipse.xtext.validation.Issue;
 import org.eclipse.xtext.validation.ResourceValidatorImpl;
 
 import se.alanif.alan.compiler.AlanCompilerRunner;
+import se.alanif.alan.util.FilePaths;
 
 /**
  * Extends Xtext's validation with real Alan-compiler diagnostics. We hook the
@@ -97,7 +98,7 @@ public class AlanResourceValidator extends ResourceValidatorImpl {
         if (!isAlanSource(uri) || !uri.isFile()) {
             return result;
         }
-        String text = resourceText(resource, Paths.get(uri.toFileString()));
+        String text = resourceText(resource, FilePaths.of(uri));
         if (text == null) {
             return result;
         }
@@ -132,7 +133,7 @@ public class AlanResourceValidator extends ResourceValidatorImpl {
             return result;
         }
         Path dir = fileDirOf(uri);
-        Path resourceFile = uri.isFile() ? Paths.get(uri.toFileString()) : null;
+        Path resourceFile = FilePaths.of(uri);
         if (dir == null || resourceFile == null) {
             return result;
         }
@@ -302,6 +303,9 @@ public class AlanResourceValidator extends ResourceValidatorImpl {
     }
 
     private static String readFile(Path file) {
+        if (file == null) {
+            return null;   // a URI we could not turn into a path; nothing to read
+        }
         try {
             return Files.readString(file, StandardCharsets.UTF_8);
         } catch (IOException e) {
@@ -344,14 +348,7 @@ public class AlanResourceValidator extends ResourceValidatorImpl {
     }
 
     private static Path fileDirOf(URI uri) {
-        if (uri == null || !uri.isFile()) {
-            return null;
-        }
-        try {
-            return Paths.get(uri.toFileString()).getParent();
-        } catch (RuntimeException e) {
-            return null;
-        }
+        return FilePaths.dirOf(uri);
     }
 
     /** 0-based char offset -> 1-based (line, column), matching Xtext Issue positions. */
