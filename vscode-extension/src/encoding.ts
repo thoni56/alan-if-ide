@@ -1,3 +1,4 @@
+import * as path from 'path';
 import * as fs from 'fs';
 
 /**
@@ -70,4 +71,49 @@ export function convertToUtf8(path: string): void {
     const bytes = fs.readFileSync(path);
     const text = bytes.toString('latin1');   // bijective: every byte maps to one char
     fs.writeFileSync(path, Buffer.from(text, 'utf8'));
+}
+
+/**
+ * Files a compile reaches through `Import` that lie outside the given set.
+ *
+ * <p>A project is its main plus everything Import pulls in, and that routinely leaves
+ * the folder the author has open: an Italian Cloak of Darkness is one file importing
+ * a library two directories up. We follow the same trail the compiler does so we can
+ * SAY which outside files are still in the old encoding -- but not convert them. They
+ * are typically a shared library inside someone else's checkout, used by every other
+ * game on the disk, and rewriting ten files because one demo was opened is not a
+ * decision this dialog is entitled to make.
+ */
+export function legacyOutside(workspaceFiles: string[]): Legacy[] {
+    const inside = new Set(workspaceFiles.map(f => path.resolve(f)));
+    const seen = new Set<string>();
+    const found: Legacy[] = [];
+
+    const follow = (file: string) => {
+        const here = path.resolve(file);
+        if (seen.size > 500 || seen.has(here) || !fs.existsSync(here)) {
+            return;
+        }
+        seen.add(here);
+        let bytes: Buffer;
+        try {
+            bytes = fs.readFileSync(here);
+        } catch {
+            return;
+        }
+        if (!inside.has(here) && !isUtf8(bytes)) {
+            found.push({ path: here, highBytes: bytes.filter(b => b >= 0x80).length });
+        }
+        // Read as latin1 so a file in ANY single-byte encoding still yields readable
+        // ASCII import lines -- decoding as UTF-8 would fail on the very files we want.
+        const text = bytes.toString('latin1');
+        const imports = /^[^'"\n]*?\bimport\s+(['"])(.+?)\1/gim;
+        let m: RegExpExecArray | null;
+        while ((m = imports.exec(text)) !== null) {
+            follow(path.resolve(path.dirname(here), m[2]));
+        }
+    };
+
+    workspaceFiles.forEach(follow);
+    return found;
 }

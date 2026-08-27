@@ -26,6 +26,7 @@ import org.eclipse.xtext.validation.ResourceValidatorImpl;
 import se.alanif.alan.compiler.AlanCompilerRunner;
 import se.alanif.alan.util.AlanLog;
 import se.alanif.alan.util.FilePaths;
+import se.alanif.alan.util.ProjectFiles;
 
 /**
  * Extends Xtext's validation with real Alan-compiler diagnostics. We hook the
@@ -197,19 +198,12 @@ public class AlanResourceValidator extends ResourceValidatorImpl {
                     continue;   // we are already marking the exact characters
                 }
                 // The compiler blames the main whatever file it was actually reading,
-                // so say what is wrong instead of naming a C source line. TWO causes
-                // produce this identical error and we cannot yet tell them apart:
-                // a character above U+00FF (which we mark, in whichever file has it),
-                // or a source file that is not UTF-8 at all -- legal ISO-8859-1 fails
-                // exactly the same way, because we ask for utf8 unconditionally. Say
-                // both rather than send the author hunting for a character that may
-                // not exist. Distinguishing them is #33.
-                message = "The Alan compiler could not read this project, so no other "
-                        + "errors can be reported. Either a source file contains a "
-                        + "character that cannot be represented in ISO-8859-1 -- those are "
-                        + "marked where they occur -- or a source file is not UTF-8. Older "
-                        + "Alan sources are ISO-8859-1; check the encoding shown in the "
-                        + "status bar.";
+                // and at line 0, so its message cannot say which file is at fault --
+                // which is the only thing the author needs. Work it out ourselves by
+                // following the imports and testing each file, because a project is
+                // its main plus everything Import reaches, and that routinely lives
+                // outside the folder the author has open.
+                message = conversionFailureMessage(main);
             }
             Issue.IssueImpl issue = new Issue.IssueImpl();
             issue.setMessage(message);
@@ -235,6 +229,44 @@ public class AlanResourceValidator extends ResourceValidatorImpl {
      * 997 code alone, since 997 is the generic system-error number and is used for
      * unrelated internal errors too.
      */
+
+    /**
+     * What to say when the compiler could not read the project as UTF-8.
+     *
+     * <p>Names the offending files where we can find them. Two causes produce the
+     * identical error from the compiler: a character above U+00FF (which we mark
+     * where it occurs) or a file that is not UTF-8 at all. Naming files settles the
+     * second, which is much the commoner: older Alan sources, and whole libraries of
+     * them, are ISO-8859-1.
+     */
+    private static String conversionFailureMessage(Path main) {
+        List<Path> offenders = ProjectFiles.notUtf8(ProjectFiles.reachableFrom(main));
+        if (offenders.isEmpty()) {
+            return "The Alan compiler could not read this project, so no other errors "
+                    + "can be reported. Either a source file contains a character that "
+                    + "cannot be represented in ISO-8859-1 -- those are marked where they "
+                    + "occur -- or a source file is not UTF-8. Older Alan sources are "
+                    + "ISO-8859-1; check the encoding shown in the status bar.";
+        }
+        StringBuilder names = new StringBuilder();
+        for (int i = 0; i < offenders.size() && i < 5; i++) {
+            names.append(i == 0 ? "" : ", ").append(offenders.get(i).getFileName());
+        }
+        if (offenders.size() > 5) {
+            names.append(" and ").append(offenders.size() - 5).append(" more");
+        }
+        // The directory matters as much as the name here: these are usually a shared
+        // library reached through Import, sitting outside the folder that is open, so
+        // "convert the files you can see" has already been done and did not help.
+        return "The Alan compiler could not read this project, so no other errors can be "
+                + "reported. " + offenders.size() + (offenders.size() == 1 ? " file is" : " files are")
+                + " not UTF-8: " + names + ". "
+                + (offenders.get(0).getParent() != null
+                        ? "The first is in " + offenders.get(0).getParent() + ". " : "")
+                + "Open the folder containing them to convert them, or convert them with "
+                + "iconv -f ISO-8859-1 -t UTF-8.";
+    }
+
     private static boolean isConversionFailure(AlanCompilerRunner.Diagnostic d) {
         return d.message != null && d.message.contains("readWithConversionFromUtf8");
     }

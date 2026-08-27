@@ -1,6 +1,6 @@
 import * as path from 'path';
 import { EventEmitter, Event, commands, window, workspace, Uri } from 'vscode';
-import { Legacy, findLegacy, convertToUtf8 } from './encoding';
+import { Legacy, findLegacy, convertToUtf8, legacyOutside } from './encoding';
 
 /**
  * What the last scan found, so the language status bubble can keep offering the fix
@@ -36,10 +36,18 @@ async function rescan(): Promise<Legacy[]> {
  */
 export async function ensureUtf8Sources(): Promise<void> {
     const legacy = await rescan();
+    const sources = await workspace.findFiles('**/*.{alan,i}', '**/node_modules/**');
+    const outside = legacyOutside(sources.map(u => u.fsPath));
     if (legacy.length === 0) {
+        // Nothing here to convert, but the compile can still be dead: the offending
+        // file may be an imported library outside this folder. Saying so is the whole
+        // difference between a five-minute fix and an afternoon.
+        if (outside.length > 0) {
+            reportOutside(outside);
+        }
         return;
     }
-    const total = (await workspace.findFiles('**/*.{alan,i}', '**/node_modules/**')).length;
+    const total = sources.length;
 
     // A file being rewritten underneath an unsaved buffer would be undone by the next
     // save, and the buffer holds the mis-decoded text -- exactly what we are removing.
@@ -61,7 +69,7 @@ export async function ensureUtf8Sources(): Promise<void> {
     // bell icon they have never noticed.
     const choice = await window.showWarningMessage(
         `${legacy.length} of ${total} Alan source files are not UTF-8`,
-        { modal: true, detail: detail(legacy) },
+        { modal: true, detail: detail(legacy, outside) },
         'Convert to UTF-8', 'Show Files');
 
     if (choice === 'Show Files') {
@@ -108,7 +116,31 @@ export async function ensureUtf8Sources(): Promise<void> {
     }
 }
 
-function detail(legacy: Legacy[]): string {
+/**
+ * Name the files we will not touch.
+ *
+ * <p>Not an offer. These are reached through Import from outside the open folder --
+ * in practice a shared library in someone else's checkout, which every other game on
+ * the disk compiles against. Converting it is a decision for whoever owns it, made by
+ * opening that folder; our job is to make sure it is not a mystery.
+ */
+function reportOutside(outside: Legacy[]): void {
+    window.showWarningMessage(
+        `Alan IF: ${names(outside.map(l => l.path))} ${outside.length === 1 ? 'is' : 'are'} `
+        + 'not UTF-8, so the Alan compiler cannot read this project and no errors can be '
+        + `reported. ${outside.length === 1 ? 'It is' : 'They are'} imported from outside `
+        + 'this folder, so it is not converted from here: open the folder containing '
+        + `${outside.length === 1 ? 'it' : 'them'} to convert, or use `
+        + 'iconv -f ISO-8859-1 -t UTF-8.',
+        'Show Files').then(choice => {
+            if (choice === 'Show Files') {
+                outside.slice(0, 5).forEach(l => window.showTextDocument(
+                    Uri.file(l.path), { preview: false }));
+            }
+        });
+}
+
+function detail(legacy: Legacy[], outside: Legacy[]): string {
     const chars = legacy.reduce((n, l) => n + l.highBytes, 0);
     return `${names(legacy.map(l => l.path))} contain ${chars} character`
         + `${chars === 1 ? '' : 's'} written in an older encoding. Their text is shown `
@@ -123,7 +155,13 @@ function detail(legacy: Legacy[]): string {
         // should be able to tell it is somewhere else, not a menu they missed.
         + 'If you really need to reverse the conversion later, that is done with iconv, '
         + 'a separate command-line program rather than anything in VS Code: '
-        + 'iconv -f UTF-8 -t ISO-8859-1';
+        + 'iconv -f UTF-8 -t ISO-8859-1'
+        // Said here too, because converting everything on offer and still being unable
+        // to compile is precisely the outcome that makes the feature look broken.
+        + (outside.length === 0 ? '' : `\n\nNote that ${names(outside.map(l => l.path))} `
+            + `${outside.length === 1 ? 'is' : 'are'} also not UTF-8 but imported from `
+            + 'outside this folder, and will NOT be converted. The compiler cannot read '
+            + `the project until ${outside.length === 1 ? 'it is' : 'they are'} converted too.`);
 }
 
 /** "a.i", "a.i and b.i", "a.i and 4 others" -- a notification is prose, not a list. */
