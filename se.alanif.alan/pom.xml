@@ -107,9 +107,9 @@
             resolves baseName against THIS module.
           -->
           <arguments>
-            <argument>${project.basedir}/src/se/alanif/alan/GenerateAlan.mwe2</argument>
+            <argument>${project.basedir.slashes}/src/se/alanif/alan/GenerateAlan.mwe2</argument>
             <argument>-p</argument>
-            <argument>rootPath=${project.basedir}/..</argument>
+            <argument>rootPath=${project.basedir.slashes}/..</argument>
           </arguments>
           <classpathScope>compile</classpathScope>
           <includePluginDependencies>false</includePluginDependencies>
@@ -129,6 +129,28 @@
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>build-helper-maven-plugin</artifactId>
         <executions>
+          <!--
+            basedir with forward slashes. On Windows ${project.basedir} comes back
+            with backslashes, and MWE2 is handed basedir + "/src/...", so the workflow
+            path arrives mixed (d:\a\proj/src/...). MWE2 then says it cannot create a
+            resource for it, needing a registered resource factory: it reads the
+            argument as a URI, where a backslash is not a separator. Forward slashes
+            work on both platforms.
+
+            This runs at validate, before the generate-sources execution that uses it.
+          -->
+          <execution>
+            <id>basedir-with-forward-slashes</id>
+            <phase>validate</phase>
+            <goals><goal>regex-property</goal></goals>
+            <configuration>
+              <name>project.basedir.slashes</name>
+              <value>${project.basedir}</value>
+              <regex>\\</regex>
+              <replacement>/</replacement>
+              <failIfNoMatch>false</failIfNoMatch>
+            </configuration>
+          </execution>
           <execution>
             <id>add-src-gen</id>
             <phase>generate-sources</phase>
