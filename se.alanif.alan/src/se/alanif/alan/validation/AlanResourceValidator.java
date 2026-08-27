@@ -24,6 +24,7 @@ import org.eclipse.xtext.validation.Issue;
 import org.eclipse.xtext.validation.ResourceValidatorImpl;
 
 import se.alanif.alan.compiler.AlanCompilerRunner;
+import se.alanif.alan.compiler.ProjectDiagnostics;
 
 /**
  * Extends Xtext's validation with real Alan-compiler diagnostics. We hook the
@@ -48,6 +49,16 @@ public class AlanResourceValidator extends ResourceValidatorImpl {
 
     /** One cached project compile per directory, keyed by the source files' state. */
     private static final Map<Path, ProjectCompile> CACHE = new ConcurrentHashMap<>();
+
+    /**
+     * What was last handed to the client, per directory.
+     *
+     * <p>Validation runs on every keystroke in an open file, and a project's compile
+     * result usually has not changed. Republishing eighty-three files each time would
+     * cost more than the compile, so the result is fingerprinted and sent only when it
+     * differs.
+     */
+    private static final Map<Path, String> PUBLISHED = new ConcurrentHashMap<>();
 
     @Override
     public List<Issue> validate(Resource resource, CheckMode mode, CancelIndicator monitor) {
@@ -162,6 +173,7 @@ public class AlanResourceValidator extends ResourceValidatorImpl {
         List<AlanCompilerRunner.Diagnostic> diags;
         if (main.equals(resourceFile)) {
             diags = compiler.run(resourceText, dir, resourceName);
+            publishIfChanged(dir, diags);
         } else {
             // The compiler reads imports from DISK (only the main's buffer is live).
             // If this import's buffer differs from disk, the compiler's markers are
@@ -252,7 +264,28 @@ public class AlanResourceValidator extends ResourceValidatorImpl {
                     ? new ArrayList<>()
                     : compiler.run(mainText, dir, main.getFileName().toString());
             CACHE.put(dir, new ProjectCompile(signature, diags));
+            publishIfChanged(dir, diags);
             return diags;
+        }
+    }
+
+    /**
+     * Hand the whole compile result to the client, if it says something new.
+     *
+     * <p>The fingerprint covers file, offset, severity and message, so a compile that
+     * finds the same problems in the same places is silent -- which is what happens on
+     * almost every keystroke.
+     */
+    private static void publishIfChanged(Path dir, List<AlanCompilerRunner.Diagnostic> diags) {
+        StringBuilder fingerprint = new StringBuilder();
+        for (AlanCompilerRunner.Diagnostic d : diags) {
+            fingerprint.append(d.file).append(':').append(d.offset).append(':')
+                    .append(d.severity).append(':').append(d.message).append('\n');
+        }
+        String now = fingerprint.toString();
+        if (!now.equals(PUBLISHED.get(dir))) {
+            PUBLISHED.put(dir, now);
+            ProjectDiagnostics.publish(dir, diags);
         }
     }
 
