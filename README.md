@@ -93,13 +93,18 @@ the same while an Alan file is open.
 ## Using the server from another editor
 
 The language server is a plain LSP server — `java -jar alan-lsp.jar`, speaking over
-stdio — and knows nothing about VS Code. Configuration arrives as LSP
-**initializationOptions**, so any client can supply it in its own idiom:
+stdio — and knows nothing about VS Code. Configure it through the **environment of
+the process you launch**:
 
-| key | meaning |
+| variable | meaning |
 | --- | --- |
-| `compilerPath` | Path to the Alan compiler. Omit and the server tries `alan` on `PATH`. |
-| `keywordCase` | `off` / `lower` / `upper` / `capitalize` for Format Document. |
+| `ALAN_COMPILER` | Path to the Alan compiler. Omit and the server tries `alan` on `PATH`. |
+| `ALANIF_KEYWORD_CASE` | `off` / `lower` / `upper` / `capitalize` for Format Document. |
+
+The server also has code to read the same two settings from LSP
+`initializationOptions` (`compilerPath`, `keywordCase`) — the more idiomatic channel,
+and the intended one — but that code never runs, so today the environment is the only
+thing that configures it.
 
 The jar is inside any release VSIX (a `.vsix` is a zip) at `extension/server/alan-lsp.jar`,
 or `./build.sh` produces it. It needs Java 21+.
@@ -108,18 +113,17 @@ Starting points for three clients — **untested by us**, so corrections are wel
 
 ```elisp
 ;; Emacs, eglot
+(setenv "ALAN_COMPILER" "/usr/local/bin/alan")
 (add-to-list 'eglot-server-programs
-             '(alan-mode . ("java" "-jar" "/path/to/alan-lsp.jar"
-                            :initializationOptions
-                            (:compilerPath "/usr/local/bin/alan" :keywordCase "off"))))
+             '(alan-mode . ("java" "-jar" "/path/to/alan-lsp.jar")))
 ```
 
 ```lua
 -- Neovim 0.11+
 vim.lsp.config('alanif', {
   cmd = { 'java', '-jar', '/path/to/alan-lsp.jar' },
+  cmd_env = { ALAN_COMPILER = '/usr/local/bin/alan', ALANIF_KEYWORD_CASE = 'off' },
   filetypes = { 'alan' },
-  init_options = { compilerPath = '/usr/local/bin/alan', keywordCase = 'off' },
 })
 ```
 
@@ -128,7 +132,7 @@ vim.lsp.config('alanif', {
 [language-server.alan-if]
 command = "java"
 args = ["-jar", "/path/to/alan-lsp.jar"]
-config = { compilerPath = "/usr/local/bin/alan", keywordCase = "off" }
+environment = { ALAN_COMPILER = "/usr/local/bin/alan", ALANIF_KEYWORD_CASE = "off" }
 ```
 
 Two things do not travel. **Syntax highlighting** is a TextMate grammar that only VS Code

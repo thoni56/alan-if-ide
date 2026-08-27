@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.7.3 — 2026-08-27
+
+- **Compiler errors are back in the Problems panel.** Since 0.7.1 it stayed empty for
+  everyone whose Alan compiler is not on the system `PATH` — which is most people on
+  Windows, where pointing at the compiler is exactly what the setting is for. The
+  extension had stopped telling the server where the compiler was, and nothing said so:
+  the server simply looked for `alan` on `PATH`, found none, and reported nothing. It
+  survived two releases because on a machine where `alan` *is* on `PATH` the wrong
+  behaviour and the right one look identical. Reported by an author on Windows.
+- Using the server from another editor: the README's Emacs, Neovim and Helix recipes
+  configured it through LSP `initializationOptions`, which the server does not in fact
+  read. They now use the environment variables it does read.
+
 ## 0.7.2 — 2026-08-26
 
 - **Play now works on Windows.** It was building its command line for bash, so on

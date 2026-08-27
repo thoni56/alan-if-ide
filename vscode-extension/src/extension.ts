@@ -10,6 +10,7 @@ import { play, onTerminalClosed } from './play';
 import { missingJavaMessage } from './java';
 import { initEnvironment } from './environment';
 import { resolveCompiler } from './toolchain';
+import { serverEnvironment } from './serverConfig';
 import { createStatusItems } from './status';
 import { locateCompiler, locateInterpreter, checkToolchain } from './locate';
 import { ensureUtf8Sources } from './convert';
@@ -71,7 +72,19 @@ export function activate(context: ExtensionContext) {
     }
 
     const cfg = workspace.getConfiguration('alanif');
-    const exec = { command: setup.java.command, args: ['-jar', jar] };
+    // The server is told its configuration BOTH ways, and that is not belt-and-braces
+    // -- the environment is the half that actually works today. #11 replaced it with
+    // initializationOptions alone, which the server never receives, and diagnostics
+    // were dead from 0.7.1 for anyone whose compiler was not on PATH. It went
+    // unnoticed because on a developer's machine `alan` IS on PATH, so the client's
+    // fallback and the server's fallback produce the same answer and nothing looks
+    // broken. initializationOptions is sent anyway, so that whenever the server is
+    // taught to read it, this client is already speaking the intended channel.
+    const exec = {
+        command: setup.java.command,
+        args: ['-jar', jar],
+        options: { env: serverEnvironment(process.env, setup.compiler, cfg.get<string>('format.keywordCase')) },
+    };
     const serverOptions: ServerOptions = { run: exec, debug: exec };
 
     const clientOptions: LanguageClientOptions = {
