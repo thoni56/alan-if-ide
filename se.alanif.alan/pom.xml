@@ -107,7 +107,7 @@
             resolves baseName against THIS module.
           -->
           <arguments>
-            <argument>${project.basedir.slashes}/src/se/alanif/alan/GenerateAlan.mwe2</argument>
+            <argument>file://${project.basedir.uri}/src/se/alanif/alan/GenerateAlan.mwe2</argument>
             <argument>-p</argument>
             <argument>rootPath=${project.basedir.slashes}/..</argument>
           </arguments>
@@ -147,6 +147,22 @@
               <name>project.basedir.slashes</name>
               <value>${project.basedir}</value>
               <regex>\\</regex>
+              <replacement>/</replacement>
+              <failIfNoMatch>false</failIfNoMatch>
+            </configuration>
+          </execution>
+          <execution>
+            <id>basedir-as-file-uri</id>
+            <phase>validate</phase>
+            <goals><goal>regex-property</goal></goals>
+            <configuration>
+              <name>project.basedir.uri</name>
+              <value>${project.basedir.slashes}</value>
+              <!-- Give it a leading slash if it has none, so that "file://" + this is
+                   a well-formed file URI on both platforms: file:///home/... and
+                   file:///d:/a/.... Without it Windows yields file://d:/a/..., where
+                   "d:" is read as the authority. -->
+              <regex>^(?!/)</regex>
               <replacement>/</replacement>
               <failIfNoMatch>false</failIfNoMatch>
             </configuration>
