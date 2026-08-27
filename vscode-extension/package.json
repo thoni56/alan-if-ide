@@ -166,7 +166,7 @@
         "alanif.java.home": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Path to a JDK/JRE 21+ home for the language server. Leave empty to use the runtime bundled with the extension; if this build has none, `JAVA_HOME` and then `java` on your `PATH` are tried. Most authors never need to set this.\n\n[Check setup](command:alanif.checkToolchain)",
+          "markdownDescription": "Path to a JDK/JRE 21+ home for the language server. Leave empty and the runtime bundled with the extension is used — the builds for each platform carry one, so most authors never need this. The platform-neutral build carries none, and falls back to `JAVA_HOME` and then `java` on your `PATH`.\n\n[Check setup](command:alanif.checkToolchain)",
           "order": 5
         }
       }

@@ -84,7 +84,11 @@ export function createStatusItems(context: ExtensionContext): void {
         } else {
             const old = env.java.tooOld[0];
             java.text = old ? `Java ${old.version} — too old` : 'Java not found';
-            java.detail = `The language server needs Java ${MINIMUM_JAVA} or later`;
+            // Say WHICH build this is when it has no runtime of its own: without that,
+            // "needs Java 21" contradicts a settings page promising a bundled one.
+            java.detail = env.java.bundled
+                ? `The language server needs Java ${MINIMUM_JAVA} or later`
+                : `Needs Java ${MINIMUM_JAVA}+; this platform-neutral build bundles none`;
             java.severity = LanguageStatusSeverity.Error;
             java.command = settingsCommand('alanif.java.home');
         }

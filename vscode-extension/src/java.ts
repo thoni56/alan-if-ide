@@ -18,6 +18,17 @@ export interface JavaMissing {
     ok: false;
     /** Candidates that exist but are too old, for a precise error message. */
     tooOld: { command: string; version: number; source: JavaSource }[];
+    /**
+     * Whether this install carries a Java runtime at all.
+     *
+     * <p>The platform builds do; the platform-neutral one does not. An author can end
+     * up on the neutral build without choosing it -- the six builds are verified
+     * independently by the marketplace, and the neutral one is a third the size, so it
+     * clears first and is briefly the only thing on offer after a release. Someone who
+     * installs in that window is then told to install Java by an extension whose own
+     * settings promise a bundled one.
+     */
+    bundled: boolean;
 }
 
 export const MINIMUM_JAVA = 21;
@@ -41,7 +52,8 @@ export function resolveJava(extensionPath: string, configuredHome?: string): Jav
     }
 
     const bundled = path.join(extensionPath, 'jre');
-    if (fs.existsSync(bundled)) {
+    const hasBundled = fs.existsSync(bundled);
+    if (hasBundled) {
         candidates.push({ command: javaBin(bundled), source: 'the bundled runtime' });
     }
 
@@ -71,7 +83,7 @@ export function resolveJava(extensionPath: string, configuredHome?: string): Jav
                 : undefined
         };
     }
-    return { ok: false, tooOld };
+    return { ok: false, tooOld, bundled: hasBundled };
 }
 
 function javaBin(home: string): string {
@@ -109,12 +121,23 @@ function probeVersion(command: string): number | undefined {
 
 /** A message that tells the user what is wrong *and* what to do about it. */
 export function missingJavaMessage(missing: JavaMissing): string {
-    if (missing.tooOld.length > 0) {
-        const { source, version } = missing.tooOld[0];
-        return `Alan IF IDE needs Java ${MINIMUM_JAVA} or later, but ${source} provides Java ${version}. ` +
-            `Point alanif.java.home at a newer JDK/JRE, or install one.`;
+    const found = missing.tooOld.length > 0
+        ? `Alan IF IDE needs Java ${MINIMUM_JAVA} or later, but ${missing.tooOld[0].source} `
+            + `provides Java ${missing.tooOld[0].version}.`
+        : `Alan IF IDE could not find Java ${MINIMUM_JAVA} or later, which the language `
+            + `server needs.`;
+
+    if (!missing.bundled) {
+        // The likeliest way to be here, and the one the author cannot diagnose: they
+        // have the platform-neutral build, which carries no runtime, and every other
+        // message in the extension assumes one is bundled. Lead with the remedy that
+        // does not require them to install anything.
+        return `${found} This is the platform-neutral build of the extension, which `
+            + `carries no Java of its own. Reinstalling it will fetch the build for your `
+            + `platform, which does — uninstall Alan IF IDE, then install it again from `
+            + `the Extensions view. Otherwise install a JDK or JRE ${MINIMUM_JAVA}+ and `
+            + `point alanif.java.home at it.`;
     }
-    return `Alan IF IDE could not find Java ${MINIMUM_JAVA}+, which the language server needs. ` +
-        `Install a JDK/JRE ${MINIMUM_JAVA}+ and set alanif.java.home, or put java on your PATH. ` +
-        `Editing will not work until then.`;
+    return `${found} Point alanif.java.home at a newer JDK or JRE, or install one. `
+        + `Editing will not work until then.`;
 }
