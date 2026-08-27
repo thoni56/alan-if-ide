@@ -9,6 +9,7 @@ import {
 import { play, onTerminalClosed } from './play';
 import { missingJavaMessage } from './java';
 import { initEnvironment } from './environment';
+import { resolveCompiler } from './toolchain';
 import { createStatusItems } from './status';
 import { locateCompiler, locateInterpreter, checkToolchain } from './locate';
 import { ensureUtf8Sources } from './convert';
@@ -82,9 +83,18 @@ export function activate(context: ExtensionContext) {
         // The compiler is passed RESOLVED rather than as the raw setting: left empty
         // the server would fall back to bare `alan`, which misses an SDK installed in
         // a standard place but not on PATH -- common, now that it ships as a tarball.
-        initializationOptions: {
-            compilerPath: setup.compiler.ok ? setup.compiler.command : undefined,
-            keywordCase: cfg.get<string>('format.keywordCase') || 'off',
+        // A FUNCTION, not an object: it is evaluated each time the client starts, so a
+        // restart picks up settings that changed since. As a fixed object it captured
+        // whatever was true at activation, which is how an author could point at their
+        // compiler with Locate and still get no diagnostics -- the client re-resolves
+        // on every Play, but the server had been told once and never again.
+        initializationOptions: () => {
+            const current = workspace.getConfiguration('alanif');
+            const found = resolveCompiler(current.get<string>('compiler.path'));
+            return {
+                compilerPath: found.ok ? found.command : undefined,
+                keywordCase: current.get<string>('format.keywordCase') || 'off',
+            };
         },
         synchronize: {
             fileEvents: workspace.createFileSystemWatcher('**/*.alan')
@@ -127,18 +137,21 @@ export function activate(context: ExtensionContext) {
     };
     updatePlayStatus();
 
-    // The keyword-case style is passed to the server at launch (via env), so a
-    // change only takes effect after the server restarts -- offer to reload.
-    const reloadOnChange = workspace.onDidChangeConfiguration(e => {
-        if (e.affectsConfiguration('alanif.format.keywordCase')) {
-            window.showInformationMessage(
-                'Alan IF: reload the window for the new keyword-case setting to take effect.',
-                'Reload'
-            ).then(choice => {
-                if (choice === 'Reload') {
-                    commands.executeCommand('workbench.action.reloadWindow');
-                }
-            });
+    // Settings the SERVER is told about at startup. Restarting the client is enough
+    // to deliver them -- a whole window reload was never necessary, and asking for one
+    // is asking to be ignored, which left diagnostics silently dead for anyone who
+    // dismissed the prompt.
+    const restartOnChange = workspace.onDidChangeConfiguration(async e => {
+        if (!e.affectsConfiguration('alanif.compiler.path')
+            && !e.affectsConfiguration('alanif.format.keywordCase')) {
+            return;
+        }
+        try {
+            await client.stop();
+            await client.start();
+        } catch {
+            // A failed restart leaves the old server running, which is no worse than
+            // before; the setup surfaces will show what the state is.
         }
     });
 
@@ -168,7 +181,7 @@ export function activate(context: ExtensionContext) {
     context.subscriptions.push(
         playStatus,
         window.onDidChangeActiveTextEditor(updatePlayStatus),
-        reloadOnChange
+        restartOnChange
     );
 }
 

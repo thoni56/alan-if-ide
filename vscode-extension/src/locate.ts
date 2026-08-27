@@ -36,14 +36,12 @@ export async function locateCompiler(): Promise<void> {
     await workspace.getConfiguration('alanif')
         .update('compiler.path', chosen, ConfigurationTarget.Global);
 
-    // The server receives the compiler path at launch, so it needs a restart to
-    // pick this up -- the same constraint as the keyword-case setting.
-    const choice = await window.showInformationMessage(
-        `Alan IF: using Alan ${version} at ${chosen}. Reload to enable diagnostics.`,
-        'Reload');
-    if (choice === 'Reload') {
-        commands.executeCommand('workbench.action.reloadWindow');
-    }
+    // Writing the setting restarts the language server, which is how it learns the
+    // path. It used to ask for a window reload instead -- and an author who dismissed
+    // that prompt was left with an IDE reporting the compiler as found while
+    // diagnostics stayed silently dead, because only the CLIENT had noticed.
+    window.showInformationMessage(
+        `Alan IF: using Alan ${version} at ${chosen}. Diagnostics are starting up.`);
 }
 
 /**
