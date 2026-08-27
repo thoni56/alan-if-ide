@@ -1,6 +1,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
-import { workspace, window, Uri, Terminal, commands } from 'vscode';
+import { workspace, window, env, Uri, Terminal, commands } from 'vscode';
+import { shellFrom, playCommand } from './shell';
 import { missingCompilerMessage, missingArunMessage } from './toolchain';
 import { refreshTools } from './environment';
 
@@ -66,15 +67,15 @@ export async function play(): Promise<void> {
 
     // Mirror the diagnostics compile flags, minus -ide (we want human-readable
     // build output in the terminal, not the machine format).
-    const buildCmd = `${sh(compiler)} -encoding utf8 ${sh(mainName)}`;
-    const runCmd = `${sh(interpreter)} ${sh(a3c)}`;
+    const command = playCommand(shellFrom(env.shell, process.platform),
+            compiler, mainName, interpreter, a3c);
 
     // A fresh terminal per Play: disposing any previous one kills a still-running
     // game and resets the cwd, giving a clean build-and-restart each time.
     playTerminal?.dispose();
     playTerminal = window.createTerminal({ name: 'Alan IF Play', cwd: dir });
     playTerminal.show(true);
-    playTerminal.sendText(`${buildCmd} && ${runCmd}`);
+    playTerminal.sendText(command);
 }
 
 /** Forget the terminal once the user closes it, so the next Play makes a new one. */
@@ -136,9 +137,4 @@ function resolveInWorkspace(rel: string): Uri | undefined {
         return undefined;
     }
     return Uri.file(path.join(folders[0].uri.fsPath, rel));
-}
-
-/** POSIX single-quote (the integrated terminal here is bash). */
-function sh(s: string): string {
-    return `'${s.replace(/'/g, `'\\''`)}'`;
 }
