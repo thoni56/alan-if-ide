@@ -2,12 +2,10 @@ package se.alanif.alan.ide;
 
 import java.util.Map;
 
-import org.eclipse.lsp4j.services.LanguageClient;
 import org.eclipse.xtext.ide.server.ILanguageServerAccess;
 import org.eclipse.xtext.ide.server.ILanguageServerExtension;
 
 import se.alanif.alan.AlanConfiguration;
-import se.alanif.alan.compiler.ProjectDiagnostics;
 
 /**
  * Take the workspace's configuration off the LSP wire at startup.
@@ -23,36 +21,8 @@ import se.alanif.alan.compiler.ProjectDiagnostics;
  */
 public class AlanServerExtension implements ILanguageServerExtension {
 
-    /**
-     * The channel diagnostics go out on.
-     *
-     * <p>Xtext publishes diagnostics for the resource it was asked to validate, which
-     * is only ever a file the editor has opened. A compile of an 83-file adventure
-     * finds errors in files nobody has opened, and those have nowhere to go without
-     * the client itself -- LSP lets a server publish against ANY uri, not just the one
-     * it was asked about.
-     *
-     * <p>Static because the validator is not injected and there is exactly one server.
-     */
-    private static volatile LanguageClient languageClient;
-
-    public static LanguageClient client() {
-        return languageClient;
-    }
-
-    /** Point the diagnostics channel at a stand-in, so publishing can be tested. */
-    static void setClientForTest(LanguageClient client) {
-        languageClient = client;
-    }
-
     @Override
     public void initialize(ILanguageServerAccess access) {
-        try {
-            languageClient = access.getLanguageClient();
-            ProjectDiagnostics.register(new AlanProjectDiagnostics());
-        } catch (RuntimeException ignored) {
-            // no client is survivable: diagnostics for open files still work
-        }
         try {
             Object options = access.getInitializeParams() == null
                     ? null : access.getInitializeParams().getInitializationOptions();

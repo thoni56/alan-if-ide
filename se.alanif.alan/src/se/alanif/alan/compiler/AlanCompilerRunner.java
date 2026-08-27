@@ -38,8 +38,7 @@ public final class AlanCompilerRunner {
         public final String code;
         public final String message;
 
-        /** Public so the ide side can build one in a test; it is a data carrier. */
-        public Diagnostic(String file, int offset, int length, Severity severity, String code, String message) {
+        Diagnostic(String file, int offset, int length, Severity severity, String code, String message) {
             this.file = file;
             this.offset = offset;
             this.length = length;
