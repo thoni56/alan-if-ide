@@ -44,6 +44,7 @@ import org.eclipse.xtext.util.TextRegion;
 import com.google.inject.Inject;
 
 import se.alanif.alan.services.AlanGrammarAccess;
+import se.alanif.alan.util.AlanLog;
 import se.alanif.alan.util.FilePaths;
 
 /**
@@ -491,12 +492,18 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 						if (r instanceof XtextResource) {
 							collectNameOccurrences((XtextResource) r, name, hits, index);
 						}
-					} catch (RuntimeException ignored) {
-						// unreadable/unparseable file -- skip it
+					} catch (RuntimeException e) {
+						// Skipping is right -- one unparseable file must not cost the
+						// project its navigation -- but the file vanishing without a
+						// word is how "go to definition does nothing" becomes
+						// undiagnosable.
+						AlanLog.warn("Could not read " + p + " (" + e + "), so any names it "
+								+ "declares will not be found.");
 					}
 				});
-			} catch (IOException ignored) {
-				// directory gone -- return whatever we have
+			} catch (IOException e) {
+				AlanLog.warn("Could not list " + dir + " (" + e + "), so Find All References "
+						+ "covers only the open file.");
 			}
 		}
 		return hits;
@@ -823,12 +830,14 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 					if (r instanceof XtextResource) {
 						action.accept((XtextResource) r);
 					}
-				} catch (RuntimeException ignored) {
-					// unreadable/unparseable file -- skip it
+				} catch (RuntimeException e) {
+					AlanLog.warn("Could not read " + p + " (" + e + "), so any names it "
+							+ "declares will not be found.");
 				}
 			});
-		} catch (IOException ignored) {
-			// directory gone -- use what we have
+		} catch (IOException e) {
+			AlanLog.warn("Could not list " + dir + " (" + e + "), so declarations in the "
+					+ "project's other files will not be found.");
 		}
 	}
 
@@ -1197,12 +1206,20 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 								});
 							}
 						}
-					} catch (RuntimeException ignored) {
-						// unreadable/unparseable file -- skip it
+					} catch (RuntimeException e) {
+						// Skipping is right -- one unparseable file must not cost the
+						// project its navigation -- but the file vanishing without a
+						// word is how "go to definition does nothing" becomes
+						// undiagnosable.
+						AlanLog.warn("Could not read " + p + " (" + e + "), so any names it "
+								+ "declares will not be found.");
 					}
 				});
-			} catch (IOException ignored) {
-				// directory gone -- return whatever we have
+			} catch (IOException e) {
+				// Same silence that made the Windows bug invisible: no listing, no
+				// cross-file symbols, and an author sees only "no definition found".
+				AlanLog.warn("Could not list " + dir + " (" + e + "), so verbs, scripts and "
+						+ "syntax declared in other files will not be found.");
 			}
 			NODE_INDEX.put(dir, new NodeIndex(signature, map, sites, supers, params));
 			return map;

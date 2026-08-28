@@ -42,14 +42,22 @@ export function isUtf8(bytes: Buffer): boolean {
     }
 }
 
-/** Files among these that are not UTF-8. Unreadable files are skipped, not guessed at. */
-export function findLegacy(paths: string[]): Legacy[] {
+/**
+ * Files among these that are not UTF-8.
+ *
+ * A file we cannot read is skipped rather than guessed at -- but it is COLLECTED into
+ * `unreadable`, never simply dropped. Silently shrinking the list is how a scan
+ * reports "nothing to convert" for a project that will not compile, which is exactly
+ * the outcome that makes this feature look broken to the one author it failed.
+ */
+export function findLegacy(paths: string[], unreadable: string[] = []): Legacy[] {
     const legacy: Legacy[] = [];
     for (const path of paths) {
         let bytes: Buffer;
         try {
             bytes = fs.readFileSync(path);
         } catch {
+            unreadable.push(path);
             continue;
         }
         if (!isUtf8(bytes)) {
@@ -84,7 +92,7 @@ export function convertToUtf8(path: string): void {
  * game on the disk, and rewriting ten files because one demo was opened is not a
  * decision this dialog is entitled to make.
  */
-export function legacyOutside(workspaceFiles: string[]): Legacy[] {
+export function legacyOutside(workspaceFiles: string[], unreadable: string[] = []): Legacy[] {
     const inside = new Set(workspaceFiles.map(f => path.resolve(f)));
     const seen = new Set<string>();
     const found: Legacy[] = [];
@@ -99,6 +107,10 @@ export function legacyOutside(workspaceFiles: string[]): Legacy[] {
         try {
             bytes = fs.readFileSync(here);
         } catch {
+            // Reached through Import, so this one is worse than a file we merely
+            // cannot classify: the trail stops here, and everything it would have
+            // imported goes unexamined too.
+            unreadable.push(here);
             return;
         }
         if (!inside.has(here) && !isUtf8(bytes)) {

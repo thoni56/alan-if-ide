@@ -42,6 +42,7 @@ final class NavigationFixture {
 	private final IReferenceFinder.IResourceAccess access;
 	private final List<Integer> offsets = new ArrayList<>();
 	private final String source;
+	private final Path directory;
 
 	private NavigationFixture(String marked) throws Exception {
 		StringBuilder plain = new StringBuilder();
@@ -61,6 +62,7 @@ final class NavigationFixture {
 
 		Path file = Files.createTempDirectory("alan-nav").resolve("test.alan");
 		Files.writeString(file, source);
+		this.directory = file.getParent();
 
 		Injector injector = new AlanIdeSetup().createInjectorAndDoEMFRegistration();
 		ResourceSet resources = injector.getInstance(ResourceSet.class);
@@ -78,6 +80,11 @@ final class NavigationFixture {
 				}
 			}
 		};
+	}
+
+	/** Where the sources are, so a test can take the directory away underneath us. */
+	Path directory() {
+		return directory;
 	}
 
 	static NavigationFixture of(String... markedLines) throws Exception {

@@ -23,6 +23,8 @@ import org.eclipse.xtext.validation.CheckMode;
 import org.eclipse.xtext.validation.Issue;
 import org.eclipse.xtext.validation.ResourceValidatorImpl;
 
+import java.util.function.Supplier;
+
 import se.alanif.alan.compiler.AlanCompilerRunner;
 import se.alanif.alan.util.AlanLog;
 import se.alanif.alan.util.FilePaths;
@@ -66,19 +68,11 @@ public class AlanResourceValidator extends ResourceValidatorImpl {
             }
             issues.add(issue);
         }
-        try {
-            // Independent of the compiler: a character above U+00FF is a fact about
-            // the text, so it is worth reporting whether or not a toolchain is
-            // installed -- and it is the reason a compile would fail if one were.
-            issues.addAll(encodingIssues(resource));
-        } catch (RuntimeException e) {
-            // never let a scan break normal validation
-        }
-        try {
-            issues.addAll(compilerIssues(resource));
-        } catch (RuntimeException e) {
-            // never let the external tool break normal validation
-        }
+        // Independent of the compiler: a character above U+00FF is a fact about the
+        // text, so it is worth reporting whether or not a toolchain is installed --
+        // and it is the reason a compile would fail if one were.
+        addGuarded(issues, "The encoding scan", () -> encodingIssues(resource));
+        addGuarded(issues, "The Alan compiler check", () -> compilerIssues(resource));
         return issues;
     }
 
@@ -126,6 +120,29 @@ public class AlanResourceValidator extends ResourceValidatorImpl {
             result.add(issue);
         }
         return result;
+    }
+
+    /**
+     * Run one contributor, never letting it break the rest of validation -- and never
+     * letting it fail quietly either.
+     *
+     * <p>These are the OUTERMOST swallows in the server, and the most dangerous: a
+     * RuntimeException anywhere beneath one takes every problem that contributor would
+     * have reported with it, leaving a Problems panel that is indistinguishable from a
+     * clean project. That equivalence is exactly what hid a broken Windows platform
+     * from 0.2.0 to 0.7.4 -- 0.7.4's own diagnosis records an exception escaping "a
+     * validation whose only visible symptom is a Problems panel with nothing in it".
+     * Six sites beneath here learned to speak in 0.7.5; these two were missed.
+     *
+     * <p>Carrying on is still right. Saying nothing was not.
+     */
+    static void addGuarded(List<Issue> issues, String what, Supplier<List<Issue>> contributor) {
+        try {
+            issues.addAll(contributor.get());
+        } catch (RuntimeException e) {
+            AlanLog.warn(what + " failed (" + e + "), so those problems are missing from "
+                    + "this file. The rest of validation still ran.");
+        }
     }
 
     private List<Issue> compilerIssues(Resource resource) {

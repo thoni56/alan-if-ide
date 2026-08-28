@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.7.6 — 2026-08-28
+
+- **The setup warning in the status bar no longer lies.** Once it had appeared, hiding
+  it did not retire it: the next time you switched to an Alan file it came back, still
+  naming a compiler that had since been found — while Check Setup and the language
+  status items correctly reported everything in place. Reported from a Mac. It needed a
+  history a developer machine never has: a tool missing, and then fixed.
+- **A language server that fails to restart says so.** Changing the compiler path
+  restarts the server, because that is how the server learns it. If the restart failed,
+  nothing said anything — and the surviving server was the one started *without* a
+  compiler, so the Problems panel stayed empty for the rest of the session while every
+  setup surface reported the compiler correctly found. The status bar and Check Setup
+  now show it, with the window reload that fixes it.
+- **Validation can no longer fail silently in whole.** Both halves of it were wrapped
+  in catches that discarded everything a failure would have reported, leaving a
+  Problems panel indistinguishable from a clean project — the same equivalence that hid
+  a broken Windows platform for eight releases. They still carry on; they no longer do
+  it quietly.
+- **Navigation says when it cannot read your project.** Six places where a directory
+  that could not be listed, or a file that could not be parsed, silently reduced Go to
+  Definition and Find All References to the open file. All six now name the reason and
+  what is consequently missing.
+- **A bundled Java that is present but not executable is no longer reported as
+  missing** — the remedy for that is not to install a runtime you already have.
+- **Files that cannot be read are named** rather than dropped from the encoding check,
+  where they used to shrink the count and produce "nothing to convert" for a project
+  that would not compile.
+
 ## 0.7.5 — 2026-08-28
 
 - **A project is its main plus everything `import` reaches — not the files in one folder.**

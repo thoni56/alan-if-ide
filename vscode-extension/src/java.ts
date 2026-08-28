@@ -29,6 +29,14 @@ export interface JavaMissing {
      * settings promise a bundled one.
      */
     bundled: boolean;
+    /**
+     * A runtime that was found but refused to run, and why.
+     *
+     * <p>Distinct from absent, and the distinction is the whole message: telling
+     * someone to install Java when a perfectly good JRE is sitting in the extension
+     * with its executable bit stripped sends them to fix the wrong thing.
+     */
+    blocked?: string;
 }
 
 export const MINIMUM_JAVA = 21;
@@ -63,6 +71,7 @@ export function resolveJava(extensionPath: string, configuredHome?: string): Jav
 
     candidates.push({ command: 'java', source: 'PATH' });
 
+    blocked = undefined;
     const tooOld: { command: string; version: number; source: JavaSource }[] = [];
     for (const candidate of candidates) {
         const version = probeVersion(candidate.command);
@@ -83,7 +92,7 @@ export function resolveJava(extensionPath: string, configuredHome?: string): Jav
                 : undefined
         };
     }
-    return { ok: false, tooOld, bundled: hasBundled };
+    return { ok: false, tooOld, bundled: hasBundled, blocked };
 }
 
 function javaBin(home: string): string {
@@ -98,6 +107,15 @@ function javaBin(home: string): string {
  * restore it before giving up on a bundled runtime -- otherwise a perfectly good JRE
  * looks like a missing one.
  */
+/**
+ * Why a runtime we could see would not run, if that is what happened.
+ *
+ * <p>Set by the probe and read when the answer is assembled -- deliberately not
+ * threaded through probeVersion's return, whose whole contract is "a version or
+ * nothing" and is called from several places that do not care.
+ */
+let blocked: string | undefined;
+
 function probeVersion(command: string): number | undefined {
     let result = spawnSync(command, ['-version'], { encoding: 'utf8' });
 
@@ -105,7 +123,12 @@ function probeVersion(command: string): number | undefined {
         try {
             fs.chmodSync(command, 0o755);
             result = spawnSync(command, ['-version'], { encoding: 'utf8' });
-        } catch {
+        } catch (e) {
+            // A runtime that is PRESENT and merely not executable must not be reported
+            // as absent: the remedy for "no Java" is to install one, which this author
+            // already has, bundled, three lines above. Keep the reason so the message
+            // can name it. Plausible wherever a policy strips the executable bit back.
+            blocked = `${command} is present but could not be made executable (${e})`;
             return undefined;
         }
     }
@@ -126,6 +149,13 @@ export function missingJavaMessage(missing: JavaMissing): string {
             + `provides Java ${missing.tooOld[0].version}.`
         : `Alan IF IDE could not find Java ${MINIMUM_JAVA} or later, which the language `
             + `server needs.`;
+
+    if (missing.blocked) {
+        return `${found} ${missing.blocked}. This is usually the executable bit being `
+            + `lost, which a security policy can also strip back after we restore it. `
+            + `Make it executable, or point alanif.java.home at another JDK or JRE `
+            + `${MINIMUM_JAVA}+.`;
+    }
 
     if (!missing.bundled) {
         // The likeliest way to be here, and the one the author cannot diagnose: they

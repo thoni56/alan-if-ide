@@ -15,9 +15,13 @@ export function legacyFiles(): Legacy[] {
     return legacy;
 }
 
+/** Files the last scan could not read at all, so nothing can be said about them. */
+let unreadable: string[] = [];
+
 async function rescan(): Promise<Legacy[]> {
     const sources = await workspace.findFiles('**/*.{alan,i}', '**/node_modules/**');
-    legacy = findLegacy(sources.map(u => u.fsPath));
+    unreadable = [];
+    legacy = findLegacy(sources.map(u => u.fsPath), unreadable);
     changed.fire(legacy);
     return legacy;
 }
@@ -37,7 +41,13 @@ async function rescan(): Promise<Legacy[]> {
 export async function ensureUtf8Sources(): Promise<void> {
     const legacy = await rescan();
     const sources = await workspace.findFiles('**/*.{alan,i}', '**/node_modules/**');
-    const outside = legacyOutside(sources.map(u => u.fsPath));
+    const outside = legacyOutside(sources.map(u => u.fsPath), unreadable);
+    // Before anything else, because a scan that could not read part of the project is
+    // not entitled to conclude anything about it -- and "nothing to convert" is the
+    // most misleading thing we could say next.
+    if (unreadable.length > 0) {
+        reportUnreadable(unreadable);
+    }
     if (legacy.length === 0) {
         // Nothing here to convert, but the compile can still be dead: the offending
         // file may be an imported library outside this folder. Saying so is the whole
@@ -114,6 +124,21 @@ export async function ensureUtf8Sources(): Promise<void> {
     if (reload === 'Reload Window') {
         commands.executeCommand('workbench.action.reloadWindow');
     }
+}
+
+/**
+ * Name the files we could not even look at.
+ *
+ * <p>These are not "fine": they are unknown. Left unsaid, they shrink every count and
+ * every list that follows, so a project that cannot compile is told there is nothing
+ * to convert -- the report that looks exactly like a feature doing nothing.
+ */
+function reportUnreadable(paths: string[]): void {
+    window.showWarningMessage(
+        `Alan IF: could not read ${names(paths)}, so ${paths.length === 1 ? 'its' : 'their'} `
+        + 'encoding is unknown and ' + (paths.length === 1 ? 'it was' : 'they were')
+        + ' left out of the check. Check the file permissions — the compiler may still '
+        + 'fail on ' + (paths.length === 1 ? 'it' : 'them') + '.');
 }
 
 /**
