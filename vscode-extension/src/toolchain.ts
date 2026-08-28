@@ -190,3 +190,71 @@ export function missingArunMessage(missing: ToolMissing): string {
     }
     return `${head} It is normally installed next to the compiler. ${tail}`;
 }
+
+/**
+ * Whether the setup alarm should be showing, and what it should say.
+ *
+ * <p>Pure, and in a module that cannot import an editor, for the same reason
+ * FilePaths is a pure function over strings: the bug this replaces was invisible
+ * on a healthy machine. hide() left the item's TEXT set, and the active-editor
+ * subscription re-shows anything with text, so an alarm that had ever fired came
+ * back on the next tab switch -- still naming a compiler that had since been found.
+ * It needed a history our machines never have: a tool missing, and then fixed.
+ *
+ * <p>Returning the WHOLE state, absence included, is the point. The caller applies
+ * it mechanically instead of deciding what to clear, so "hidden but still armed"
+ * has nowhere left to live.
+ */
+export interface ToolState {
+    ok: boolean;
+    warning?: string;
+}
+
+export interface SetupState {
+    java: ToolState;
+    compiler: ToolState;
+    arun: ToolState;
+}
+
+export interface Alarm {
+    text: string;
+    tooltip: string;
+    /** Java missing leaves no language server at all; everything else degrades. */
+    severe: boolean;
+}
+
+export function alarmFor(setup: SetupState, serverProblem?: string): Alarm | undefined {
+    const missing = [
+        setup.java.ok ? undefined : 'Java',
+        setup.compiler.ok ? undefined : 'the Alan compiler',
+        setup.arun.ok ? undefined : 'arun',
+    ].filter(Boolean) as string[];
+
+    // A setting that was set and then quietly stepped over is a failure too -- the
+    // tool works, so nothing else would ever mention it.
+    const ignored = [
+        setup.java.ok && setup.java.warning ? 'alanif.java.home' : undefined,
+        setup.compiler.ok && setup.compiler.warning ? 'alanif.compiler.path' : undefined,
+        setup.arun.ok && setup.arun.warning ? 'alanif.arun.path' : undefined,
+    ].filter(Boolean) as string[];
+
+    if (missing.length === 0 && ignored.length === 0 && !serverProblem) {
+        return undefined;
+    }
+    return {
+        text: '$(warning) Alan setup',
+        tooltip: [
+            missing.length ? `Alan IF cannot find ${list(missing)}.` : '',
+            ignored.length ? `Alan IF is ignoring ${list(ignored)}.` : '',
+            serverProblem ?? '',
+            'Click to fix.',
+        ].filter(Boolean).join(' '),
+        severe: !setup.java.ok,
+    };
+}
+
+/** "a", "a and b", "a, b and c" -- a tooltip is prose, not a data structure. */
+function list(items: string[]): string {
+    if (items.length === 1) { return items[0]; }
+    return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
+}

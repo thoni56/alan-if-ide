@@ -3,6 +3,7 @@ import { probeVersion } from './toolchain';
 import { Environment, getEnvironment, refreshEnvironment } from './environment';
 import { MINIMUM_JAVA } from './java';
 import { restoreCompilerNotice } from './notices';
+import { serverProblemMessage } from './status';
 import * as path from 'path';
 
 /**
@@ -91,13 +92,21 @@ export async function checkToolchain(): Promise<void> {
 
     const env = refreshEnvironment();
     const items = [javaItem(env), compilerItem(env), arunItem(env)];
+    // Only when there is something to say. This is the surface the alarm sends the
+    // author to, so a fault the alarm counts must be a row they can find here --
+    // otherwise clicking a warning lands on "Everything is in place", and the alarm
+    // becomes the thing that looks broken.
+    const server = serverItem();
+    if (server) {
+        items.push(server);
+    }
     const wanting = items.filter(i => i.attention).length;
 
     const pick = await window.showQuickPick(items, {
         title: 'Alan IF — setup',
         placeHolder: wanting === 0
             ? 'Everything is in place. Select an entry to change it.'
-            : `${wanting} of 3 need attention. Select an entry to fix it.`,
+            : `${wanting} of ${items.length} need attention. Select an entry to fix it.`,
         matchOnDetail: true,
     });
     await pick?.run();
@@ -107,6 +116,28 @@ export async function checkToolchain(): Promise<void> {
 interface SetupItem extends QuickPickItem {
     attention: boolean;
     run(): Promise<void> | void;
+}
+
+/**
+ * The language server, but only when it is known to be wrong.
+ *
+ * Absent while it is fine, because a row saying "the server is running" answers a
+ * question nobody asked and pushes the three that matter down the list. It appears
+ * when a settings change could not be delivered, and its fix is the reload that
+ * delivers it.
+ */
+function serverItem(): SetupItem | undefined {
+    const problem = serverProblemMessage();
+    if (!problem) {
+        return undefined;
+    }
+    return {
+        label: '$(warning) Language server',
+        description: 'not restarted',
+        detail: problem,
+        attention: true,
+        run: () => { commands.executeCommand('workbench.action.reloadWindow'); },
+    };
 }
 
 function javaItem(env: Environment): SetupItem {

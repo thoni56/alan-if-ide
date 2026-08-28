@@ -4,6 +4,7 @@ import {
     languages, window
 } from 'vscode';
 import { Environment, getEnvironment, onEnvironmentChanged } from './environment';
+import { alarmFor } from './toolchain';
 import { legacyFiles, onEncodingChanged } from './convert';
 import { MINIMUM_JAVA } from './java';
 
@@ -23,6 +24,29 @@ import { MINIMUM_JAVA } from './java';
  * diagnostics and no Play, which is too big a failure to leave to a small glyph.
  */
 const SELECTOR = { language: 'alanif' };
+
+/**
+ * A fault that is not a missing tool, and so cannot be discovered by probing.
+ *
+ * The Environment answers "what can this installation find" by running things. A
+ * language server that failed to restart is invisible to that question -- the tools
+ * are all present and correct, and the only thing wrong is that the running server
+ * was never told. It has to be reported in, and it has to persist: the surfaces here
+ * exist precisely because a notification an author dismisses leaves no trace.
+ */
+let serverProblem: string | undefined;
+let refresh: (() => void) | undefined;
+
+/** Report (or, with undefined, clear) a server fault. Safe before activation. */
+export function reportServerProblem(problem: string | undefined): void {
+    serverProblem = problem;
+    refresh?.();
+}
+
+/** What is wrong with the server, for surfaces other than the alarm. */
+export function serverProblemMessage(): string | undefined {
+    return serverProblem;
+}
 
 export function createStatusItems(context: ExtensionContext): void {
     // Order in the popup is VS Code's to decide, and it is not creation order as
@@ -125,40 +149,24 @@ export function createStatusItems(context: ExtensionContext): void {
             arun.command = { command: 'alanif.locateInterpreter', title: 'Locate…' };
         }
 
-        const missing = [
-            env.java.ok ? undefined : 'Java',
-            env.compiler.ok ? undefined : 'the Alan compiler',
-            env.arun.ok ? undefined : 'arun',
-        ].filter(Boolean) as string[];
-
-        // A setting that was set and then quietly stepped over is a failure too --
-        // the tool works, so nothing else would ever mention it.
-        const ignored = [
-            env.java.ok && env.java.warning ? 'alanif.java.home' : undefined,
-            env.compiler.ok && env.compiler.warning ? 'alanif.compiler.path' : undefined,
-            env.arun.ok && env.arun.warning ? 'alanif.arun.path' : undefined,
-        ].filter(Boolean) as string[];
-
-        if (missing.length === 0 && ignored.length === 0) {
+        // Applied mechanically, never decided here: the alarm's whole state comes
+        // from one pure function, so there is no path that hides the item while
+        // leaving it armed. That was the bug -- see alarmFor.
+        const state = alarmFor(env, serverProblem);
+        alarm.text = state?.text ?? '';
+        alarm.tooltip = state?.tooltip;
+        if (!state) {
             alarm.hide();
             return;
         }
-        alarm.text = `$(warning) Alan setup`;
-        alarm.tooltip = [
-            missing.length ? `Alan IF cannot find ${list(missing)}.` : '',
-            ignored.length ? `Alan IF is ignoring ${list(ignored)}.` : '',
-            'Click to fix.',
-        ].filter(Boolean).join(' ');
-        // Java missing is fatal (no server at all); the tools are degradation.
-        // Red only when Java is absent: that is the one failure that leaves no
-        // language server at all. Everything else still leaves a working editor.
-        alarm.backgroundColor = new ThemeColor(env.java.ok
-            ? 'statusBarItem.warningBackground'
-            : 'statusBarItem.errorBackground');
+        alarm.backgroundColor = new ThemeColor(state.severe
+            ? 'statusBarItem.errorBackground'
+            : 'statusBarItem.warningBackground');
         showIfAlanIsInFront(alarm);
     };
 
     render(getEnvironment());
+    refresh = () => render(getEnvironment());
     context.subscriptions.push(
         java, compiler, arun, alarm, encoding,
         onEncodingChanged(renderEncoding),
@@ -224,8 +232,3 @@ function shortenPath(command: string): string {
     return `${head}/…/${parts[parts.length - 2]}/${parts[parts.length - 1]}`;
 }
 
-/** "a", "a and b", "a, b and c" -- a tooltip is prose, not a data structure. */
-function list(items: string[]): string {
-    if (items.length === 1) { return items[0]; }
-    return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
-}

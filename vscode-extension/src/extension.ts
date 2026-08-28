@@ -11,7 +11,7 @@ import { missingJavaMessage } from './java';
 import { initEnvironment } from './environment';
 import { resolveCompiler } from './toolchain';
 import { serverEnvironment } from './serverConfig';
-import { createStatusItems } from './status';
+import { createStatusItems, reportServerProblem } from './status';
 import { locateCompiler, locateInterpreter, checkToolchain } from './locate';
 import { ensureUtf8Sources } from './convert';
 import { registerEncodingFixes } from './quickfix';
@@ -162,9 +162,23 @@ export function activate(context: ExtensionContext) {
         try {
             await client.stop();
             await client.start();
-        } catch {
-            // A failed restart leaves the old server running, which is no worse than
-            // before; the setup surfaces will show what the state is.
+            reportServerProblem(undefined);
+        } catch (e) {
+            // The old comment here claimed a failed restart was "no worse than before".
+            // It is much worse, and in the one case that matters most: the server the
+            // author is trying to fix was started WITHOUT a compiler, so surviving the
+            // restart means it keeps having none -- an empty Problems panel for the rest
+            // of the session, while every setup surface reports a compiler correctly
+            // found, because those run in the extension host and never asked the server.
+            // Exactly that cost a Mac author a working install until an update happened
+            // to restart the host for unrelated reasons. So: say it, and keep saying it.
+            const message = 'Alan IF IDE could not restart the language server after a '
+                + `setting changed (${e}). The running server still has the settings it `
+                + 'started with, so compiler diagnostics may be missing or stale. '
+                + 'Reload the window to apply them.';
+            client.outputChannel?.appendLine(message);
+            reportServerProblem('The language server did not restart, so it still has '
+                + 'its old settings — reload the window.');
         }
     });
 
