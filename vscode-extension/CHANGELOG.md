@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.7.5 — 2026-08-28
+
+- **A project is its main plus everything `import` reaches — not the files in one folder.**
+  An Italian adventure accepted the encoding-conversion offer, saw every file it could see
+  converted, and still would not compile: `997 SYSTEM ERROR`. The file that mattered was
+  imported from outside the opened folder, so the extension never saw it, and the compiler
+  reports the failure against the main at line 0, so its own message could not name it
+  either. The offer now follows the import trail the way the compiler does, and names the
+  offending file and its directory.
+- **Files imported from outside the opened folder are named, not converted.** A shared
+  library in another checkout is not this game's to rewrite. The offer lists them and says
+  so — including when there is nothing left inside the folder to convert, which is exactly
+  the case that used to look like the feature had done nothing at all.
+- **Silent failures now say why.** A path that cannot be parsed, a compiler that cannot be
+  started, a directory that cannot be listed: each used to return nothing and say nothing,
+  and nothing is what a clean project looks like too. Those sites now name the reason in
+  the "Alan IF Language Server" output channel — so it stays empty unless something is
+  actually wrong. The most useful is for a compiler that is configured but not runnable.
+- Windows is now tested on Windows in CI, and publishing depends on it: a release that
+  breaks Windows can no longer reach a registry.
+
 ## 0.7.4 — 2026-08-27
 
 - **Compiler errors now appear on Windows — they never had.** Not since 0.7.1, and not
