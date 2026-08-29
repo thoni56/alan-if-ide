@@ -34,6 +34,7 @@
     "onCommand:alanif.locateCompiler",
     "onCommand:alanif.locateInterpreter",
     "onCommand:alanif.checkToolchain",
+    "onCommand:alanif.rewrapString",
     "onCommand:alanif.convertSources"
   ],
   "main": "./out/extension.js",
@@ -58,6 +59,11 @@
       {
         "command": "alanif.checkToolchain",
         "title": "Check Setup",
+        "category": "Alan IF"
+      },
+      {
+        "command": "alanif.rewrapString",
+        "title": "Re-wrap String",
         "category": "Alan IF"
       },
       {
@@ -161,6 +167,13 @@
           ],
           "default": "off",
           "markdownDescription": "How **Format Document** cases Alan keywords. Alan folds case, so this is cosmetic; only true keywords are changed (never identifiers or string contents). Changing this takes effect after reloading the window.",
+          "order": 4
+        },
+        "alanif.format.stringWidth": {
+          "type": "number",
+          "default": 80,
+          "minimum": 20,
+          "markdownDescription": "Column to wrap before when you run **Re-wrap String**. Only that command uses this — Format Document never reflows a string. Safe to change freely: whitespace inside an Alan string is collapsed by the interpreter, which wraps to the player's terminal, so layout in the source cannot change what the game prints. Use `$p` and `$n` for real paragraph and line breaks.",
           "order": 4
         },
         "alanif.java.home": {

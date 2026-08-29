@@ -14,6 +14,7 @@ import { serverEnvironment } from './serverConfig';
 import { createStatusItems, reportServerProblem } from './status';
 import { locateCompiler, locateInterpreter, checkToolchain } from './locate';
 import { ensureUtf8Sources } from './convert';
+import { rewrapStringCommand } from './rewrap';
 import { registerEncodingFixes } from './quickfix';
 import { initNotices, compilerNoticeSuppressed, suppressCompilerNotice } from './notices';
 
@@ -34,6 +35,7 @@ export function activate(context: ExtensionContext) {
         commands.registerCommand('alanif.locateInterpreter', () => locateInterpreter()),
         commands.registerCommand('alanif.checkToolchain', () => checkToolchain()),
         commands.registerCommand('alanif.convertSources', () => ensureUtf8Sources()),
+        commands.registerCommand('alanif.rewrapString', () => rewrapStringCommand()),
         window.onDidCloseTerminal(onTerminalClosed),
     );
 
