@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.7.7 — 2026-08-29
+
+- **Long strings now wrap on screen.** Word wrap is on by default for Alan files, because
+  Alan source is prose in a way most languages are not. It is purely visual — nothing in
+  your file changes.
+- **New command: Re-wrap String.** Re-flows the string your cursor is in, or every string
+  a selection touches, to `alanif.format.stringWidth` (default 80). Format Document still
+  never reflows a string; this is the explicit way to ask. It is safe to use freely:
+  whitespace inside an Alan string is collapsed by the interpreter, which wraps to the
+  player's terminal, so how a string is laid out in the source cannot change what the game
+  prints. Use `$p` and `$n` for real paragraph and line breaks.
+- **When a program cannot be used as the compiler or interpreter, we now say which way it
+  failed** — there is nothing at that path, the system refused to start it, it never
+  answered, it exited with an error, it ran and printed nothing, or it printed something
+  that is not an Alan version. Previously all six arrived as one sentence, in the first
+  dialog a new author meets.
+- **And the silent one names its likeliest cause.** A windowed interpreter (WinArun) that
+  starts and exits without a word has usually not found the Glk DLL that must sit beside
+  it — it gives up before it reads its arguments, so from the outside it looks like a
+  healthy program with nothing to say. Reported by an author who had copied `WinArun.exe`
+  to his project folder and left the DLL behind.
+
 ## 0.7.6 — 2026-08-28
 
 - **The setup warning in the status bar no longer lies.** Once it had appeared, hiding
