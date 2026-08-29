@@ -11,12 +11,13 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermissions;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Stream;
 
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
 /**
  * That a launched server actually finds the compiler it was told about.
@@ -47,18 +48,60 @@ class ServerConfigurationTest {
 
 	@Test
 	@DisplayName("reports diagnostics from the compiler named in its environment")
-	void usesTheConfiguredCompiler(@TempDir Path project) throws Exception {
-		Path source = project.resolve("game.alan");
-		Files.writeString(source, String.join("\n",
-				"The kitchen IsA location.",
-				"End the.",
-				"",
-				"Start at kitchen."));
+	void usesTheConfiguredCompiler() throws Exception {
+		Path project = Files.createTempDirectory("alan-server-test");
+		try {
+			Path source = project.resolve("game.alan");
+			Files.writeString(source, String.join("\n",
+					"The kitchen IsA location.",
+					"End the.",
+					"",
+					"Start at kitchen."));
 
-		String published = diagnosticsFor(source, stubCompilerIn(project));
+			String published = diagnosticsFor(source, stubCompilerIn(project));
 
-		assertTrue(published.contains(STUB_MESSAGE),
-				"the server did not run the compiler it was given; it published: " + published);
+			assertTrue(published.contains(STUB_MESSAGE),
+					"the server did not run the compiler it was given; it published: " + published);
+		} finally {
+			deleteOnceWindowsLetsGo(project);
+		}
+	}
+
+	/**
+	 * Remove the project directory, once the operating system will allow it.
+	 *
+	 * <p>Owned here rather than left to {@code @TempDir}, and the reason is the thing
+	 * under test. The server runs the compiler with this directory as its WORKING
+	 * directory, and Windows refuses to delete a directory that is any live process's
+	 * cwd. {@code destroyForcibly()} ends the server but not the {@code cmd.exe} it
+	 * spawned, so for a few milliseconds after the body of the test the directory is
+	 * still held. {@code @TempDir} deletes at once and turns that race into a red
+	 * build -- which it did, on a run where all 22 tests passed and only the teardown
+	 * failed.
+	 *
+	 * <p>So: retry briefly, and if it is still held, leave it. This is a temp
+	 * directory, its removal is not what the test asserts, and failing a build over it
+	 * would teach us to distrust a red Windows job -- which is the one signal we have
+	 * for a platform nobody runs.
+	 */
+	private static void deleteOnceWindowsLetsGo(Path directory) throws InterruptedException {
+		for (int attempt = 0; attempt < 40; attempt++) {
+			if (deleted(directory)) {
+				return;
+			}
+			Thread.sleep(50);
+		}
+	}
+
+	private static boolean deleted(Path directory) {
+		try (Stream<Path> paths = Files.walk(directory)) {
+			for (Path path : paths.sorted(Comparator.reverseOrder()).toList()) {
+				Files.deleteIfExists(path);
+			}
+		} catch (IOException e) {
+			return false;
+		}
+		return !Files.exists(directory);
 	}
 
 	/**
