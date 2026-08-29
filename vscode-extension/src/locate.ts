@@ -1,5 +1,5 @@
 import { window, workspace, commands, ConfigurationTarget, QuickPickItem, Uri } from 'vscode';
-import { probeVersion } from './toolchain';
+import { probeTool, glkHint } from './toolchain';
 import { Environment, getEnvironment, refreshEnvironment } from './environment';
 import { MINIMUM_JAVA } from './java';
 import { restoreCompilerNotice } from './notices';
@@ -22,10 +22,13 @@ export async function locateCompiler(): Promise<void> {
         return;
     }
 
-    const version = probeVersion(chosen);
+    // Say WHICH way it failed. Five different causes used to arrive here wearing the
+    // same sentence, in the first dialog a new author ever meets.
+    const probe = probeTool(chosen);
+    const version = probe.version;
     if (version === undefined) {
         const retry = await window.showErrorMessage(
-            `That does not run as an Alan compiler: ${chosen}. ` +
+            `That is not usable as an Alan compiler: ${chosen} — ${probe.reason}. ` +
             'Pick the "alan" executable, usually in the bin/ folder of an Alan SDK.',
             'Choose Again');
         if (retry === 'Choose Again') {
@@ -57,11 +60,15 @@ export async function locateInterpreter(): Promise<void> {
         return;
     }
 
-    const version = probeVersion(chosen);
+    const probe = probeTool(chosen);
+    const version = probe.version;
     if (version === undefined) {
+        // The windowed builds are the ones an author is most likely to choose here and
+        // least able to diagnose, so this is where the Glk hint earns its keep.
         const retry = await window.showErrorMessage(
-            `That does not run as the Alan interpreter: ${chosen}. ` +
-            'Pick the "arun" executable, usually next to the compiler in an Alan SDK.',
+            `That is not usable as the Alan interpreter: ${chosen} — ${probe.reason}`
+            + `${glkHint(probe.failure)}. `
+            + 'Pick the "arun" executable, usually next to the compiler in an Alan SDK.',
             'Choose Again');
         if (retry === 'Choose Again') {
             await locateInterpreter();

@@ -26,6 +26,9 @@ export interface ToolMissing {
     tried: string[];
     /** An explicit setting that was tried and did not run either. */
     ignoredSetting?: string;
+    /** Why the explicit setting did not work, when there was one. */
+    settingFailure?: ProbeFailure;
+    settingReason?: string;
 }
 
 export type ToolResult = ToolFound | ToolMissing;
@@ -107,9 +110,14 @@ function settingOf(value: string | undefined, setting: string, what: string,
  */
 function probeAll(candidates: Candidate[], setting?: ConfiguredSetting): ToolResult {
     const tried: string[] = [];
+    let settingProbe: Probe | undefined;
     for (const candidate of candidates) {
-        const version = probeVersion(candidate.command);
+        const probe = probeTool(candidate.command);
+        const version = probe.version;
         tried.push(candidate.command);
+        if (setting !== undefined && candidate.source === setting.source) {
+            settingProbe = probe;   // the author's own choice: its reason is the one they need
+        }
         if (version !== undefined) {
             // Falling back is the friendly behaviour, but doing it silently would hide
             // a typo in the user's own setting -- the tool works, so nothing else would
@@ -125,7 +133,10 @@ function probeAll(candidates: Candidate[], setting?: ConfiguredSetting): ToolRes
             };
         }
     }
-    return { ok: false, tried, ignoredSetting: setting?.value };
+    return {
+        ok: false, tried, ignoredSetting: setting?.value,
+        settingFailure: settingProbe?.failure, settingReason: settingProbe?.reason,
+    };
 }
 
 /** Where an Alan toolchain tends to end up when it was not put on PATH. */
@@ -147,36 +158,122 @@ function standardLocations(tool: string): Candidate[] {
     return paths.map(command => ({ command, source: 'a standard install location' as const }));
 }
 
+/** Why a candidate is not the tool we wanted. Distinct causes, distinct advice. */
+export type ProbeFailure =
+    | 'missing'         // nothing at that path
+    | 'unstartable'     // the OS refused to run it
+    | 'timeout'         // started and never answered
+    | 'failed'          // ran and exited non-zero
+    | 'silent'          // ran, exited cleanly, printed nothing
+    | 'unrecognised';   // printed something that is not an Alan version
+
+export interface Probe {
+    /** The version it reported, when it really is an Alan tool. */
+    version?: string;
+    failure?: ProbeFailure;
+    /** One sentence an author can act on. Absent when the probe succeeded. */
+    reason?: string;
+}
+
 /**
- * The version string a tool reports, or undefined if it will not run or is not
- * an Alan tool. `alan -version` and `arun -version` both print just the version
- * (e.g. "3.0beta8"), which doubles as the check that this really is Alan and not
- * some unrelated binary that happens to be called alan.
+ * Ask a candidate what version it is.
+ *
+ * <p>`alan -version` and `arun -version` both print just the version (e.g.
+ * "3.0beta8"), which doubles as the check that this really is Alan and not some
+ * unrelated binary of the same name.
+ *
+ * <p>WHY THE FAILURE IS CLASSIFIED rather than collapsed into "no": five very
+ * different things were all reported to the author as "that does not run as an Alan
+ * interpreter", in the first dialog a new user meets. The one that actually happened
+ * -- a Windows Glk build exiting 0 in silence because its Glk DLL is missing or too
+ * old, before it ever looks at an argument -- is invisible from the outside and
+ * undiagnosable by the person hitting it. Keeping the cause costs nothing and is the
+ * difference between a message and a wall.
  */
-export function probeVersion(command: string): string | undefined {
+export function probeTool(command: string, timeoutMs = 10000): Probe {
     // A bare name is looked up on PATH; anything else must exist before we spawn.
     const bare = !command.includes('/') && !command.includes('\\');
     if (!bare && !fs.existsSync(command)) {
-        return undefined;
+        return { failure: 'missing', reason: 'there is no file at that path' };
     }
 
-    const result = spawnSync(command, ['-version'], { encoding: 'utf8', timeout: 10000 });
-    if (result.error || result.status !== 0) {
-        return undefined;
+    const result = spawnSync(command, ['-version'], { encoding: 'utf8', timeout: timeoutMs });
+
+    if (result.error) {
+        const failed = result.error as NodeJS.ErrnoException;
+        if (failed.code === 'ETIMEDOUT') {
+            return {
+                failure: 'timeout',
+                reason: `it did not answer within ${Math.round(timeoutMs / 1000)} seconds`
+                    + ' — a windowed build may be waiting for someone to click something',
+            };
+        }
+        return { failure: 'unstartable', reason: `it could not be started (${failed.message})` };
     }
 
     const out = `${result.stdout || ''}${result.stderr || ''}`.trim();
+
+    if (result.status !== 0) {
+        return {
+            failure: 'failed',
+            reason: `it exited with status ${result.status}`
+                + (out ? ` and said: ${firstLine(out)}` : ' without saying why'),
+        };
+    }
+    if (out === '') {
+        // The WinArun case. Worth naming, because "it worked and said nothing" is the
+        // one outcome an author cannot tell apart from "it is broken".
+        return {
+            failure: 'silent',
+            reason: 'it ran and exited normally but printed nothing, so it cannot say what '
+                + 'it is',
+        };
+    }
+
     const match = /^(\d+\.\d+\S*)/m.exec(out);
-    return match ? match[1] : undefined;
+    if (!match) {
+        return {
+            failure: 'unrecognised',
+            reason: `it printed "${firstLine(out)}", which is not an Alan version`,
+        };
+    }
+    return { version: match[1] };
+}
+
+/** The version string a tool reports, or undefined. Kept for callers wanting only that. */
+export function probeVersion(command: string): string | undefined {
+    return probeTool(command).version;
+}
+
+function firstLine(text: string): string {
+    const line = text.split('\n')[0].trim();
+    return line.length > 80 ? line.slice(0, 77) + '…' : line;
 }
 
 /** A message that says what is missing, where we looked, and what to do about it. */
+/**
+ * The one extra sentence a windowed interpreter has earned.
+ *
+ * <p>WinArun's WinMain calls InitGlk before it looks at a single argument, and exits 0
+ * in silence if that fails -- which is what a missing or too-old Glk DLL beside the
+ * executable produces. From the outside that is indistinguishable from a healthy
+ * program that simply says nothing, and the author has no way to find out. Naming the
+ * one cause that fits turns a wall into a next step.
+ */
+export function glkHint(failure?: ProbeFailure): string {
+    return failure === 'silent'
+        ? '. A windowed build (WinArun) does this when the Glk DLL beside it is missing '
+            + 'or too old, because it gives up before reading its arguments'
+        : '';
+}
+
 export function missingCompilerMessage(missing: ToolMissing): string {
     const head = 'Alan IF IDE could not find the Alan compiler, so diagnostics and Play are unavailable.';
     const tail = `(Looked in: ${missing.tried.join(', ')})`;
     if (missing.ignoredSetting) {
-        return `${head} alanif.compiler.path (${missing.ignoredSetting}) does not run as ` +
-            `the Alan compiler, and nothing else was found. ${tail}`;
+        return `${head} alanif.compiler.path (${missing.ignoredSetting}) is not usable — ` +
+            `${missing.settingReason ?? 'it does not run as the Alan compiler'} — and ` +
+            `nothing else was found. ${tail}`;
     }
     return `${head} Locate it, or set alanif.compiler.path. ${tail}`;
 }
@@ -185,8 +282,9 @@ export function missingArunMessage(missing: ToolMissing): string {
     const head = 'Alan IF IDE could not find arun, the Alan interpreter, so Play cannot start the game.';
     const tail = `(Looked in: ${missing.tried.join(', ')})`;
     if (missing.ignoredSetting) {
-        return `${head} alanif.arun.path (${missing.ignoredSetting}) does not run as ` +
-            `the Alan interpreter, and nothing else was found. ${tail}`;
+        return `${head} alanif.arun.path (${missing.ignoredSetting}) is not usable — ` +
+            `${missing.settingReason ?? 'it does not run as the Alan interpreter'}` +
+            `${glkHint(missing.settingFailure)} — and nothing else was found. ${tail}`;
     }
     return `${head} It is normally installed next to the compiler. ${tail}`;
 }

@@ -1,6 +1,9 @@
 import { test } from 'node:test';
 import * as assert from 'node:assert';
-import { alarmFor, SetupState } from './toolchain';
+import { alarmFor, SetupState, probeTool, glkHint, missingArunMessage } from './toolchain';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
 
 /** A setup with nothing wrong; each test spoils exactly the part it is about. */
 function healthy(): SetupState {
@@ -54,4 +57,77 @@ test('everything wrong at once is listed as prose, not a data structure', () => 
     const alarm = alarmFor({ java: { ok: false }, compiler: { ok: false }, arun: { ok: false } });
     assert.ok(alarm);
     assert.match(alarm.tooltip, /Java, the Alan compiler and arun/);
+});
+
+/**
+ * Telling apart the five ways a chosen program can fail to be an Alan tool.
+ *
+ * All five used to arrive at the author as one sentence -- "that does not run as an
+ * Alan interpreter" -- in the very first dialog a new user meets. Robert, the only
+ * other person using this, hit one of them on Windows and there was nothing in the
+ * message for either of us to work with. Each case here is a stand-in for a real
+ * program, because what matters is what we say, not how we detected it.
+ */
+function tool(body: string): string {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'alan-probe-'));
+    const file = path.join(dir, 'faketool');
+    fs.writeFileSync(file, `#!/bin/sh\n${body}\n`);
+    fs.chmodSync(file, 0o755);
+    return file;
+}
+
+test('a real Alan tool reports its version', () => {
+    const probe = probeTool(tool('echo 3.0beta8'));
+    assert.equal(probe.version, '3.0beta8');
+    assert.equal(probe.failure, undefined);
+});
+
+test('a program that exits cleanly and says nothing is called silent, not missing', () => {
+    // The WinArun shape: InitGlk fails, it exits 0 before reading any argument, and
+    // from the outside it looks exactly like a healthy program with nothing to say.
+    const probe = probeTool(tool('exit 0'));
+    assert.equal(probe.failure, 'silent');
+    assert.match(probe.reason!, /printed nothing/);
+});
+
+test('and only that case earns the Glk hint', () => {
+    assert.match(glkHint('silent'), /Glk DLL/);
+    assert.equal(glkHint('unrecognised'), '');
+    assert.equal(glkHint(undefined), '');
+});
+
+test('a program that fails is quoted, so the author sees what it actually said', () => {
+    const probe = probeTool(tool('echo "cannot open display" >&2; exit 3'));
+    assert.equal(probe.failure, 'failed');
+    assert.match(probe.reason!, /status 3/);
+    assert.match(probe.reason!, /cannot open display/);
+});
+
+test('some other program is not mistaken for Alan', () => {
+    const probe = probeTool(tool('echo "GNU bash, version 5.2"'));
+    assert.equal(probe.failure, 'unrecognised');
+    assert.match(probe.reason!, /not an Alan version/);
+});
+
+test('a path with nothing at it says so plainly', () => {
+    const probe = probeTool(path.join(os.tmpdir(), 'no-such-alan-tool-here'));
+    assert.equal(probe.failure, 'missing');
+});
+
+test('a program that never answers is a timeout, not a refusal', () => {
+    const probe = probeTool(tool('sleep 5'), 200);
+    assert.equal(probe.failure, 'timeout');
+    assert.match(probe.reason!, /did not answer/);
+});
+
+test('the missing-interpreter message carries the reason and the hint', () => {
+    const message = missingArunMessage({
+        ok: false,
+        tried: ['C:\\Alan\\WinArun.exe'],
+        ignoredSetting: 'C:\\Alan\\WinArun.exe',
+        settingFailure: 'silent',
+        settingReason: 'it ran and exited normally but printed nothing, so it cannot say what it is',
+    });
+    assert.match(message, /printed nothing/);
+    assert.match(message, /Glk DLL/);
 });
