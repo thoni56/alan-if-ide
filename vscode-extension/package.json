@@ -2,7 +2,7 @@
   "name": "alan-if-ide",
   "displayName": "Alan IF IDE",
   "description": "Tooling for the Alan interactive-fiction language (Alan IF): highlighting, navigation, compiler diagnostics, find-references, and play (Xtext LSP).",
-  "version": "0.7.7",
+  "version": "0.7.8",
   "publisher": "alanif",
   "license": "MIT",
   "author": "Thomas Nilefalk",

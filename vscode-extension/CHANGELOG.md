@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.7.8 — 2026-08-30
+
+- **Re-wrap String now lays your prose out the way the game will print it.** `$p` starts a
+  fresh paragraph with a blank line before it and `$n` breaks the line, so the source comes
+  to resemble what the player reads. Those two markers are the only structure an Alan string
+  really has — where you press Return in the source means nothing to the game.
+- **A string that ends up spanning lines is moved onto a line of its own**, indented as the
+  block it has become, instead of hanging off the end of `Description` with the statements
+  after it indented past your prose.
+- **Format Document indents a body one level, not two, when the keyword introducing it sits
+  on the header line.** `Does Only "…"` followed by an `If` used to put the `If` a level
+  deeper than the string, although both are statements of the same body. Blocks written as
+  `Exit … does`, `Container Taking …` and `Verb … does only` were all affected. Format
+  Document still changes nothing but indentation.
+
 ## 0.7.7 — 2026-08-29
 
 - **Long strings now wrap on screen.** Word wrap is on by default for Alan files, because
