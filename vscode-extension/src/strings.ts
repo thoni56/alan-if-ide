@@ -82,6 +82,21 @@ export function stringSpans(text: string): StringSpan[] {
     return spans;
 }
 
+/**
+ * Whether the line containing `offset` begins inside some OTHER string.
+ *
+ * <p>Alan prose is routinely interrupted and resumed -- {@code ... about the "Style
+ * alert. "Grotto" Style normal. "before you go...} -- so one physical line can be the
+ * interior of one literal and the opening of the next. Moving the second onto a line
+ * of its own would insert a break into the middle of the first, which is not ours to
+ * do. Such a string is re-flowed where it stands.
+ */
+export function lineOpensInsideAnotherString(text: string, spans: StringSpan[],
+    offset: number): boolean {
+    const lineStart = text.lastIndexOf('\n', offset - 1) + 1;
+    return spans.some(s => s.start < lineStart && s.end > lineStart);
+}
+
 /** The span containing `offset`, or the one the cursor is resting against. */
 export function spanAt(spans: StringSpan[], offset: number): StringSpan | undefined {
     return spans.find(s => offset >= s.start && offset <= s.end);
@@ -98,6 +113,40 @@ export function columnOf(text: string, offset: number, tabSize: number): number 
 }
 
 /**
+ * A run of text to be filled, and how it is separated from the run before it.
+ *
+ * <p>`$p` and `$n` are what actually carry structure in Alan prose -- a paragraph and
+ * a line break in the GAME's output -- while the source's own line breaks carry none.
+ * Honouring them when re-flowing makes the source look like what the player will read,
+ * which is the whole reason an author re-reads their own prose. It is free: a blank
+ * line inside an Alan string is as invisible to the game as a single one (measured,
+ * both ways, against a real transcript).
+ */
+interface Paragraph {
+    /** Text of the run, markers included -- `$p` stays glued to the word it precedes. */
+    text: string;
+    /** What comes before it: nothing, a line break, or a blank line. */
+    gap: '' | 'n' | 'p';
+}
+
+/** Split content at `$p` / `$n`, keeping each marker with the run it introduces. */
+function paragraphs(content: string): Paragraph[] {
+    const parts: Paragraph[] = [];
+    const marker = /\$[pn]/gi;
+    let at = 0;
+    let gap: '' | 'n' | 'p' = '';
+    let m: RegExpExecArray | null;
+    while ((m = marker.exec(content)) !== null) {
+        parts.push({ text: content.slice(at, m.index), gap });
+        gap = m[0][1].toLowerCase() === 'p' ? 'p' : 'n';
+        at = m.index;
+        marker.lastIndex = m.index + m[0].length;
+    }
+    parts.push({ text: content.slice(at), gap });
+    return parts.filter((part, i) => i === 0 || part.text.trim().length > 0);
+}
+
+/**
  * Re-flow one string literal, quotes included, to `width` visual columns.
  *
  * @param literal   the literal as it stands, including both quotes
@@ -108,34 +157,61 @@ export function columnOf(text: string, offset: number, tabSize: number): number 
 export function rewrap(literal: string, column: number, indent: string, width: number,
     tabSize: number): string {
     const content = literal.slice(1, -1);
-    const words = content.split(/\s+/).filter(w => w.length > 0);
-    if (words.length === 0) {
+    if (content.trim().length === 0) {
         return literal;   // nothing but whitespace: not ours to reorganise
     }
 
+    // A SPACE AT EITHER END OF A LITERAL IS CONTENT, not layout. Adjacent strings and
+    // statements print one after another with nothing between them, so authors put a
+    // space inside the quotes to separate them -- `"...you say to yourself. "` before
+    // the next literal. Whitespace BETWEEN words is collapsed by the interpreter and
+    // so is ours to re-flow; whitespace at the edges is the author's and survives.
+    // Found by re-wrapping all 5261 strings of a real game and diffing its transcript:
+    // two lines came back changed, and both were an edge space.
+    const opening = /^\s/.test(content) ? ' ' : '';
+    const closing = /\s$/.test(content) ? ' ' : '';
+
     const indentWidth = visualWidth(indent, tabSize);
-    const lines: string[] = [];
-    let line = '';
-    // The first line starts after the opening quote; the rest start after the indent.
-    let room = width - column - 1;
+    const out: string[] = [];
+    let first = true;
 
-    for (const word of words) {
-        if (line === '') {
-            line = word;                       // always at least one word, even if it overflows
-        } else if (line.length + 1 + word.length <= room) {
-            line += ' ' + word;
-        } else {
-            lines.push(line);
-            line = word;
-            room = width - indentWidth;
+    for (const part of paragraphs(content)) {
+        const words = part.text.split(/\s+/).filter(w => w.length > 0);
+        if (words.length === 0) {
+            continue;
         }
-    }
-    lines.push(line);
+        const lines: string[] = [];
+        let line = '';
+        // The very first line starts after the opening quote; every other line, and
+        // every paragraph after the first, starts after the indent.
+        let room = first ? width - column - 1 : width - indentWidth;
+        for (const word of words) {
+            if (line === '') {
+                line = word;                   // always at least one word, even if it overflows
+            } else if (line.length + 1 + word.length <= room) {
+                line += ' ' + word;
+            } else {
+                lines.push(line);
+                line = word;
+                room = width - indentWidth;
+            }
+        }
+        lines.push(line);
 
-    return '"' + lines.join('\n' + indent) + '"';
+        const block = lines.join('\n' + indent);
+        if (first) {
+            out.push(block);
+        } else {
+            out.push((part.gap === 'p' ? '\n' + indent + '\n' : '\n') + indent + block);
+        }
+        first = false;
+    }
+
+    return '"' + opening + out.join('') + closing + '"';
 }
 
-function visualWidth(text: string, tabSize: number): number {
+/** Visual width of a whitespace run, tabs advancing to the next tab stop. */
+export function visualWidth(text: string, tabSize: number): number {
     let column = 0;
     for (const c of text) {
         column = c === '\t' ? (Math.floor(column / tabSize) + 1) * tabSize : column + 1;

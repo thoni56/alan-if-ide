@@ -1,5 +1,6 @@
 import { Range, TextEditor, window, workspace } from 'vscode';
-import { columnOf, rewrap, spanAt, stringSpans } from './strings';
+import { columnOf, lineOpensInsideAnotherString, rewrap, spanAt, stringSpans, visualWidth }
+    from './strings';
 
 /**
  * Re-flow the string the cursor is in, or every string the selection touches.
@@ -39,12 +40,29 @@ export async function rewrapStringCommand(): Promise<void> {
     // Applied back to front so that an earlier edit cannot move a later span.
     await editor.edit(builder => {
         for (const span of [...targets].reverse()) {
-            const column = columnOf(text, span.start, tabSize);
+            const literal = text.slice(span.start, span.end);
             const indent = lineIndent(text, span.start) + unit;
-            const wrapped = rewrap(text.slice(span.start, span.end), column, indent, width, tabSize);
-            if (wrapped !== text.slice(span.start, span.end)) {
+            const inlineColumn = columnOf(text, span.start, tabSize);
+            let wrapped = rewrap(literal, inlineColumn, indent, width, tabSize);
+            let from = span.start;
+
+            // A STRING THAT ENDS UP SPANNING LINES IS A BLOCK, so give it one. Decided
+            // from the RESULT rather than the input: what matters is whether the author
+            // is about to have prose hanging off the end of a keyword. Format Document
+            // will not do this -- moving text between lines is outside its contract --
+            // which is exactly why it belongs to the command you had to ask for.
+            const shouldMove = wrapped.includes('\n')
+                && inlineColumn > visualWidth(lineIndent(text, span.start), tabSize)
+                && !lineOpensInsideAnotherString(text, spans, span.start);
+            if (shouldMove) {
+                wrapped = '\n' + indent
+                    + rewrap(literal, visualWidth(indent, tabSize), indent, width, tabSize);
+                from = startOfRun(text, span.start);
+            }
+
+            if (wrapped !== literal) {
                 builder.replace(
-                    new Range(document.positionAt(span.start), document.positionAt(span.end)),
+                    new Range(document.positionAt(from), document.positionAt(span.end)),
                     wrapped);
             }
         }
@@ -72,6 +90,15 @@ function selected(editor: TextEditor, text: string, spans: { start: number; end:
         }
     }
     return chosen.sort((a, b) => a.start - b.start);
+}
+
+/** Back up over the spaces and tabs before `offset`, so moving leaves no trailing run. */
+function startOfRun(text: string, offset: number): number {
+    let at = offset;
+    while (at > 0 && (text[at - 1] === ' ' || text[at - 1] === '\t')) {
+        at--;
+    }
+    return at;
 }
 
 /** The whitespace the string's own line begins with, tabs and spaces as written. */
