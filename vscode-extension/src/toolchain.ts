@@ -351,6 +351,19 @@ export function alarmFor(setup: SetupState, serverProblem?: string): Alarm | und
     };
 }
 
+/**
+ * The warnings for settings that were set and then quietly stepped over.
+ *
+ * <p>Worth saying out loud once at activation, because nothing else ever would: the
+ * tool WORKS, so every other surface reports success and the author is left believing
+ * the path they deliberately chose is the one in use. alarmFor names the same
+ * settings in its tooltip; these are the messages the resolvers wrote, which say why.
+ */
+export function overriddenPathWarnings(setup: SetupState): string[] {
+    return [setup.java, setup.compiler, setup.arun]
+        .flatMap(tool => tool.ok && tool.warning ? [tool.warning] : []);
+}
+
 /** "a", "a and b", "a, b and c" -- a tooltip is prose, not a data structure. */
 function list(items: string[]): string {
     if (items.length === 1) { return items[0]; }

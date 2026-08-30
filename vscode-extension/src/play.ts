@@ -1,6 +1,6 @@
 import * as path from 'path';
 import * as fs from 'fs';
-import { workspace, window, env, Uri, Terminal, commands } from 'vscode';
+import { workspace, window, env, Uri, ExtensionContext, Terminal, commands } from 'vscode';
 import { shellFrom, playCommand } from './shell';
 import { missingCompilerMessage, missingArunMessage } from './toolchain';
 import { refreshTools } from './environment';
@@ -78,8 +78,15 @@ export async function play(): Promise<void> {
     playTerminal.sendText(command);
 }
 
+/**
+ * Play's own plumbing, not the extension's: a closed terminal ends that run.
+ */
+export function watchPlayTerminals(context: ExtensionContext): void {
+    context.subscriptions.push(window.onDidCloseTerminal(onTerminalClosed));
+}
+
 /** Forget the terminal once the user closes it, so the next Play makes a new one. */
-export function onTerminalClosed(closed: Terminal): void {
+function onTerminalClosed(closed: Terminal): void {
     if (closed === playTerminal) {
         playTerminal = undefined;
     }

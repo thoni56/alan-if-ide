@@ -180,6 +180,21 @@ export function createStatusItems(context: ExtensionContext): void {
 }
 
 /**
+ * A persistent, always-visible Play affordance: the editor-title icon is easy to
+ * miss. Shown only while an Alan file is in front, on the same rule as the setup
+ * alarm it sits beside.
+ */
+export function createPlayStatusItem(context: ExtensionContext): void {
+    const play = window.createStatusBarItem(StatusBarAlignment.Left, 100);
+    play.command = 'alanif.play';
+    play.text = '$(play) Play';
+    play.tooltip = 'Compile and play this Alan adventure';
+    const update = () => showIfAlanIsInFront(play);
+    update();
+    context.subscriptions.push(play, window.onDidChangeActiveTextEditor(update));
+}
+
+/**
  * Open the Settings UI focused on one setting.
  *
  * This is the deliberate answer to "how do I go back to automatic?": a file dialog

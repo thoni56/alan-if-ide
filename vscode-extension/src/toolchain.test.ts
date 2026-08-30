@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import * as assert from 'node:assert';
-import { alarmFor, SetupState, probeTool, glkHint, missingArunMessage } from './toolchain';
+import { alarmFor, overriddenPathWarnings, SetupState, probeTool, glkHint, missingArunMessage } from './toolchain';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -130,4 +130,30 @@ test('the missing-interpreter message carries the reason and the hint', () => {
     });
     assert.match(message, /printed nothing/);
     assert.match(message, /Glk DLL/);
+});
+
+test('a setting that was stepped over is reported, once per tool', () => {
+    // The failure this exists for is silent BY CONSTRUCTION: the tool was found,
+    // so every other surface says "ok" and nothing mentions that the path the
+    // author chose is not the one running.
+    const setup: SetupState = {
+        java: { ok: true, warning: 'alanif.java.home does not run; using the bundled runtime' },
+        compiler: { ok: true },
+        arun: { ok: true, warning: 'alanif.arun.path does not run; using the one beside the compiler' },
+    };
+    assert.deepStrictEqual(overriddenPathWarnings(setup), [
+        'alanif.java.home does not run; using the bundled runtime',
+        'alanif.arun.path does not run; using the one beside the compiler',
+    ]);
+});
+
+test('a healthy setup, and a missing tool, have nothing to say about settings', () => {
+    // A MISSING tool is reported elsewhere, loudly. Repeating it here as an
+    // ignored-setting warning would be a second notification saying less.
+    assert.deepStrictEqual(overriddenPathWarnings(healthy()), []);
+    assert.deepStrictEqual(overriddenPathWarnings({
+        java: { ok: true },
+        compiler: { ok: false, warning: 'never read when the tool is missing' },
+        arun: { ok: true },
+    }), []);
 });
