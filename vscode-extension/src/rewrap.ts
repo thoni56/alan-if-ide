@@ -3,8 +3,9 @@ import {
     columnOf, continuationIndent, lineOpensInsideAnotherString, rewrap, spanAt, stringSpans,
     visualWidth
 } from './strings';
-import { rewrapKeyNoticeSuppressed, suppressRewrapKeyNotice } from './notices';
+import { rewrapKeyContested, suppressRewrapKeyNotice } from './notices';
 import { REWRAP_BINDING, hasRewrapBinding, withRewrapBinding } from './keybindings';
+import { clearRewrapKeyStatusItem } from './status';
 
 /**
  * Re-flow the string the cursor is in, or every string the selection touches.
@@ -77,68 +78,45 @@ export async function rewrapStringCommand(): Promise<void> {
         }
     });
 
-    await offerRewrapKeybinding();
+    offerRewrapKeybinding();
 }
-
-/**
- * The Rewrap extension, which binds Alt+Q for every language there is.
- *
- * <p>Ours may simply lose: VS Code settles a contested chord by taking the LAST rule
- * registered, which is extension load order, and a more specific `when` clause buys
- * no precedence. Rewrap then runs, looks for a wrapping parser for `alanif`, has none
- * -- it is not in its language table, and not plaintext either, so it does not get the
- * plain-text fallback -- and returns having done nothing.
- *
- * <p>Which is the worst shape a missing feature can take. Nothing errors, nothing is
- * logged, the Keyboard Shortcuts list shows our binding present and correct, and the
- * key does nothing: it looks like OUR command is broken.
- */
-const REWRAP_EXTENSION = 'stkb.rewrap';
 
 let askedThisWindow = false;
 
 /**
- * Offer to settle the key -- ASKED WHEN THEY HAVE JUST RE-WRAPPED SOMETHING, not at
- * startup.
+ * Offer to settle the key, at the moment the author would most like it settled.
  *
- * <p>ASKED AS A MODAL, which is not a decision taken lightly. An information toast
- * hides itself after a moment, so every earlier placement of this question was one
- * the author might never read -- and the cost of missing it is a key that stays dead
- * for good, looking like our bug. This file's own neighbours exist because a
- * notification that leaves no trace is no way to report anything that matters; one
- * that dismisses itself leaves none either.
+ * <p>Asked after a re-wrap rather than at startup: they are looking at the editor,
+ * they have just used the very command this is about, and the message can be short
+ * because the context is in front of them. A message hides itself after a moment, so
+ * this is deliberately only half the answer -- the language status item carries the
+ * same offer permanently, for anyone who missed this or came looking later.
  *
- * <p>What makes the modal proportionate is WHEN it is asked. It follows a deliberate
- * action -- they just ran Re-wrap String -- so it is a reply rather than an
- * interruption, it is one question with one click either way, and it is asked at most
- * once in the life of the installation. Escape answers "later"; either button answers
- * for good.
+ * <p>Once per window at most, and never again once it has been settled either way.
  */
-export function offerRewrapKeybinding(): Promise<void> {
-    if (askedThisWindow || rewrapKeyNoticeSuppressed()
-        || !extensions.getExtension(REWRAP_EXTENSION)) {
-        return Promise.resolve();
+export function offerRewrapKeybinding(): void {
+    if (askedThisWindow || !rewrapKeyContested()) {
+        return;
     }
     askedThisWindow = true;
-    return Promise.resolve(window.showInformationMessage(
-        'Give Alt+Q to Re-wrap String in Alan files?',
-        {
-            modal: true,
-            detail: 'The Rewrap extension also uses Alt+Q, and in an Alan file it does '
-                + 'nothing at all — which is why that key can seem dead here. Alan IF '
-                + 'IDE can take Alt+Q for Alan files and leave every other language to '
-                + 'Rewrap.',
-        },
+    window.showInformationMessage(
+        'Alan IF IDE: Alt+Q would do that for you — except the Rewrap extension has '
+        + 'that key, and does nothing with it in an Alan file. Shall I give Alt+Q to '
+        + 'Re-wrap String in Alan files, and leave every other language to Rewrap?',
         'Yes, please', "No, don't ask again"
-    )).then(async choice => {
-        if (choice === undefined) {
-            return;                              // Escape: ask again another day
-        }
-        suppressRewrapKeyNotice();
+    ).then(async choice => {
         if (choice === 'Yes, please') {
-            await addRewrapKeybinding();
+            await bindRewrapKeyCommand();
+        } else if (choice === "No, don't ask again") {
+            settle();
         }
     });
+}
+
+/** Answered, however it was answered: stop offering, on both surfaces. */
+function settle(): void {
+    suppressRewrapKeyNotice();
+    clearRewrapKeyStatusItem();
 }
 
 /**
@@ -149,7 +127,7 @@ export function offerRewrapKeybinding(): Promise<void> {
  * can undo. Saving it is still ours to do: an unsaved change means Alt+Q keeps doing
  * nothing, which is the confusion we are here to end.
  */
-async function addRewrapKeybinding(): Promise<void> {
+export async function bindRewrapKeyCommand(): Promise<void> {
     await commands.executeCommand('workbench.action.openGlobalKeybindingsFile');
     const editor = window.activeTextEditor;
     if (!editor || !editor.document.fileName.endsWith('keybindings.json')) {
@@ -158,6 +136,7 @@ async function addRewrapKeybinding(): Promise<void> {
 
     const text = editor.document.getText();
     if (hasRewrapBinding(text)) {
+        settle();
         window.showInformationMessage(
             'Alan IF IDE: Alt+Q is already bound to Re-wrap String — your keybindings '
             + 'file is open if you want to check it.');
@@ -173,6 +152,7 @@ async function addRewrapKeybinding(): Promise<void> {
     const whole = new Range(editor.document.positionAt(0), editor.document.positionAt(text.length));
     await editor.edit(builder => builder.replace(whole, updated));
     await editor.document.save();
+    settle();
     window.showInformationMessage(
         'Alan IF IDE: done — Alt+Q now runs Re-wrap String in Alan files, and Rewrap '
         + 'keeps every other language. The line I added is in the file now open.');

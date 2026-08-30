@@ -5,10 +5,10 @@ import { play, watchPlayTerminals } from './play';
 import { JavaMissing, missingJavaMessage } from './java';
 import { Environment, initEnvironment } from './environment';
 import { overriddenPathWarnings } from './toolchain';
-import { createStatusItems, createPlayStatusItem } from './status';
+import { createStatusItems, createPlayStatusItem, createRewrapKeyStatusItem } from './status';
 import { locateCompiler, locateInterpreter, checkToolchain } from './locate';
 import { ensureUtf8Sources } from './convert';
-import { rewrapStringCommand } from './rewrap';
+import { rewrapStringCommand, bindRewrapKeyCommand } from './rewrap';
 import { registerEncodingFixes } from './quickfix';
 import { startLanguageClient, stopLanguageClient, restartWhenServerSettingsChange } from './client';
 import { initNotices, compilerNoticeSuppressed, suppressCompilerNotice } from './notices';
@@ -21,6 +21,7 @@ export function activate(context: ExtensionContext) {
     initNotices(context);
     const setup = initEnvironment(context);
     createStatusItems(context);
+    createRewrapKeyStatusItem(context);
     registerEncodingFixes(context);
     registerCommands(context);
     watchPlayTerminals(context);
@@ -59,6 +60,7 @@ function registerCommands(context: ExtensionContext): void {
         commands.registerCommand('alanif.checkToolchain', () => checkToolchain()),
         commands.registerCommand('alanif.convertSources', () => ensureUtf8Sources()),
         commands.registerCommand('alanif.rewrapString', () => rewrapStringCommand()),
+        commands.registerCommand('alanif.bindRewrapKey', () => bindRewrapKeyCommand()),
     );
 }
 

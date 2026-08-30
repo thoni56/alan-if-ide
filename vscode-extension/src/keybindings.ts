@@ -11,6 +11,9 @@
  * <p>Kept free of the editor so every shape of that file can be tested as text.
  */
 
+/** The extension we contend with for Alt+Q. */
+export const REWRAP_EXTENSION_ID = 'stkb.rewrap';
+
 /** What we add. The `when` is what keeps Rewrap in charge of every other language. */
 export const REWRAP_BINDING = `{
         "key": "alt+q",

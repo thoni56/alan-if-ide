@@ -1,12 +1,13 @@
 import * as os from 'os';
 import {
-    ExtensionContext, LanguageStatusSeverity, StatusBarAlignment, ThemeColor,
-    languages, window
+    ExtensionContext, LanguageStatusItem, LanguageStatusSeverity, StatusBarAlignment,
+    ThemeColor, commands, languages, window
 } from 'vscode';
 import { Environment, getEnvironment, onEnvironmentChanged } from './environment';
 import { alarmFor } from './toolchain';
 import { legacyFiles, onEncodingChanged } from './convert';
 import { MINIMUM_JAVA } from './java';
+import { rewrapKeyContested } from './notices';
 
 /**
  * Report the setup state on two surfaces, because they answer different questions.
@@ -177,6 +178,43 @@ export function createStatusItems(context: ExtensionContext): void {
             }
         })
     );
+}
+
+/**
+ * The Alt+Q clash, on a surface that does not go away.
+ *
+ * <p>A notification is the wrong shape for this on its own: it hides itself after a
+ * moment, and what it is reporting stays true until someone acts on it. So the offer
+ * is made twice over -- once as a message, at the moment an author re-wraps something
+ * and would most like the key, and permanently here, where it waits to be found by
+ * anyone who goes looking for why a key does nothing.
+ *
+ * <p>Present only while the clash is real and unanswered, which is also why it is
+ * created rather than merely hidden: an item with nothing to say should not be in the
+ * list at all. Its id sorts it below the setup items, and it is created before them,
+ * for the reasons createStatusItems explains.
+ */
+let rewrapKey: LanguageStatusItem | undefined;
+
+export function createRewrapKeyStatusItem(context: ExtensionContext): void {
+    commands.executeCommand('setContext', 'alanif.rewrapKeyContested', rewrapKeyContested());
+    if (!rewrapKeyContested()) {
+        return;
+    }
+    rewrapKey = languages.createLanguageStatusItem('alanif.status.4-rewrapkey', SELECTOR);
+    rewrapKey.name = 'Alan IF: Re-wrap key';
+    rewrapKey.text = 'Alt+Q is taken';
+    rewrapKey.detail = 'the Rewrap extension has it';
+    rewrapKey.severity = LanguageStatusSeverity.Information;
+    rewrapKey.command = { command: 'alanif.bindRewrapKey', title: 'Give it to Re-wrap String…' };
+    context.subscriptions.push(rewrapKey);
+}
+
+/** Once the key is settled, however it was settled, the item has nothing to say. */
+export function clearRewrapKeyStatusItem(): void {
+    commands.executeCommand('setContext', 'alanif.rewrapKeyContested', false);
+    rewrapKey?.dispose();
+    rewrapKey = undefined;
 }
 
 /**

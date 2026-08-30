@@ -1,4 +1,5 @@
-import { ExtensionContext, Memento } from 'vscode';
+import { ExtensionContext, Memento, extensions } from 'vscode';
+import { REWRAP_EXTENSION_ID } from './keybindings';
 
 /**
  * The one piece of setup state that is a user PREFERENCE rather than a fact about
@@ -51,4 +52,16 @@ export function restoreCompilerNotice(): boolean {
     }
     store?.update(SUPPRESS_COMPILER_NOTICE, false);
     return true;
+}
+
+/**
+ * Whether Alt+Q is contested and the author has not yet settled it.
+ *
+ * <p>Both halves matter: without Rewrap installed the key is ours already, and once
+ * they have answered -- either way -- there is nothing left to report. It cannot tell
+ * that someone bound the key by hand; pressing the offer finds that out and settles
+ * it, which is the cheapest place for that check to live.
+ */
+export function rewrapKeyContested(): boolean {
+    return !rewrapKeyNoticeSuppressed() && extensions.getExtension(REWRAP_EXTENSION_ID) !== undefined;
 }
