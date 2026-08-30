@@ -85,6 +85,11 @@
           "command": "alanif.play",
           "when": "resourceLangId == alanif",
           "group": "navigation"
+        },
+        {
+          "command": "alanif.rewrapString",
+          "when": "resourceLangId == alanif",
+          "group": "1_modification"
         }
       ],
       "commandPalette": [
@@ -106,6 +111,13 @@
         }
       ]
     },
+    "keybindings": [
+      {
+        "command": "alanif.rewrapString",
+        "key": "alt+q",
+        "when": "editorTextFocus && editorLangId == alanif"
+      }
+    ],
     "languages": [
       {
         "id": "alanif",
