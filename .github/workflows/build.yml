@@ -252,16 +252,54 @@ jobs:
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
         run: |
-          set -e
+          set -u
           VERSION=$(node -p "require('./package.json').version")
-          # One call: --packagePath takes several VSIXes, and each already carries its
-          # own TargetPlatform, so --target would be saying again what the file says.
-          # Platform builds first and the universal one last, as publish.sh does -- if
-          # this dies partway, the targeted builds are the ones authors install.
-          npx vsce publish --packagePath \
-            "alan-if-ide-linux-x64-$VERSION.vsix" \
-            "alan-if-ide-linux-arm64-$VERSION.vsix" \
-            "alan-if-ide-darwin-arm64-$VERSION.vsix" \
-            "alan-if-ide-darwin-x64-$VERSION.vsix" \
-            "alan-if-ide-win32-x64-$VERSION.vsix" \
+          # ONE CALL PER FILE, not one call for all six. It used to be one, and 0.7.10
+          # showed what that costs: darwin-x64 timed out after three builds had gone
+          # up, and the single call took win32-x64 and the universal build down with
+          # it -- so the Marketplace offered Windows the previous release while every
+          # surface said the release had shipped. A transport timeout on one file is
+          # not a reason to withhold the other five.
+          #
+          # Safe to re-run, which is the other half: anything already on the
+          # Marketplace is reported as such and skipped, so a partial publish is
+          # finished by running this again rather than by cutting a new version. That
+          # is what publish.sh has always done for Open VSX; this is the same lesson,
+          # applied to the registry that actually timed out.
+          #
+          # Platform builds first and the universal one last: if this somehow ends up
+          # partial anyway, the targeted builds are the ones authors install.
+          FILES=(
+            "alan-if-ide-linux-x64-$VERSION.vsix"
+            "alan-if-ide-linux-arm64-$VERSION.vsix"
+            "alan-if-ide-darwin-arm64-$VERSION.vsix"
+            "alan-if-ide-darwin-x64-$VERSION.vsix"
+            "alan-if-ide-win32-x64-$VERSION.vsix"
             "alan-if-ide-$VERSION.vsix"
+          )
+          failed=()
+          for f in "${FILES[@]}"; do
+            status=1
+            for attempt in 1 2 3 4; do
+              echo ">> $f (attempt $attempt)"
+              out=$(npx vsce publish --packagePath "$f" 2>&1) && status=0 || status=$?
+              echo "$out" | sed 's/^/   /'
+              if [ "$status" -eq 0 ]; then
+                break
+              fi
+              # Terminal and fine. Retrying a duplicate just burns three minutes.
+              if echo "$out" | grep -qiE "already exists|already published|409|Conflict"; then
+                echo "   already on the Marketplace -- skipping"
+                status=0
+                break
+              fi
+              sleep 20
+            done
+            if [ "$status" -ne 0 ]; then
+              failed+=("$f")
+            fi
+          done
+          if [ "${#failed[@]}" -gt 0 ]; then
+            echo "!! not published: ${failed[*]}"
+            exit 1
+          fi
