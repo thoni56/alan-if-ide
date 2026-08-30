@@ -77,7 +77,7 @@ export async function rewrapStringCommand(): Promise<void> {
         }
     });
 
-    offerRewrapKeybinding();
+    await offerRewrapKeybinding();
 }
 
 /**
@@ -101,30 +101,38 @@ let askedThisWindow = false;
  * Offer to settle the key -- ASKED WHEN THEY HAVE JUST RE-WRAPPED SOMETHING, not at
  * startup.
  *
- * <p>Not a matter of taste. An information toast auto-hides after a moment, so an
- * offer made during activation is one the author may never read; this file's own
- * neighbours exist because a notification that leaves no trace is no way to report
- * anything that matters. Asked here it is different in every way that counts: they
- * are looking at the editor, they have just used the very command being discussed,
- * and if the toast does slip past them it comes back the next time they use it. A
- * question that repeats until answered does not need to be caught the first time.
+ * <p>ASKED AS A MODAL, which is not a decision taken lightly. An information toast
+ * hides itself after a moment, so every earlier placement of this question was one
+ * the author might never read -- and the cost of missing it is a key that stays dead
+ * for good, looking like our bug. This file's own neighbours exist because a
+ * notification that leaves no trace is no way to report anything that matters; one
+ * that dismisses itself leaves none either.
  *
- * <p>Once per window at most, and never again once either button is pressed.
+ * <p>What makes the modal proportionate is WHEN it is asked. It follows a deliberate
+ * action -- they just ran Re-wrap String -- so it is a reply rather than an
+ * interruption, it is one question with one click either way, and it is asked at most
+ * once in the life of the installation. Escape answers "later"; either button answers
+ * for good.
  */
-export function offerRewrapKeybinding(): void {
+export function offerRewrapKeybinding(): Promise<void> {
     if (askedThisWindow || rewrapKeyNoticeSuppressed()
         || !extensions.getExtension(REWRAP_EXTENSION)) {
-        return;
+        return Promise.resolve();
     }
     askedThisWindow = true;
-    window.showInformationMessage(
-        'Alan IF IDE: Alt+Q would do that for you — except the Rewrap extension has '
-        + 'that key, and does nothing with it in an Alan file. Shall I give Alt+Q to '
-        + 'Re-wrap String in Alan files, and leave every other language to Rewrap?',
+    return Promise.resolve(window.showInformationMessage(
+        'Give Alt+Q to Re-wrap String in Alan files?',
+        {
+            modal: true,
+            detail: 'The Rewrap extension also uses Alt+Q, and in an Alan file it does '
+                + 'nothing at all — which is why that key can seem dead here. Alan IF '
+                + 'IDE can take Alt+Q for Alan files and leave every other language to '
+                + 'Rewrap.',
+        },
         'Yes, please', "No, don't ask again"
-    ).then(async choice => {
+    )).then(async choice => {
         if (choice === undefined) {
-            return;                              // missed it: ask again next window
+            return;                              // Escape: ask again another day
         }
         suppressRewrapKeyNotice();
         if (choice === 'Yes, please') {
@@ -170,11 +178,20 @@ async function addRewrapKeybinding(): Promise<void> {
         + 'keeps every other language. The line I added is in the file now open.');
 }
 
-/** When we will not edit the file: give them the entry rather than instructions. */
+/**
+ * When we will not edit the file: give them the entry rather than instructions.
+ *
+ * <p>Modal for the same reason the question was: this one asks them to do something,
+ * and a message that hides itself would leave an author holding a clipboard full of
+ * JSON with no idea what it was for.
+ */
 async function handItOver(why: string): Promise<void> {
     await env.clipboard.writeText(REWRAP_BINDING);
-    window.showWarningMessage(why + ' The binding is on your clipboard instead — paste '
-        + 'it between the [ ] brackets of keybindings.json.');
+    await window.showWarningMessage(why, {
+        modal: true,
+        detail: 'The binding is on your clipboard instead. Open Keyboard Shortcuts '
+            + '(JSON) from the Command Palette and paste it between the [ ] brackets.',
+    });
 }
 
 /** The strings the cursor is in, or all those a non-empty selection touches. */
