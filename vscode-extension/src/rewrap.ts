@@ -92,6 +92,13 @@ let askedThisWindow = false;
  * this is deliberately only half the answer -- the language status item carries the
  * same offer permanently, for anyone who missed this or came looking later.
  *
+ * <p>It says "elsewhere" rather than naming Rewrap, for two reasons an author would
+ * hit before we would: the key may be held by something else entirely on their
+ * machine, and the two names collide -- "bound to Rewrap" beside "bind it to Re-wrap
+ * String" reads as though the key were already bound to the thing being offered. The
+ * name is worth having exactly once, on the status item's detail line, which is the
+ * field whose job is the specific fact and the only place they can learn what has it.
+ *
  * <p>Once per window at most, and never again once it has been settled either way.
  */
 export function offerRewrapKeybinding(): void {
@@ -100,8 +107,8 @@ export function offerRewrapKeybinding(): void {
     }
     askedThisWindow = true;
     window.showInformationMessage(
-        'Alan IF IDE: Do you want to bind Alt+Q to Re-wrap String in Alan files? It is '
-        + 'currently bound to the Rewrap extension, for all files.',
+        'Alan IF IDE: Alt+Q is currently bound elsewhere, for all files. Do you want to '
+        + 'bind it to Re-wrap String in Alan files instead?',
         'Yes, please', "No, don't ask again"
     ).then(async choice => {
         if (choice === 'Yes, please') {
@@ -154,7 +161,7 @@ export async function bindRewrapKeyCommand(): Promise<void> {
     settle();
     window.showInformationMessage(
         'Alan IF IDE: done — Alt+Q is now bound to Re-wrap String in Alan files, and '
-        + 'stays bound to Rewrap everywhere else. The line I added is in the file now '
+        + 'keeps its old binding everywhere else. The line I added is in the file now '
         + 'open.');
 }
 
