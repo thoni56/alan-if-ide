@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
@@ -703,7 +704,7 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 		if (dir == null || resource.getResourceSet() == null) {
 			return null;
 		}
-		nodeIndex(dir, resource.getResourceSet());
+		nodeIndex(dir, resource);
 		return NODE_INDEX.get(dir);
 	}
 
@@ -925,7 +926,7 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 		if (dir == null || resource.getResourceSet() == null) {
 			return null;
 		}
-		nodeIndex(dir, resource.getResourceSet());   // builds/refreshes both maps
+		nodeIndex(dir, resource);   // builds/refreshes both maps
 		NodeIndex index = NODE_INDEX.get(dir);
 		if (index == null) {
 			return null;
@@ -1148,7 +1149,7 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 			return;
 		}
 		String currentUri = lspUriOf(resource);
-		List<Location> found = nodeIndex(dir, resource.getResourceSet()).get(name.toLowerCase(Locale.ROOT));
+		List<Location> found = nodeIndex(dir, resource).get(name.toLowerCase(Locale.ROOT));
 		if (found == null) {
 			return;
 		}
@@ -1161,8 +1162,10 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 	}
 
 	/** The project's node-declaration index, cached until a source file changes. */
-	private Map<String, List<Location>> nodeIndex(Path dir, org.eclipse.emf.ecore.resource.ResourceSet rs) {
-		String signature = signatureOf(dir);
+	private Map<String, List<Location>> nodeIndex(Path dir, XtextResource current) {
+		org.eclipse.emf.ecore.resource.ResourceSet rs = current.getResourceSet();
+		Map<Path, Long> stamps = stampsOf(dir);
+		String signature = signatureFrom(stamps);
 		NodeIndex cached = NODE_INDEX.get(dir);
 		if (cached != null && cached.signature.equals(signature)) {
 			return cached.byName;
@@ -1172,6 +1175,7 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 			if (cached != null && cached.signature.equals(signature)) {
 				return cached.byName;
 			}
+			discardWhatMoved(rs, current, stamps, cached);
 			Map<String, List<Location>> map = new HashMap<>();
 			Map<String, List<VerbSite>> sites = new HashMap<>();
 			Map<String, String> supers = new HashMap<>();
@@ -1221,9 +1225,44 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 				AlanLog.warn("Could not list " + dir + " (" + e + "), so verbs, scripts and "
 						+ "syntax declared in other files will not be found.");
 			}
-			NODE_INDEX.put(dir, new NodeIndex(signature, map, sites, supers, params));
+			NODE_INDEX.put(dir, new NodeIndex(signature, stamps, map, sites, supers, params));
 			return map;
 		}
+	}
+
+	/**
+	 * Throw away our reading of any file that has moved since we read it.
+	 *
+	 * <p>Rebuilding the index is not by itself enough to notice. The rebuild asks the
+	 * resource set for each file, and a resource ALREADY LOADED is handed back without
+	 * being read again -- so the index was rebuilt out of the same stale parse trees
+	 * and carried the same stale positions. Invisible until an edit moves something,
+	 * and then Go to Definition lands beside the declaration, on a region of exactly
+	 * the right length, because the answer is right about a file that no longer exists.
+	 *
+	 * <p>LAST-MODIFIED IS THE WHOLE TEST, and it is what makes this safe rather than
+	 * merely correct. A document open with unsaved changes has not moved on disk, so it
+	 * is never discarded and the editor's version keeps winning -- which is the answer
+	 * an author wants while they are typing. A file we have no reading of yet is left
+	 * alone too: there is nothing stale about it, and it may be a live document that
+	 * belongs to the server rather than to us. And the document we were called from is
+	 * never touched at all.
+	 */
+	private static void discardWhatMoved(org.eclipse.emf.ecore.resource.ResourceSet rs,
+			XtextResource current, Map<Path, Long> stamps, NodeIndex previous) {
+		if (previous == null) {
+			return;
+		}
+		stamps.forEach((file, at) -> {
+			Long readAt = previous.stamps.get(file);
+			if (readAt == null || readAt.equals(at)) {
+				return;
+			}
+			Resource stale = rs.getResource(URI.createFileURI(file.toString()), false);
+			if (stale != null && stale != current) {
+				stale.unload();
+			}
+		});
 	}
 
 	private String lspUriOf(XtextResource resource) {
@@ -1240,27 +1279,34 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 		return n.endsWith(".alan") || n.endsWith(".i");
 	}
 
-	/** A signature of all Alan source files in a directory (name + last-modified). */
-	private static String signatureOf(Path dir) {
+	/** Every Alan source in a directory, with the last-modified time we read it at. */
+	private static Map<Path, Long> stampsOf(Path dir) {
+		Map<Path, Long> stamps = new LinkedHashMap<>();
 		try (Stream<Path> files = Files.list(dir)) {
-			StringBuilder sb = new StringBuilder();
 			files.filter(AlanDocumentSymbolService::isAlanSource).sorted().forEach(p -> {
-				sb.append(p.getFileName());
 				try {
-					sb.append(':').append(Files.getLastModifiedTime(p).toMillis());
+					stamps.put(p, Files.getLastModifiedTime(p).toMillis());
 				} catch (IOException e) {
-					sb.append(":0");
+					stamps.put(p, 0L);
 				}
-				sb.append('|');
 			});
-			return sb.toString();
 		} catch (IOException e) {
-			return "";
+			return Collections.emptyMap();
 		}
+		return stamps;
+	}
+
+	/** The same thing as one string, which is what the cache compares. */
+	private static String signatureFrom(Map<Path, Long> stamps) {
+		StringBuilder sb = new StringBuilder();
+		stamps.forEach((p, at) -> sb.append(p.getFileName()).append(':').append(at).append('|'));
+		return sb.toString();
 	}
 
 	private static final class NodeIndex {
 		final String signature;
+		/** What each file's last-modified time was when we read it. */
+		final Map<Path, Long> stamps;
 		final Map<String, List<Location>> byName;
 		/** The same walk, keeping what the flat index throws away: whether a
 		 *  declaration is the syntax or an implementation, and whose body it is in. */
@@ -1281,10 +1327,11 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 		 *  lookup rather than a tree walk. */
 		final Map<String, List<Parameter>> parameters;
 
-		NodeIndex(String signature, Map<String, List<Location>> byName,
+		NodeIndex(String signature, Map<Path, Long> stamps, Map<String, List<Location>> byName,
 				Map<String, List<VerbSite>> verbSites, Map<String, String> superclassOf,
 				Map<String, List<Parameter>> parameters) {
 			this.signature = signature;
+			this.stamps = stamps;
 			this.byName = byName;
 			this.verbSites = verbSites;
 			this.superclassOf = superclassOf;

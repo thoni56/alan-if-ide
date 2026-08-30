@@ -37,6 +37,7 @@ final class NavigationFixture {
 	private static final Pattern MARKER = Pattern.compile("<(\\d+)>");
 
 	private final XtextResource resource;
+	private final ResourceSet resources;
 	private final AlanDocumentSymbolService symbols;
 	private final AlanDocumentHighlightService highlights;
 	private final IReferenceFinder.IResourceAccess access;
@@ -66,6 +67,7 @@ final class NavigationFixture {
 
 		Injector injector = new AlanIdeSetup().createInjectorAndDoEMFRegistration();
 		ResourceSet resources = injector.getInstance(ResourceSet.class);
+		this.resources = resources;
 		this.resource = (XtextResource) resources.createResource(URI.createFileURI(file.toString()));
 		this.resource.load(new java.io.ByteArrayInputStream(source.getBytes("UTF-8")), null);
 		this.symbols = injector.getInstance(AlanDocumentSymbolService.class);
@@ -80,6 +82,11 @@ final class NavigationFixture {
 				}
 			}
 		};
+	}
+
+	/** The resource set, so a test can put an "open editor" in it that disk disagrees with. */
+	ResourceSet resources() {
+		return resources;
 	}
 
 	/** Where the sources are, so a test can take the directory away underneath us. */
