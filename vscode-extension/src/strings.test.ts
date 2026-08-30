@@ -1,7 +1,9 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
-import { columnOf, lineOpensInsideAnotherString, rewrap, spanAt, stringSpans } from './strings';
+import {
+    columnOf, continuationIndent, lineOpensInsideAnotherString, rewrap, spanAt, stringSpans
+} from './strings';
 
 /**
  * Finding strings, and re-flowing them.
@@ -96,9 +98,10 @@ test('a paragraph marker starts a paragraph, with a blank line before it', () =>
     const literal = '"She zaps every piece of flesh she can get to. $pAfter a dozen shocks she vanishes."';
     const wrapped = rewrap(literal, 0, '  ', 60, 4);
 
+    // The separating line carries nothing, not even the indent it sits in.
     assert.deepEqual(wrapped.split('\n'), [
         '"She zaps every piece of flesh she can get to.',
-        '  ',
+        '',
         '  $pAfter a dozen shocks she vanishes."',
     ]);
 });
@@ -106,7 +109,7 @@ test('a paragraph marker starts a paragraph, with a blank line before it', () =>
 test('a marker with no space before it still starts its own paragraph', () => {
     // Authors write it both ways, and the game cannot tell the difference either.
     const wrapped = rewrap('"...she can get to.$pAfter a dozen shocks."', 0, '  ', 60, 4);
-    assert.match(wrapped, /get to\.\n {2}\n {2}\$pAfter/);
+    assert.match(wrapped, /get to\.\n\n {2}\$pAfter/);
 });
 
 test('a string that opens with a marker gains no leading blank line', () => {
@@ -130,7 +133,7 @@ test('each paragraph is filled to the width in its own right', () => {
     assert.deepEqual(wrapped.split('\n'), [
         '"one two three four',
         '  five',
-        '  ',
+        '',
         '  $psix seven eight',
         '  nine ten"',
     ]);
@@ -161,4 +164,37 @@ test('a space at either end of a literal is content, and survives', () => {
 
 test('but whitespace between words is still ours to re-flow', () => {
     assert.equal(rewrap('"one     two\n\n   three"', 0, '  ', 60, 4), '"one two three"');
+});
+
+/**
+ * The quote hangs; the prose lines up.
+ *
+ * Getting this wrong is invisible to the game and glaring to the author, which makes
+ * it exactly the kind of layout rule worth pinning down here rather than by eye.
+ */
+test('a string that owns its line puts the prose, not the quote, in the column', () => {
+    // Eight spaces of indent, so the quote is at column 8 and every line of text --
+    // the first included -- starts at column 9.
+    assert.equal(continuationIndent('        ', 8, '    ', 4), '         ');
+
+    const wrapped = rewrap('"one two three four five six seven eight"', 8,
+        continuationIndent('        ', 8, '    ', 4), 30, 4);
+    // Both lines fill to the same column, because both start at the same one: the
+    // opening quote is paid for out of the margin, not out of the first line.
+    assert.deepEqual(wrapped.split('\n'), [
+        '"one two three four',
+        '         five six seven eight"',
+    ]);
+});
+
+test('a string that does not own its line falls back to a plain indent', () => {
+    // Alan prose is interrupted and resumed, so a literal can open at column 60 on a
+    // line it shares. Hanging under THAT would leave nowhere to write.
+    assert.equal(continuationIndent('    ', 60, '    ', 4), '        ');
+});
+
+test('the hanging indent is spaces even when the file is indented with tabs', () => {
+    // A tab cannot express "one column right of the quote", and the alignment is the
+    // point. The line's own indentation is still left exactly as the author wrote it.
+    assert.equal(continuationIndent('\t\t', 8, '\t', 4), '\t\t ');
 });

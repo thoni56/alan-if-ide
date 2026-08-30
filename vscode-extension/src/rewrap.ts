@@ -1,6 +1,8 @@
 import { Range, TextEditor, window, workspace } from 'vscode';
-import { columnOf, lineOpensInsideAnotherString, rewrap, spanAt, stringSpans, visualWidth }
-    from './strings';
+import {
+    columnOf, continuationIndent, lineOpensInsideAnotherString, rewrap, spanAt, stringSpans,
+    visualWidth
+} from './strings';
 
 /**
  * Re-flow the string the cursor is in, or every string the selection touches.
@@ -41,9 +43,10 @@ export async function rewrapStringCommand(): Promise<void> {
     await editor.edit(builder => {
         for (const span of [...targets].reverse()) {
             const literal = text.slice(span.start, span.end);
-            const indent = lineIndent(text, span.start) + unit;
+            const own = lineIndent(text, span.start);
             const inlineColumn = columnOf(text, span.start, tabSize);
-            let wrapped = rewrap(literal, inlineColumn, indent, width, tabSize);
+            let wrapped = rewrap(literal, inlineColumn,
+                continuationIndent(own, inlineColumn, unit, tabSize), width, tabSize);
             let from = span.start;
 
             // A STRING THAT ENDS UP SPANNING LINES IS A BLOCK, so give it one. Decided
@@ -52,11 +55,15 @@ export async function rewrapStringCommand(): Promise<void> {
             // will not do this -- moving text between lines is outside its contract --
             // which is exactly why it belongs to the command you had to ask for.
             const shouldMove = wrapped.includes('\n')
-                && inlineColumn > visualWidth(lineIndent(text, span.start), tabSize)
+                && inlineColumn > visualWidth(own, tabSize)
                 && !lineOpensInsideAnotherString(text, spans, span.start);
             if (shouldMove) {
-                wrapped = '\n' + indent
-                    + rewrap(literal, visualWidth(indent, tabSize), indent, width, tabSize);
+                // One level in from the line it is leaving, and then wrapped as a string
+                // that owns its line -- which it now does.
+                const moved = own + unit;
+                const movedColumn = visualWidth(moved, tabSize);
+                wrapped = '\n' + moved + rewrap(literal, movedColumn,
+                    continuationIndent(moved, movedColumn, unit, tabSize), width, tabSize);
                 from = startOfRun(text, span.start);
             }
 

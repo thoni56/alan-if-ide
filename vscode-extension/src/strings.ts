@@ -147,6 +147,29 @@ function paragraphs(content: string): Paragraph[] {
 }
 
 /**
+ * Where the continuation lines of a re-wrapped string begin.
+ *
+ * <p>THE QUOTE HANGS INTO THE MARGIN, so that the PROSE is what lines up: a
+ * continuation line starts one column right of the opening quote, which is exactly
+ * where the first line's text starts. The block then reads as the paragraph it prints
+ * as, with the quote marking its edge instead of stepping on its first line.
+ *
+ * <p>The indent unit is the fallback for the one case that cannot hang: a string that
+ * opens partway along a line it does not own -- Alan prose is routinely interrupted
+ * and resumed -- where the quote may sit at column 60 and aligning under it would
+ * leave no room to write in. Such a string is re-flowed where it stands, under a plain
+ * indent from its line.
+ *
+ * @param lineIndent  the whitespace the string's line begins with, as written
+ * @param quoteColumn the visual column of the opening quote
+ */
+export function continuationIndent(lineIndent: string, quoteColumn: number, unit: string,
+    tabSize: number): string {
+    const ownsItsLine = quoteColumn === visualWidth(lineIndent, tabSize);
+    return ownsItsLine ? lineIndent + ' ' : lineIndent + unit;
+}
+
+/**
  * Re-flow one string literal, quotes included, to `width` visual columns.
  *
  * @param literal   the literal as it stands, including both quotes
@@ -202,7 +225,10 @@ export function rewrap(literal: string, column: number, indent: string, width: n
         if (first) {
             out.push(block);
         } else {
-            out.push((part.gap === 'p' ? '\n' + indent + '\n' : '\n') + indent + block);
+            // The separating line is left EMPTY rather than indented to match. It reads
+            // the same, git does not flag it, and an editor that strips trailing space
+            // on save cannot silently undo the layout this command just produced.
+            out.push((part.gap === 'p' ? '\n\n' : '\n') + indent + block);
         }
         first = false;
     }
