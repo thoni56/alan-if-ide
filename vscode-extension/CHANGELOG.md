@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.7.10 — 2026-08-30
+
+- **Go to Definition no longer points at where a declaration used to be.** Once you had
+  edited a file — re-wrapping a string, adding a line — navigation into that file kept
+  answering from the version it first read, so F12 landed beside the declaration instead
+  of on it, highlighting a region of exactly the right length. Every other file stayed
+  correct, which made it look like one stubborn file rather than a stale index, and
+  reloading the window was the only cure. The project index now re-reads a file once it
+  changes — including a change made too quickly for the clock to notice — while a file
+  you have open with unsaved edits still answers from your editor and not from the disk.
+
 ## 0.7.9 — 2026-08-30
 
 - **Re-wrap String is on `Alt+Q` and in the right-click menu.** It was reachable only
