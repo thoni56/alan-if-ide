@@ -154,10 +154,18 @@ async function tidyAway(wasAlreadyOpen: boolean): Promise<void> {
     }
 }
 
-/** Said and done -- with the file one click away for anyone who wants to look. */
+/**
+ * Said and done -- with the file one click away for anyone who wants to look.
+ *
+ * <p>"The keybindings", not "the file" and not "the settings": the file it opens is
+ * keybindings.json, so that is the word an author will see when they get there.
+ * Settings is a different file entirely, and would send them looking in the wrong one.
+ */
+const SHOW_ME = 'Show me the keybindings';
+
 function showDone(message: string): void {
-    window.showInformationMessage(message, 'Show me the file').then(choice => {
-        if (choice === 'Show me the file') {
+    window.showInformationMessage(message, SHOW_ME).then(choice => {
+        if (choice === SHOW_ME) {
             commands.executeCommand('workbench.action.openGlobalKeybindingsFile');
         }
     });
