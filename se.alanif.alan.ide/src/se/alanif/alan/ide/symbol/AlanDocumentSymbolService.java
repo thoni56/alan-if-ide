@@ -3,6 +3,7 @@ package se.alanif.alan.ide.symbol;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -1164,7 +1165,7 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 	/** The project's node-declaration index, cached until a source file changes. */
 	private Map<String, List<Location>> nodeIndex(Path dir, XtextResource current) {
 		org.eclipse.emf.ecore.resource.ResourceSet rs = current.getResourceSet();
-		Map<Path, Long> stamps = stampsOf(dir);
+		Map<Path, String> stamps = stampsOf(dir);
 		String signature = signatureFrom(stamps);
 		NodeIndex cached = NODE_INDEX.get(dir);
 		if (cached != null && cached.signature.equals(signature)) {
@@ -1249,12 +1250,12 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 	 * never touched at all.
 	 */
 	private static void discardWhatMoved(org.eclipse.emf.ecore.resource.ResourceSet rs,
-			XtextResource current, Map<Path, Long> stamps, NodeIndex previous) {
+			XtextResource current, Map<Path, String> stamps, NodeIndex previous) {
 		if (previous == null) {
 			return;
 		}
 		stamps.forEach((file, at) -> {
-			Long readAt = previous.stamps.get(file);
+			String readAt = previous.stamps.get(file);
 			if (readAt == null || readAt.equals(at)) {
 				return;
 			}
@@ -1279,15 +1280,29 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 		return n.endsWith(".alan") || n.endsWith(".i");
 	}
 
-	/** Every Alan source in a directory, with the last-modified time we read it at. */
-	private static Map<Path, Long> stampsOf(Path dir) {
-		Map<Path, Long> stamps = new LinkedHashMap<>();
+	/**
+	 * Every Alan source in a directory, with what it looked like when we read it.
+	 *
+	 * <p>Last-modified AND size, because last-modified alone has a hole: it is
+	 * milliseconds, and two writes inside one millisecond leave a file that has
+	 * demonstrably changed and a stamp that has not. By hand that is unreachable; from
+	 * a script, a formatter run or a generator it is not. Size closes almost all of it
+	 * for nothing -- both come from a single stat -- and what is left is the write that
+	 * lands in the same millisecond AND keeps the file exactly as long, which is a
+	 * price worth naming rather than a guarantee worth claiming.
+	 *
+	 * <p>Cheap to add while we know why it is here. The bug it prevents is the same
+	 * one that took a reload to notice and a corpus to explain.
+	 */
+	private static Map<Path, String> stampsOf(Path dir) {
+		Map<Path, String> stamps = new LinkedHashMap<>();
 		try (Stream<Path> files = Files.list(dir)) {
 			files.filter(AlanDocumentSymbolService::isAlanSource).sorted().forEach(p -> {
 				try {
-					stamps.put(p, Files.getLastModifiedTime(p).toMillis());
+					BasicFileAttributes a = Files.readAttributes(p, BasicFileAttributes.class);
+					stamps.put(p, a.lastModifiedTime().toMillis() + ":" + a.size());
 				} catch (IOException e) {
-					stamps.put(p, 0L);
+					stamps.put(p, "0:0");
 				}
 			});
 		} catch (IOException e) {
@@ -1297,7 +1312,7 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 	}
 
 	/** The same thing as one string, which is what the cache compares. */
-	private static String signatureFrom(Map<Path, Long> stamps) {
+	private static String signatureFrom(Map<Path, String> stamps) {
 		StringBuilder sb = new StringBuilder();
 		stamps.forEach((p, at) -> sb.append(p.getFileName()).append(':').append(at).append('|'));
 		return sb.toString();
@@ -1305,8 +1320,8 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 
 	private static final class NodeIndex {
 		final String signature;
-		/** What each file's last-modified time was when we read it. */
-		final Map<Path, Long> stamps;
+		/** What each file's last-modified time and size were when we read it. */
+		final Map<Path, String> stamps;
 		final Map<String, List<Location>> byName;
 		/** The same walk, keeping what the flat index throws away: whether a
 		 *  declaration is the syntax or an implementation, and whose body it is in. */
@@ -1327,7 +1342,7 @@ public class AlanDocumentSymbolService extends DocumentSymbolService {
 		 *  lookup rather than a tree walk. */
 		final Map<String, List<Parameter>> parameters;
 
-		NodeIndex(String signature, Map<Path, Long> stamps, Map<String, List<Location>> byName,
+		NodeIndex(String signature, Map<Path, String> stamps, Map<String, List<Location>> byName,
 				Map<String, List<VerbSite>> verbSites, Map<String, String> superclassOf,
 				Map<String, List<Parameter>> parameters) {
 			this.signature = signature;

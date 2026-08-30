@@ -107,4 +107,26 @@ class ChangedOnDiskTest {
 		assertEquals(List.of(3), program.definitionsAt(1),
 				"the unsaved buffer was thrown away and the old file answered instead");
 	}
+
+	@Test
+	@DisplayName("a change that keeps the same millisecond is noticed by its size")
+	void aSameMillisecondChangeIsNoticed() throws Exception {
+		// Last-modified is milliseconds, so two writes inside one leave a file that has
+		// demonstrably changed and a stamp that has not. Unreachable by hand; a
+		// formatter run, a generator or a script gets there. Both halves of the stamp
+		// come from a single stat, so closing this cost nothing except knowing to.
+		NavigationFixture program = program();
+		Path other = fileBeside(program, "other.i",
+				"The beacon IsA object at kitchen",   // 1
+				"End the beacon.");
+		FileTime sameInstant = Files.getLastModifiedTime(other);
+		assertEquals(List.of(1), program.definitionsAt(1));
+
+		Files.writeString(other,
+				"-- a line\n\nThe beacon IsA object at kitchen\nEnd the beacon.\n");
+		Files.setLastModifiedTime(other, sameInstant);   // the clock did not move
+
+		assertEquals(List.of(3), program.definitionsAt(1),
+				"the file changed, the millisecond did not, and nothing noticed");
+	}
 }
