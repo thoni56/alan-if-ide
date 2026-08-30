@@ -1,8 +1,8 @@
-import { Range, TextEditor, commands, env, extensions, window, workspace } from 'vscode';
 import {
-    columnOf, continuationIndent, lineOpensInsideAnotherString, rewrap, spanAt, stringSpans,
-    visualWidth
-} from './strings';
+    CodeAction, CodeActionKind, CodeActionProvider, ExtensionContext, Range, TextDocument,
+    TextEditor, commands, env, languages, window, workspace
+} from 'vscode';
+import { rewrapPlan, spanAt, stringSpans } from './strings';
 import { rewrapKeyContested, suppressRewrapKeyNotice } from './notices';
 import { REWRAP_BINDING, hasRewrapBinding, withRewrapBinding } from './keybindings';
 import { clearRewrapKeyStatusItem } from './status';
@@ -37,43 +37,16 @@ export async function rewrapStringCommand(): Promise<void> {
         return;
     }
 
-    const config = workspace.getConfiguration('alanif', document.uri);
-    const width = config.get<number>('format.stringWidth') ?? 80;
-    const tabSize = Number(editor.options.tabSize) || 4;
-    const unit = editor.options.insertSpaces ? ' '.repeat(tabSize) : '\t';
+    const { width, tabSize, unit } = layoutFor(document);
 
     // Applied back to front so that an earlier edit cannot move a later span.
     await editor.edit(builder => {
         for (const span of [...targets].reverse()) {
-            const literal = text.slice(span.start, span.end);
-            const own = lineIndent(text, span.start);
-            const inlineColumn = columnOf(text, span.start, tabSize);
-            let wrapped = rewrap(literal, inlineColumn,
-                continuationIndent(own, inlineColumn, unit, tabSize), width, tabSize);
-            let from = span.start;
-
-            // A STRING THAT ENDS UP SPANNING LINES IS A BLOCK, so give it one. Decided
-            // from the RESULT rather than the input: what matters is whether the author
-            // is about to have prose hanging off the end of a keyword. Format Document
-            // will not do this -- moving text between lines is outside its contract --
-            // which is exactly why it belongs to the command you had to ask for.
-            const shouldMove = wrapped.includes('\n')
-                && inlineColumn > visualWidth(own, tabSize)
-                && !lineOpensInsideAnotherString(text, spans, span.start);
-            if (shouldMove) {
-                // One level in from the line it is leaving, and then wrapped as a string
-                // that owns its line -- which it now does.
-                const moved = own + unit;
-                const movedColumn = visualWidth(moved, tabSize);
-                wrapped = '\n' + moved + rewrap(literal, movedColumn,
-                    continuationIndent(moved, movedColumn, unit, tabSize), width, tabSize);
-                from = startOfRun(text, span.start);
-            }
-
-            if (wrapped !== literal) {
+            const plan = rewrapPlan(text, spans, span, width, tabSize, unit);
+            if (plan) {
                 builder.replace(
-                    new Range(document.positionAt(from), document.positionAt(span.end)),
-                    wrapped);
+                    new Range(document.positionAt(plan.from), document.positionAt(span.end)),
+                    plan.text);
             }
         }
     });
@@ -126,26 +99,31 @@ function settle(): void {
 }
 
 /**
- * Write the binding into the user's keybindings.json, and show them what happened.
+ * Write the binding into the user's keybindings.json.
  *
- * <p>The file is opened rather than written behind their back -- it is theirs, it is
- * the one place their own choices live, and an edit they cannot see is not one they
- * can undo. Saving it is still ours to do: an unsaved change means Alt+Q keeps doing
- * nothing, which is the confusion we are here to end.
+ * <p>The file has to be OPENED to be edited -- there is no API for a keybinding, and
+ * no way to name that file except by asking VS Code to open it -- but it does not have
+ * to be left open. An author who answered a one-line question about a keyboard
+ * shortcut did not ask to read JSON, and being dropped into a settings file is its own
+ * small failure: it looks like there is something left for them to do.
+ *
+ * <p>So a file we opened is closed again, and the confirmation carries a button for
+ * anyone who does want to see what was written. A file that was already open is left
+ * exactly as it was found, because that one is theirs.
  */
 export async function bindRewrapKeyCommand(): Promise<void> {
+    const wasAlreadyOpen = workspace.textDocuments.some(isKeybindings);
     await commands.executeCommand('workbench.action.openGlobalKeybindingsFile');
     const editor = window.activeTextEditor;
-    if (!editor || !editor.document.fileName.endsWith('keybindings.json')) {
+    if (!editor || !isKeybindings(editor.document)) {
         return handItOver('Alan IF IDE: I could not open your keybindings file.');
     }
 
     const text = editor.document.getText();
     if (hasRewrapBinding(text)) {
         settle();
-        window.showInformationMessage(
-            'Alan IF IDE: Alt+Q is already bound to Re-wrap String — your keybindings '
-            + 'file is open if you want to check it.');
+        await tidyAway(wasAlreadyOpen);
+        showDone('Alan IF IDE: Alt+Q is already bound to Re-wrap String.');
         return;
     }
 
@@ -159,10 +137,30 @@ export async function bindRewrapKeyCommand(): Promise<void> {
     await editor.edit(builder => builder.replace(whole, updated));
     await editor.document.save();
     settle();
-    window.showInformationMessage(
-        'Alan IF IDE: done — Alt+Q is now bound to Re-wrap String in Alan files, and '
-        + 'keeps its old binding everywhere else. The line I added is in the file now '
-        + 'open.');
+    await tidyAway(wasAlreadyOpen);
+    showDone('Alan IF IDE: done — Alt+Q is now bound to Re-wrap String in Alan files, '
+        + 'and keeps its old binding everywhere else.');
+}
+
+function isKeybindings(document: TextDocument): boolean {
+    return document.fileName.endsWith('keybindings.json');
+}
+
+/** Close the file again, unless it was the author's own window before we arrived. */
+async function tidyAway(wasAlreadyOpen: boolean): Promise<void> {
+    if (!wasAlreadyOpen && window.activeTextEditor
+        && isKeybindings(window.activeTextEditor.document)) {
+        await commands.executeCommand('workbench.action.closeActiveEditor');
+    }
+}
+
+/** Said and done -- with the file one click away for anyone who wants to look. */
+function showDone(message: string): void {
+    window.showInformationMessage(message, 'Show me the file').then(choice => {
+        if (choice === 'Show me the file') {
+            commands.executeCommand('workbench.action.openGlobalKeybindingsFile');
+        }
+    });
 }
 
 /**
@@ -179,6 +177,65 @@ async function handItOver(why: string): Promise<void> {
         detail: 'The binding is on your clipboard instead. Open Keyboard Shortcuts '
             + '(JSON) from the Command Palette and paste it between the [ ] brackets.',
     });
+}
+
+/**
+ * The lightbulb: offer to re-wrap the string the cursor is in.
+ *
+ * <p>The one surface that comes to the author instead of waiting to be found. It is
+ * offered only when re-wrapping would actually change something, which is not a
+ * heuristic about length but the command's own answer -- rewrapPlan decides for both,
+ * so the bulb cannot appear over a string that is already laid out, and cannot fail to
+ * appear over one that is not.
+ *
+ * <p>A Refactor rather than a QuickFix: nothing here is wrong. A string laid out any
+ * way at all prints identically, so this is a rewrite the author may want, never a
+ * problem they should fix.
+ */
+class RewrapAction implements CodeActionProvider {
+    provideCodeActions(document: TextDocument, range: Range): CodeAction[] {
+        const text = document.getText();
+        const spans = stringSpans(text);
+        const span = spanAt(spans, document.offsetAt(range.start));
+        if (!span) {
+            return [];
+        }
+
+        const { width, tabSize, unit } = layoutFor(document);
+        if (!rewrapPlan(text, spans, span, width, tabSize, unit)) {
+            return [];
+        }
+
+        const action = new CodeAction('Re-wrap this string', CodeActionKind.RefactorRewrite);
+        // Delegates to the command rather than carrying its own edit, so a string
+        // re-wrapped from the bulb is re-wrapped by exactly the same code as one
+        // re-wrapped from the menu, the palette or the key.
+        action.command = { command: 'alanif.rewrapString', title: 'Re-wrap this string' };
+        return [action];
+    }
+}
+
+export function registerRewrapAction(context: ExtensionContext): void {
+    context.subscriptions.push(languages.registerCodeActionsProvider(
+        { language: 'alanif' }, new RewrapAction(),
+        { providedCodeActionKinds: [CodeActionKind.RefactorRewrite] }));
+}
+
+/**
+ * The width to wrap to, and how this editor writes one level of indent.
+ *
+ * <p>Taken from the open editor when there is one, because tab size and spaces-vs-tabs
+ * are the EDITOR's answer and not the file's; the defaults are what VS Code itself
+ * starts from, for the code-action path where no editor is in hand.
+ */
+function layoutFor(document: TextDocument): { width: number; tabSize: number; unit: string } {
+    const width = workspace.getConfiguration('alanif', document.uri)
+        .get<number>('format.stringWidth') ?? 80;
+    const editor = window.activeTextEditor?.document === document
+        ? window.activeTextEditor : undefined;
+    const tabSize = Number(editor?.options.tabSize) || 4;
+    const unit = editor?.options.insertSpaces === false ? '\t' : ' '.repeat(tabSize);
+    return { width, tabSize, unit };
 }
 
 /** The strings the cursor is in, or all those a non-empty selection touches. */
@@ -204,18 +261,3 @@ function selected(editor: TextEditor, text: string, spans: { start: number; end:
     return chosen.sort((a, b) => a.start - b.start);
 }
 
-/** Back up over the spaces and tabs before `offset`, so moving leaves no trailing run. */
-function startOfRun(text: string, offset: number): number {
-    let at = offset;
-    while (at > 0 && (text[at - 1] === ' ' || text[at - 1] === '\t')) {
-        at--;
-    }
-    return at;
-}
-
-/** The whitespace the string's own line begins with, tabs and spaces as written. */
-function lineIndent(text: string, offset: number): string {
-    const start = text.lastIndexOf('\n', offset - 1) + 1;
-    const match = /^[ \t]*/.exec(text.slice(start, offset));
-    return match ? match[0] : '';
-}

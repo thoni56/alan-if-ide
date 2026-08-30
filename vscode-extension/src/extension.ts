@@ -8,7 +8,7 @@ import { overriddenPathWarnings } from './toolchain';
 import { createStatusItems, createPlayStatusItem, createRewrapKeyStatusItem } from './status';
 import { locateCompiler, locateInterpreter, checkToolchain } from './locate';
 import { ensureUtf8Sources } from './convert';
-import { rewrapStringCommand, bindRewrapKeyCommand } from './rewrap';
+import { rewrapStringCommand, bindRewrapKeyCommand, registerRewrapAction } from './rewrap';
 import { registerEncodingFixes } from './quickfix';
 import { startLanguageClient, stopLanguageClient, restartWhenServerSettingsChange } from './client';
 import { initNotices, compilerNoticeSuppressed, suppressCompilerNotice } from './notices';
@@ -23,6 +23,7 @@ export function activate(context: ExtensionContext) {
     createStatusItems(context);
     createRewrapKeyStatusItem(context);
     registerEncodingFixes(context);
+    registerRewrapAction(context);
     registerCommands(context);
     watchPlayTerminals(context);
 

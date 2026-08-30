@@ -2,7 +2,8 @@ import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
 import {
-    columnOf, continuationIndent, lineOpensInsideAnotherString, rewrap, spanAt, stringSpans
+    columnOf, continuationIndent, lineOpensInsideAnotherString, rewrap, rewrapPlan, spanAt,
+    stringSpans
 } from './strings';
 
 /**
@@ -254,4 +255,36 @@ test('a marker that starts a source line is glued to its word, and stays glued',
 test('two markers in a row stay two markers in a row', () => {
     const literal = '"one two.$n$nthree four."';
     assert.equal(printed(rewrap(literal, 0, '  ', 40, 4)), printed(literal));
+});
+
+/**
+ * rewrapPlan is the single answer to "what would Re-wrap String do here", asked by
+ * the command and by the lightbulb alike. If it ever said yes where the command does
+ * nothing, the bulb would appear over strings it cannot help.
+ */
+test('a string that is already laid out has no plan at all', () => {
+    // The lightbulb's whole discipline: no plan, no offer.
+    const text = 'Description "short enough"\n';
+    const spans = stringSpans(text);
+    assert.equal(rewrapPlan(text, spans, spans[0], 80, 4, '    '), undefined);
+});
+
+test('a plan replaces from the string, and from its indent when the string moves', () => {
+    const text = '    Description "one two three four five six seven eight nine ten"\n';
+    const spans = stringSpans(text);
+    const plan = rewrapPlan(text, spans, spans[0], 40, 4, '    ');
+    assert.ok(plan);
+    // It moves onto its own line, so the edit starts back at the space before the
+    // quote -- otherwise `Description` would be left with a trailing run.
+    assert.equal(plan.from, text.indexOf(' "'));
+    assert.ok(plan.text.startsWith('\n        "'));
+});
+
+test('a string that only needs re-flowing is replaced where it stands', () => {
+    const text = '        "one two three four five six seven eight nine ten eleven twelve"\n';
+    const spans = stringSpans(text);
+    const plan = rewrapPlan(text, spans, spans[0], 40, 4, '    ');
+    assert.ok(plan);
+    assert.equal(plan.from, spans[0].start);
+    assert.ok(plan.text.startsWith('"one'));
 });
