@@ -76,6 +76,8 @@ export async function rewrapStringCommand(): Promise<void> {
             }
         }
     });
+
+    offerRewrapKeybinding();
 }
 
 /**
@@ -89,27 +91,40 @@ export async function rewrapStringCommand(): Promise<void> {
  *
  * <p>Which is the worst shape a missing feature can take. Nothing errors, nothing is
  * logged, the Keyboard Shortcuts list shows our binding present and correct, and the
- * key does nothing: it looks like OUR command is broken. So say it, once, with the fix
- * attached. Both extensions can be kept -- a USER keybinding beats every extension's.
+ * key does nothing: it looks like OUR command is broken.
  */
 const REWRAP_EXTENSION = 'stkb.rewrap';
 
-export function offerRewrapKeybindingNotice(): void {
-    if (!extensions.getExtension(REWRAP_EXTENSION) || rewrapKeyNoticeSuppressed()) {
+let askedThisWindow = false;
+
+/**
+ * Offer to settle the key -- ASKED WHEN THEY HAVE JUST RE-WRAPPED SOMETHING, not at
+ * startup.
+ *
+ * <p>Not a matter of taste. An information toast auto-hides after a moment, so an
+ * offer made during activation is one the author may never read; this file's own
+ * neighbours exist because a notification that leaves no trace is no way to report
+ * anything that matters. Asked here it is different in every way that counts: they
+ * are looking at the editor, they have just used the very command being discussed,
+ * and if the toast does slip past them it comes back the next time they use it. A
+ * question that repeats until answered does not need to be caught the first time.
+ *
+ * <p>Once per window at most, and never again once either button is pressed.
+ */
+export function offerRewrapKeybinding(): void {
+    if (askedThisWindow || rewrapKeyNoticeSuppressed()
+        || !extensions.getExtension(REWRAP_EXTENSION)) {
         return;
     }
-    // Named surfaces, not mechanisms: an author who has never opened keybindings.json
-    // should be able to answer this, and the answer should be a button rather than a
-    // paragraph of JSON they are expected to place correctly.
+    askedThisWindow = true;
     window.showInformationMessage(
-        'Alan IF IDE: Re-wrap String is on Alt+Q — but so is the Rewrap extension, '
-        + 'which may take the key first and then do nothing in an Alan file. Shall I '
-        + 'make Alt+Q run Re-wrap String in Alan files, and leave every other language '
-        + 'to Rewrap?',
+        'Alan IF IDE: Alt+Q would do that for you — except the Rewrap extension has '
+        + 'that key, and does nothing with it in an Alan file. Shall I give Alt+Q to '
+        + 'Re-wrap String in Alan files, and leave every other language to Rewrap?',
         'Yes, please', "No, don't ask again"
     ).then(async choice => {
         if (choice === undefined) {
-            return;                              // dismissed: ask again next window
+            return;                              // missed it: ask again next window
         }
         suppressRewrapKeyNotice();
         if (choice === 'Yes, please') {

@@ -48,9 +48,9 @@ older Eclipse-RCP *AlanIDE*.
 extension binds the same key for every language, and VS Code may hand it the key
 rather than us. Rewrap has no parser for Alan, so it runs and does nothing at all —
 which looks like a broken feature here. If you have Rewrap installed, Alan IF IDE
-notices and offers to settle it for you; say yes and it writes the binding below into
-your `keybindings.json`. To do it by hand instead — a *user* keybinding beats any
-extension's:
+offers to settle it the first time you re-wrap a string in a window; say yes and it
+writes the binding below into your `keybindings.json`. To do it by hand instead — a
+*user* keybinding beats any extension's:
 
 ```json
 {
