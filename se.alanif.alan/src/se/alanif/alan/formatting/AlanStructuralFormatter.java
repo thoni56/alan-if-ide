@@ -86,7 +86,14 @@ public class AlanStructuralFormatter {
 		int[] indent = new int[n + 2];
 		if (parse != null && parse.getRootNode() != null) {
 			markStringInteriors(parse.getRootNode(), stringOwner);
-			accumulate(parse.getRootNode(), indent);
+			List<Set<Integer>> openedAt = new ArrayList<>(n + 3);
+			for (int i = 0; i < n + 3; i++) {
+				openedAt.add(new HashSet<>());
+			}
+			accumulate(parse.getRootNode(), openedAt);
+			for (int L = 0; L < n + 2; L++) {
+				indent[L] = openedAt.get(L).size();
+			}
 			if (keywordCase != KeywordCase.OFF) {
 				applyKeywordCasing(parse.getRootNode(), keywordCase);
 			}
@@ -136,8 +143,29 @@ public class AlanStructuralFormatter {
 		return c;
 	}
 
-	/** +1 to every line a wrapper spans, minus a shared first line and its own closer. */
-	private void accumulate(INode node, int[] indent) {
+	/**
+	 * Record, for every line, the WRAPPER START LINES that are open across it.
+	 *
+	 * <p>The indent of a line is how many of those there are -- distinct start lines,
+	 * not wrappers. That distinction is the whole of the rule: ONE WRITTEN LINE IS ONE
+	 * LEVEL. Where the grammar nests two wrappers that begin on the same line, there is
+	 * only one line for the author to see, so it can only be worth one level.
+	 *
+	 * <p>Counting wrappers instead put {@code Exit ... to grotto does} two levels above
+	 * its own body, while the same block written as {@code Exit ... / Check / body} and
+	 * every {@code Verb poke / Does / body} indented one level per line: {@code does}
+	 * rides on the header, so OptionalExitBody and Statements both open on the body's
+	 * line and both counted. Found by the formatter's first tests.
+	 *
+	 * <p>Two refinements survive, and both are about whether a wrapper applies to a
+	 * given line at all:
+	 * <ol>
+	 * <li>a wrapper does not apply to a first line it SHARES with a preceding keyword
+	 *     -- an inline value rather than a fresh block body;</li>
+	 * <li>a block's own {@code end} closer aligns with its header.</li>
+	 * </ol>
+	 */
+	private void accumulate(INode node, List<Set<Integer>> openedAt) {
 		if (!(node instanceof ICompositeNode)) {
 			return;
 		}
@@ -156,12 +184,14 @@ public class AlanStructuralFormatter {
 					if (cap != -1 && L >= cap) {
 						continue;                      // 'end ...' aligns with the header
 					}
-					indent[L] += 1;
+					if (L < openedAt.size()) {
+						openedAt.get(L).add(fLine);
+					}
 				}
 			}
 		}
 		for (INode c : ((ICompositeNode) node).getChildren()) {
-			accumulate(c, indent);
+			accumulate(c, openedAt);
 		}
 	}
 

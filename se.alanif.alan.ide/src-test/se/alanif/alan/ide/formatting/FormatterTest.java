@@ -85,8 +85,30 @@ class FormatterTest {
 		}
 
 		@Test
+		@DisplayName("two statements of the same body get the same indent")
+		void siblingStatementsAgree() {
+			// The real damage the old counting did, found across the corpus. When the
+			// first statement rides on the header line, the body opened on the SECOND
+			// statement's line -- so two statements of one block came out a level apart,
+			// which reads as nesting that is not there.
+			String[] out = lines(format(
+					"Every thing IsA object",
+					"Verb examine",
+					"Does Only \"You see nothing special.\"",
+					"If this is not plural then",
+					"\"window.\"",
+					"End if.",
+					"End verb.",
+					"End every."));
+
+			assertEquals("        Does Only \"You see nothing special.\"", out[2]);
+			assertEquals("        If this is not plural then", out[3],
+					"a sibling statement was indented deeper than the one before it");
+			assertEquals("        End if.", out[5]);
+		}
+
+		@Test
 		@DisplayName("one written line is one level, even when the grammar nests twice")
-		@org.junit.jupiter.api.Disabled("open question for Thomas -- see the comment")
 		void aBodyIntroducedOnTheHeaderLineGainsOneLevel() {
 			// FOUND BY THIS TEST, and it predates it. Compare three shapes:
 			//
@@ -100,10 +122,10 @@ class FormatterTest {
 			// a wrapper only for a first line it SHARES with a keyword, not for the rest
 			// of its range.
 			//
-			// The corpus writes it the way this test expects (h_dragon_peak.i has Exit at
-			// one tab and its prose at two), though that proves only what the author
-			// typed: the 83/83 run asserted STABILITY, not that formatting leaves those
-			// files unchanged. So this is a decision, not a fact, and it is Thomas's.
+			// Thomas chose one level, like the others: the level count follows the lines
+			// the author can see, not the grammar nodes that happen to nest. The corpus
+			// is written that way too (h_dragon_peak.i has Exit at one tab and its prose
+			// at two), though that only tells us what its author typed.
 			String[] out = lines(format(
 					"The peak IsA location",
 					"Exit east to grotto does",
