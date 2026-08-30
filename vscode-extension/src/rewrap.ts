@@ -1,8 +1,9 @@
-import { Range, TextEditor, window, workspace } from 'vscode';
+import { Range, TextEditor, commands, extensions, window, workspace } from 'vscode';
 import {
     columnOf, continuationIndent, lineOpensInsideAnotherString, rewrap, spanAt, stringSpans,
     visualWidth
 } from './strings';
+import { rewrapKeyNoticeSuppressed, suppressRewrapKeyNotice } from './notices';
 
 /**
  * Re-flow the string the cursor is in, or every string the selection touches.
@@ -72,6 +73,41 @@ export async function rewrapStringCommand(): Promise<void> {
                     new Range(document.positionAt(from), document.positionAt(span.end)),
                     wrapped);
             }
+        }
+    });
+}
+
+/**
+ * The Rewrap extension, which binds Alt+Q for every language there is.
+ *
+ * <p>Ours may simply lose: VS Code settles a contested chord by taking the LAST rule
+ * registered, which is extension load order, and a more specific `when` clause buys
+ * no precedence. Rewrap then runs, looks for a wrapping parser for `alanif`, has none
+ * -- it is not in its language table, and not plaintext either, so it does not get the
+ * plain-text fallback -- and returns having done nothing.
+ *
+ * <p>Which is the worst shape a missing feature can take. Nothing errors, nothing is
+ * logged, the Keyboard Shortcuts list shows our binding present and correct, and the
+ * key does nothing: it looks like OUR command is broken. So say it, once, with the fix
+ * attached. Both extensions can be kept -- a USER keybinding beats every extension's.
+ */
+const REWRAP_EXTENSION = 'stkb.rewrap';
+
+export function offerRewrapKeybindingNotice(): void {
+    if (!extensions.getExtension(REWRAP_EXTENSION) || rewrapKeyNoticeSuppressed()) {
+        return;
+    }
+    window.showInformationMessage(
+        'Alan IF IDE: the Rewrap extension also binds Alt+Q, so Re-wrap String may not '
+        + 'answer it. Both can be kept — bind Alt+Q to "Alan IF: Re-wrap String" with '
+        + 'the condition "editorTextFocus && editorLangId == alanif", and Rewrap keeps '
+        + 'every other language.',
+        'Open Keyboard Shortcuts', "Don't Show Again"
+    ).then(choice => {
+        if (choice === 'Open Keyboard Shortcuts') {
+            commands.executeCommand('workbench.action.openGlobalKeybindings', 'Re-wrap String');
+        } else if (choice === "Don't Show Again") {
+            suppressRewrapKeyNotice();
         }
     });
 }

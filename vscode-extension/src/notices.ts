@@ -26,6 +26,24 @@ export function suppressCompilerNotice(): void {
     store?.update(SUPPRESS_COMPILER_NOTICE, true);
 }
 
+/**
+ * And whether the author has been told that Alt+Q may not reach Re-wrap String.
+ *
+ * <p>Kept separate from the compiler notice, because they are different promises:
+ * that one says a tool is missing and can be found again, this one says a key is
+ * taken and stays taken. Check Setup reopens the first; nothing reopens this, since
+ * an author who has chosen their own binding does not want asking twice.
+ */
+const SUPPRESS_REWRAP_KEY_NOTICE = 'alanif.suppressRewrapKeybindingNotice';
+
+export function rewrapKeyNoticeSuppressed(): boolean {
+    return store?.get<boolean>(SUPPRESS_REWRAP_KEY_NOTICE) === true;
+}
+
+export function suppressRewrapKeyNotice(): void {
+    store?.update(SUPPRESS_REWRAP_KEY_NOTICE, true);
+}
+
 /** Undo the suppression. Returns true only if it was actually in effect. */
 export function restoreCompilerNotice(): boolean {
     if (!compilerNoticeSuppressed()) {

@@ -8,7 +8,7 @@ import { overriddenPathWarnings } from './toolchain';
 import { createStatusItems, createPlayStatusItem } from './status';
 import { locateCompiler, locateInterpreter, checkToolchain } from './locate';
 import { ensureUtf8Sources } from './convert';
-import { rewrapStringCommand } from './rewrap';
+import { rewrapStringCommand, offerRewrapKeybindingNotice } from './rewrap';
 import { registerEncodingFixes } from './quickfix';
 import { startLanguageClient, stopLanguageClient, restartWhenServerSettingsChange } from './client';
 import { initNotices, compilerNoticeSuppressed, suppressCompilerNotice } from './notices';
@@ -40,6 +40,7 @@ export function activate(context: ExtensionContext) {
     createPlayStatusItem(context);
     context.subscriptions.push(restartWhenServerSettingsChange());
     offerCompilerNotice(setup);
+    offerRewrapKeybindingNotice();
 
     // Settle the project's encoding before the author edits anything: a file shown
     // with replacement characters is one save away from losing its real ones. Not

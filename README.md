@@ -37,6 +37,29 @@ older Eclipse-RCP *AlanIDE*.
   terminal.
 - **Format Document** — a structure-aware indenter with optional keyword-case
   normalization; never reflows the interior of a string.
+- **Re-wrap String** (`Alt+Q`, or right-click) — re-flows the string your cursor is
+  in, or every string a selection touches, to `alanif.format.stringWidth`. `$p` and
+  `$n` are laid out as the paragraph and line break they print as, so the source
+  comes to look like what the player reads. Safe to use freely: whitespace inside an
+  Alan string is collapsed by the interpreter, which wraps to the player's terminal,
+  so how a string is laid out in the source cannot change what the game prints.
+
+**If `Alt+Q` does nothing**, the [Rewrap](https://marketplace.visualstudio.com/items?itemName=stkb.rewrap)
+extension binds the same key for every language, and VS Code may hand it the key
+rather than us. Rewrap has no parser for Alan, so it runs and does nothing at all —
+which looks like a broken feature here. Keep both by adding a *user* keybinding,
+which beats any extension's:
+
+```json
+{
+    "key": "alt+q",
+    "command": "alanif.rewrapString",
+    "when": "editorTextFocus && editorLangId == alanif"
+}
+```
+
+Alan files then go to Re-wrap String, and every other language stays with Rewrap.
+The command is always available from the right-click menu and the Command Palette.
 
 Division of labour: the **Alan compiler is the source of truth** for diagnostics;
 the language server provides the **ergonomics** (navigation, outline, formatting).
