@@ -9,6 +9,15 @@
  * Return. So re-wrapping cannot change a single byte of what the game prints, whatever
  * width is chosen.
  *
+ * <p>The markers are the exception, and the SDK's own regression test pins the rules:
+ * a space BEFORE `$p` or `$n` is swallowed, and so is one between two markers -- which
+ * is why the line break this file puts in front of a marker is free. A space AFTER a
+ * marker is CONTENT: it indents the paragraph the marker opens. A source newline
+ * counts as a space either way, so ending a line with `$p` and continuing on the next
+ * silently indents that paragraph -- an author's trap, and not ours to quietly fix,
+ * since removing the space would change what the game prints. Re-wrapping writes such
+ * a space out where it can at least be seen.
+ *
  * <p>That is a stronger guarantee than the formatter has anywhere else, which is why
  * Format Document deliberately moves multi-line strings as rigid blocks and never
  * reflows them: without the guarantee, silently re-laying out someone's prose would be

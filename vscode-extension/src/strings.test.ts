@@ -198,3 +198,60 @@ test('the hanging indent is spaces even when the file is indented with tabs', ()
     // point. The line's own indentation is still left exactly as the author wrote it.
     assert.equal(continuationIndent('\t\t', 8, '\t', 4), '\t\t ');
 });
+
+/**
+ * What the interpreter receives, per the Alan SDK's own regression test.
+ *
+ * A whitespace run is one space; a space before a marker is swallowed, and so is one
+ * between two markers; a space after a marker survives and indents the paragraph it
+ * opens. This is the oracle the tests below measure against -- re-wrap may move any
+ * whitespace it likes in the source, as long as this does not move.
+ */
+function printed(literal: string): string {
+    return literal.slice(1, -1).replace(/\s+/g, ' ').replace(/ (?=\$[pn])/gi, '');
+}
+
+test('the break re-wrap puts before a marker is free', () => {
+    // It becomes a space, and a space before a marker is swallowed. Measured: 89 of
+    // the Wyldkynd project's 5261 strings gain one, and none of them print differently.
+    const literal = '"one two three four.$pfive six seven eight."';
+    const wrapped = rewrap(literal, 0, '  ', 24, 4);
+    assert.match(wrapped, /\n\n {2}\$pfive/);
+    assert.equal(printed(wrapped), printed(literal));
+});
+
+test('a space AFTER a marker is content, and survives being re-wrapped', () => {
+    // It indents the paragraph the marker opens, so inventing or dropping one here
+    // would change the game's output.
+    const withSpace = '"one two.$p three four."';
+    assert.match(rewrap(withSpace, 0, '  ', 40, 4), /\$p three/);
+    assert.equal(printed(rewrap(withSpace, 0, '  ', 40, 4)), printed(withSpace));
+
+    const without = '"one two.$pthree four."';
+    assert.match(rewrap(without, 0, '  ', 40, 4), /\$pthree/);
+    assert.equal(printed(rewrap(without, 0, '  ', 40, 4)), printed(without));
+});
+
+test('a source newline after a marker is a space, and re-wrap writes it out', () => {
+    // The author's trap: ending a source line with $p silently indents the paragraph
+    // that follows. Not ours to fix -- removing the space would change what prints --
+    // but re-wrapping does move it somewhere the author can see it.
+    const literal = '"one two.$p\n   three four."';
+    const wrapped = rewrap(literal, 0, '  ', 40, 4);
+    assert.match(wrapped, /\$p three/);
+    assert.equal(printed(wrapped), printed(literal));
+});
+
+test('a marker that starts a source line is glued to its word, and stays glued', () => {
+    // The same two lines written the other way round print differently, and both
+    // spellings have to survive.
+    const literal = '"one two.\n   $pthree four."';
+    const wrapped = rewrap(literal, 0, '  ', 40, 4);
+    assert.match(wrapped, /\$pthree/);
+    assert.equal(printed(wrapped), printed(literal));
+});
+
+test('two markers in a row stay two markers in a row', () => {
+    const literal = '"one two.$n$nthree four."';
+    assert.equal(printed(rewrap(literal, 0, '  ', 40, 4)), printed(literal));
+});
