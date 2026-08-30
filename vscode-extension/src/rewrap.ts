@@ -1,9 +1,10 @@
-import { Range, TextEditor, commands, extensions, window, workspace } from 'vscode';
+import { Range, TextEditor, commands, env, extensions, window, workspace } from 'vscode';
 import {
     columnOf, continuationIndent, lineOpensInsideAnotherString, rewrap, spanAt, stringSpans,
     visualWidth
 } from './strings';
 import { rewrapKeyNoticeSuppressed, suppressRewrapKeyNotice } from './notices';
+import { REWRAP_BINDING, hasRewrapBinding, withRewrapBinding } from './keybindings';
 
 /**
  * Re-flow the string the cursor is in, or every string the selection touches.
@@ -97,19 +98,68 @@ export function offerRewrapKeybindingNotice(): void {
     if (!extensions.getExtension(REWRAP_EXTENSION) || rewrapKeyNoticeSuppressed()) {
         return;
     }
+    // Named surfaces, not mechanisms: an author who has never opened keybindings.json
+    // should be able to answer this, and the answer should be a button rather than a
+    // paragraph of JSON they are expected to place correctly.
     window.showInformationMessage(
-        'Alan IF IDE: the Rewrap extension also binds Alt+Q, so Re-wrap String may not '
-        + 'answer it. Both can be kept — bind Alt+Q to "Alan IF: Re-wrap String" with '
-        + 'the condition "editorTextFocus && editorLangId == alanif", and Rewrap keeps '
-        + 'every other language.',
-        'Open Keyboard Shortcuts', "Don't Show Again"
-    ).then(choice => {
-        if (choice === 'Open Keyboard Shortcuts') {
-            commands.executeCommand('workbench.action.openGlobalKeybindings', 'Re-wrap String');
-        } else if (choice === "Don't Show Again") {
-            suppressRewrapKeyNotice();
+        'Alan IF IDE: Re-wrap String is on Alt+Q — but so is the Rewrap extension, '
+        + 'which may take the key first and then do nothing in an Alan file. Shall I '
+        + 'make Alt+Q run Re-wrap String in Alan files, and leave every other language '
+        + 'to Rewrap?',
+        'Yes, please', "No, don't ask again"
+    ).then(async choice => {
+        if (choice === undefined) {
+            return;                              // dismissed: ask again next window
+        }
+        suppressRewrapKeyNotice();
+        if (choice === 'Yes, please') {
+            await addRewrapKeybinding();
         }
     });
+}
+
+/**
+ * Write the binding into the user's keybindings.json, and show them what happened.
+ *
+ * <p>The file is opened rather than written behind their back -- it is theirs, it is
+ * the one place their own choices live, and an edit they cannot see is not one they
+ * can undo. Saving it is still ours to do: an unsaved change means Alt+Q keeps doing
+ * nothing, which is the confusion we are here to end.
+ */
+async function addRewrapKeybinding(): Promise<void> {
+    await commands.executeCommand('workbench.action.openGlobalKeybindingsFile');
+    const editor = window.activeTextEditor;
+    if (!editor || !editor.document.fileName.endsWith('keybindings.json')) {
+        return handItOver('Alan IF IDE: I could not open your keybindings file.');
+    }
+
+    const text = editor.document.getText();
+    if (hasRewrapBinding(text)) {
+        window.showInformationMessage(
+            'Alan IF IDE: Alt+Q is already bound to Re-wrap String — your keybindings '
+            + 'file is open if you want to check it.');
+        return;
+    }
+
+    const updated = withRewrapBinding(text);
+    if (updated === undefined) {
+        return handItOver('Alan IF IDE: your keybindings file is not laid out in a way '
+            + 'I can add to safely, so I have left it exactly as it was.');
+    }
+
+    const whole = new Range(editor.document.positionAt(0), editor.document.positionAt(text.length));
+    await editor.edit(builder => builder.replace(whole, updated));
+    await editor.document.save();
+    window.showInformationMessage(
+        'Alan IF IDE: done — Alt+Q now runs Re-wrap String in Alan files, and Rewrap '
+        + 'keeps every other language. The line I added is in the file now open.');
+}
+
+/** When we will not edit the file: give them the entry rather than instructions. */
+async function handItOver(why: string): Promise<void> {
+    await env.clipboard.writeText(REWRAP_BINDING);
+    window.showWarningMessage(why + ' The binding is on your clipboard instead — paste '
+        + 'it between the [ ] brackets of keybindings.json.');
 }
 
 /** The strings the cursor is in, or all those a non-empty selection touches. */
