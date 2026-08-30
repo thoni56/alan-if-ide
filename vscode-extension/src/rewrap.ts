@@ -100,9 +100,8 @@ export function offerRewrapKeybinding(): void {
     }
     askedThisWindow = true;
     window.showInformationMessage(
-        'Alan IF IDE: Alt+Q would do that for you — except the Rewrap extension has '
-        + 'that key, and does nothing with it in an Alan file. Shall I give Alt+Q to '
-        + 'Re-wrap String in Alan files, and leave every other language to Rewrap?',
+        'Alan IF IDE: Do you want to bind Alt+Q to Re-wrap String in Alan files? It is '
+        + 'currently bound to the Rewrap extension, for all files.',
         'Yes, please', "No, don't ask again"
     ).then(async choice => {
         if (choice === 'Yes, please') {
@@ -154,8 +153,9 @@ export async function bindRewrapKeyCommand(): Promise<void> {
     await editor.document.save();
     settle();
     window.showInformationMessage(
-        'Alan IF IDE: done — Alt+Q now runs Re-wrap String in Alan files, and Rewrap '
-        + 'keeps every other language. The line I added is in the file now open.');
+        'Alan IF IDE: done — Alt+Q is now bound to Re-wrap String in Alan files, and '
+        + 'stays bound to Rewrap everywhere else. The line I added is in the file now '
+        + 'open.');
 }
 
 /**

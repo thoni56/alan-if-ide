@@ -203,10 +203,10 @@ export function createRewrapKeyStatusItem(context: ExtensionContext): void {
     }
     rewrapKey = languages.createLanguageStatusItem('alanif.status.4-rewrapkey', SELECTOR);
     rewrapKey.name = 'Alan IF: Re-wrap key';
-    rewrapKey.text = 'Alt+Q is taken';
-    rewrapKey.detail = 'the Rewrap extension has it';
+    rewrapKey.text = 'Alt+Q is bound elsewhere';
+    rewrapKey.detail = 'to the Rewrap extension, for all files';
     rewrapKey.severity = LanguageStatusSeverity.Information;
-    rewrapKey.command = { command: 'alanif.bindRewrapKey', title: 'Give it to Re-wrap String…' };
+    rewrapKey.command = { command: 'alanif.bindRewrapKey', title: 'Bind it to Re-wrap String' };
     context.subscriptions.push(rewrapKey);
 }
 
