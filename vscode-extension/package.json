@@ -116,7 +116,7 @@
         },
         {
           "command": "alanif.bindRewrapKey",
-          "when": "alanif.rewrapKeyContested"
+          "when": "alanif.rewrapKeyBindable"
         }
       ]
     },

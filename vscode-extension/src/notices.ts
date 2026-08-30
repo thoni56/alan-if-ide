@@ -63,5 +63,17 @@ export function restoreCompilerNotice(): boolean {
  * it, which is the cheapest place for that check to live.
  */
 export function rewrapKeyContested(): boolean {
-    return !rewrapKeyNoticeSuppressed() && extensions.getExtension(REWRAP_EXTENSION_ID) !== undefined;
+    return !rewrapKeyNoticeSuppressed() && rewrapKeyBindable();
+}
+
+/**
+ * Whether binding Alt+Q is a thing worth being able to ask for at all.
+ *
+ * <p>Deliberately NOT narrowed by the suppression: what an author turned off is being
+ * ASKED, and hiding the fix along with the question is how someone who says "no"
+ * once, or who later unbinds the key by hand, ends up with no way back. The prompt is
+ * suppressible; the action stays reachable for as long as the clash can exist.
+ */
+export function rewrapKeyBindable(): boolean {
+    return extensions.getExtension(REWRAP_EXTENSION_ID) !== undefined;
 }

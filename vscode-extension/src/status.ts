@@ -7,7 +7,7 @@ import { Environment, getEnvironment, onEnvironmentChanged } from './environment
 import { alarmFor } from './toolchain';
 import { legacyFiles, onEncodingChanged } from './convert';
 import { MINIMUM_JAVA } from './java';
-import { rewrapKeyContested } from './notices';
+import { rewrapKeyBindable, rewrapKeyContested } from './notices';
 
 /**
  * Report the setup state on two surfaces, because they answer different questions.
@@ -197,7 +197,9 @@ export function createStatusItems(context: ExtensionContext): void {
 let rewrapKey: LanguageStatusItem | undefined;
 
 export function createRewrapKeyStatusItem(context: ExtensionContext): void {
-    commands.executeCommand('setContext', 'alanif.rewrapKeyContested', rewrapKeyContested());
+    // The command stays in the palette for anyone who COULD need it; only the item,
+    // which is the part that nags, waits on the question being unanswered.
+    commands.executeCommand('setContext', 'alanif.rewrapKeyBindable', rewrapKeyBindable());
     if (!rewrapKeyContested()) {
         return;
     }
@@ -212,7 +214,6 @@ export function createRewrapKeyStatusItem(context: ExtensionContext): void {
 
 /** Once the key is settled, however it was settled, the item has nothing to say. */
 export function clearRewrapKeyStatusItem(): void {
-    commands.executeCommand('setContext', 'alanif.rewrapKeyContested', false);
     rewrapKey?.dispose();
     rewrapKey = undefined;
 }
