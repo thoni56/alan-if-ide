@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.7.9 — 2026-08-30
+
+- **Re-wrap String is on `Alt+Q` and in the right-click menu.** It was reachable only
+  from the Command Palette, which is the one surface you can only use if you already
+  know the feature is there. `Alt+Q` is the fill-paragraph key from Emacs and from the
+  Rewrap extension, so it is already in the fingers of anyone who went looking for this.
+- **And a lightbulb offers it.** Put the cursor in a string that would come out
+  differently and the bulb offers to re-wrap it — the one way in that finds you rather
+  than waiting to be found. It appears only when re-wrapping would actually change
+  something, because the bulb and the command ask the same question.
+- **If another extension has `Alt+Q`, Alan IF IDE says so and offers to settle it.**
+  The Rewrap extension binds that key for every language, and VS Code may hand it over
+  — after which it does nothing at all in an Alan file, which looks exactly like a
+  broken feature here. Now the language status bubble says the key is bound elsewhere,
+  and one click binds it to Re-wrap String for Alan files while leaving every other
+  language alone.
+- **Re-wrapped prose lines up, with the quote hanging in the margin.** Continuation
+  lines start one column right of the opening quote, which is where the first line's
+  text starts — so the block reads as the paragraph it prints as. Before, a string
+  already on its own line got continuation lines a whole level deeper, and one moved
+  down off its keyword got its first line one column out of true.
+- **The blank line between paragraphs is now genuinely blank**, instead of carrying
+  the indent as trailing whitespace that an editor could strip on save.
+- **And re-wrapping still cannot change one byte of what your game prints.** All 5261
+  strings of a real 83-file project were re-wrapped and compared against what the
+  interpreter actually receives, using the rules the Alan SDK's own regression test
+  pins down: a space before `$p` or `$n` is swallowed, a space after one is content.
+  Not one string differs.
+
 ## 0.7.8 — 2026-08-30
 
 - **Re-wrap String now lays your prose out the way the game will print it.** `$p` starts a
