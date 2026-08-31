@@ -321,6 +321,101 @@ export interface Alarm {
     severe: boolean;
 }
 
+/**
+ * Where a tool came from, short enough for the language status popup.
+ *
+ * That popup has a fixed, fairly narrow width, so a full absolute path is simply
+ * cut off -- and the end of the path (the folder and the binary) is the part worth
+ * keeping, not the beginning. So: home becomes `~`, and anything still too long
+ * loses its MIDDLE rather than its tail.
+ */
+export function where(command: string, source: string): string {
+    return `${shortenPath(command)} — ${source}`;
+}
+
+export function shortenPath(command: string): string {
+    if (!command.includes('/') && !command.includes('\\')) {
+        return command;                       // a bare name found on PATH
+    }
+
+    const home = os.homedir();
+    const withTilde = command.startsWith(home + '/') || command.startsWith(home + '\\')
+        ? '~' + command.slice(home.length)
+        : command;
+    if (withTilde.length <= 40) {
+        return withTilde;
+    }
+
+    const parts = withTilde.split(/[/\\]/);
+    if (parts.length <= 3) {
+        return withTilde;
+    }
+    const head = parts[0] === '' ? '' : parts[0];
+    return `${head}/…/${parts[parts.length - 2]}/${parts[parts.length - 1]}`;
+}
+
+/**
+ * What one status surface should say about one tool -- decided here, applied by the
+ * caller, exactly as alarmFor is. Severity is a NAME rather than VS Code's enum so
+ * that this module stays free of the editor and the decision stays unit-testable.
+ */
+export interface StatusDescription {
+    text: string;
+    detail: string;
+    severity: 'info' | 'warning' | 'error';
+    command: { command: string; title: string; arguments?: unknown[] };
+}
+
+/**
+ * Open the Settings UI focused on one setting.
+ *
+ * This is the deliberate answer to "how do I go back to automatic?": a file dialog
+ * can only ever produce an explicit path, so once used it is a one-way door. The
+ * settings page offers both directions -- clear the box (or hit the reset gear) to
+ * return to automatic discovery, or follow its Browse link to pick a file.
+ */
+export function settingsCommand(id: string) {
+    return { command: 'workbench.action.openSettings', title: 'Settings…', arguments: [id] };
+}
+
+/** The words that distinguish one tool from another; everything else is shared. */
+export interface ToolLabels {
+    /** How the tool is named to the author, e.g. 'Compiler'. */
+    noun: string;
+    /** The setting that can point at it explicitly. */
+    setting: string;
+    /** What stops working without it -- the author's actual question. */
+    lost: string;
+    /** The command that offers to go and find it. */
+    locate: string;
+}
+
+/**
+ * The compiler and the interpreter are the same story told about two tools: found,
+ * or found somewhere other than where you said, or not found at all. Java is NOT --
+ * see describeJava -- and keeping them apart is what makes that difference visible.
+ */
+export function describeTool(tool: ToolResult, labels: ToolLabels): StatusDescription {
+    if (!tool.ok) {
+        return {
+            text: `${labels.noun} not found`,
+            detail: labels.lost,
+            severity: 'warning',
+            command: { command: labels.locate, title: 'Locate…' },
+        };
+    }
+    return {
+        text: `${labels.noun} ${tool.version}`,
+        // A setting that was set and then stepped over is a failure the author would
+        // otherwise never hear about, because the tool works.
+        detail: tool.warning
+            ? `${labels.setting} ignored — using ${shortenPath(tool.command)}`
+            : where(tool.command, tool.source),
+        severity: tool.warning ? 'warning' : 'info',
+        command: settingsCommand(labels.setting),
+    };
+}
+
 export function alarmFor(setup: SetupState, serverProblem?: string): Alarm | undefined {
     const missing = [
         setup.java.ok ? undefined : 'Java',

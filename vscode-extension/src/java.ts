@@ -1,6 +1,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import { spawnSync } from 'child_process';
+import { StatusDescription, settingsCommand } from './toolchain';
 
 /** Where a usable `java` was found. Shown to the user so the choice is never magic. */
 export type JavaSource = 'the alanif.java.home setting' | 'the bundled runtime' | 'JAVA_HOME' | 'PATH';
@@ -143,6 +144,41 @@ function probeVersion(command: string): number | undefined {
 }
 
 /** A message that tells the user what is wrong *and* what to do about it. */
+/**
+ * Java's status line, which is deliberately NOT describeTool's story.
+ *
+ * Two differences, and both matter. Its severity is an ERROR where a missing
+ * compiler is only a warning: without Java there is no language server at all, so
+ * nothing else in the list can even be true. And it has a third state -- present but
+ * too old -- which no other tool has. There is no locate command either; the setting
+ * is the only way in. Sharing a describer with the other two would have to smuggle
+ * all of that through options, and would hide the one difference worth seeing.
+ */
+export function describeJava(java: JavaFound | JavaMissing): StatusDescription {
+    const command = settingsCommand('alanif.java.home');
+    if (java.ok) {
+        return {
+            text: `Java ${java.version}`,
+            detail: java.warning
+                ? `alanif.java.home ignored — using ${java.source}`
+                : `from ${java.source}`,
+            severity: java.warning ? 'warning' : 'info',
+            command,
+        };
+    }
+    const old = java.tooOld[0];
+    return {
+        text: old ? `Java ${old.version} — too old` : 'Java not found',
+        // Say WHICH build this is when it has no runtime of its own: without that,
+        // "needs Java 21" contradicts a settings page promising a bundled one.
+        detail: java.bundled
+            ? `The language server needs Java ${MINIMUM_JAVA} or later`
+            : `Needs Java ${MINIMUM_JAVA}+; this platform-neutral build bundles none`,
+        severity: 'error',
+        command,
+    };
+}
+
 export function missingJavaMessage(missing: JavaMissing): string {
     const found = missing.tooOld.length > 0
         ? `Alan IF IDE needs Java ${MINIMUM_JAVA} or later, but ${missing.tooOld[0].source} `

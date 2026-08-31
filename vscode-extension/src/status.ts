@@ -1,12 +1,11 @@
-import * as os from 'os';
 import {
     ExtensionContext, LanguageStatusItem, LanguageStatusSeverity, StatusBarAlignment,
     ThemeColor, commands, languages, window
 } from 'vscode';
 import { Environment, getEnvironment, onEnvironmentChanged } from './environment';
-import { alarmFor } from './toolchain';
+import { Alarm, StatusDescription, alarmFor, describeTool } from './toolchain';
 import { legacyFiles, onEncodingChanged } from './convert';
-import { MINIMUM_JAVA } from './java';
+import { describeJava } from './java';
 import { rewrapKeyBindable, rewrapKeyContested } from './notices';
 
 /**
@@ -49,6 +48,88 @@ export function serverProblemMessage(): string | undefined {
     return serverProblem;
 }
 
+const SEVERITY = {
+    info: LanguageStatusSeverity.Information,
+    warning: LanguageStatusSeverity.Warning,
+    error: LanguageStatusSeverity.Error,
+};
+
+/** Put a decision on screen. Applies what it is given and decides nothing itself. */
+function apply(item: LanguageStatusItem, description: StatusDescription): void {
+    item.text = description.text;
+    item.detail = description.detail;
+    item.severity = SEVERITY[description.severity];
+    item.command = description.command;
+}
+
+/**
+ * The way back to an offer the author dismissed, or never managed to read before it
+ * faded. Absent entirely once the sources are UTF-8, which is the normal case.
+ *
+ * Its own factory because it answers to a different question from the tool items:
+ * they report what this INSTALLATION can find, it reports what this PROJECT contains,
+ * and they refresh on different events.
+ */
+function createEncodingItem(context: ExtensionContext): void {
+    const encoding = languages.createLanguageStatusItem('alanif.status.0-encoding', SELECTOR);
+    encoding.name = 'Alan IF: Encoding';
+    const render = () => {
+        const legacy = legacyFiles();
+        if (legacy.length === 0) {
+            encoding.text = 'UTF-8';
+            encoding.detail = 'all sources';
+            encoding.severity = LanguageStatusSeverity.Information;
+            encoding.command = undefined;
+            return;
+        }
+        encoding.text = `${legacy.length} file${legacy.length === 1 ? '' : 's'} not UTF-8`;
+        encoding.detail = 'the compiler cannot read them';
+        encoding.severity = LanguageStatusSeverity.Error;
+        encoding.command = { command: 'alanif.convertSources', title: 'Convert…' };
+    };
+    render();
+    context.subscriptions.push(encoding, onEncodingChanged(render));
+}
+
+/**
+ * The alarm: absent while everything works, coloured and unmissable when it does not.
+ *
+ * Returns the one way to change it. Nothing here decides anything -- alarmFor does,
+ * and this applies the whole of its answer, ABSENCE INCLUDED. That is structural
+ * rather than careful: hide() does not clear an item's text, and the active-editor
+ * subscription re-shows anything WITH text, so an alarm that had ever fired used to
+ * come back on the next tab switch, still naming a compiler since found. There is now
+ * no way to express "hidden but still armed" -- armed is a variable, not a leftover.
+ */
+function createAlarmItem(context: ExtensionContext): (alarm: Alarm | undefined) => void {
+    const item = window.createStatusBarItem(StatusBarAlignment.Left, 99);
+    item.command = 'alanif.checkToolchain';
+    let armed = false;
+
+    const show = () => {
+        if (armed) {
+            showIfAlanIsInFront(item);
+        }
+    };
+    context.subscriptions.push(item, window.onDidChangeActiveTextEditor(show));
+
+    return (alarm: Alarm | undefined) => {
+        armed = alarm !== undefined;
+        if (!alarm) {
+            item.text = '';
+            item.tooltip = undefined;
+            item.hide();
+            return;
+        }
+        item.text = alarm.text;
+        item.tooltip = alarm.tooltip;
+        item.backgroundColor = new ThemeColor(alarm.severe
+            ? 'statusBarItem.errorBackground'
+            : 'statusBarItem.warningBackground');
+        show();
+    };
+}
+
 export function createStatusItems(context: ExtensionContext): void {
     // Order in the popup is VS Code's to decide, and it is not creation order as
     // written: with ids java/compiler/arun created in that order, the interpreter
@@ -68,115 +149,35 @@ export function createStatusItems(context: ExtensionContext): void {
     const compiler = languages.createLanguageStatusItem('alanif.status.1-compiler', SELECTOR);
     compiler.name = 'Alan IF: Compiler';
 
-    // The way back to an offer the author dismissed, or never managed to read before
-    // it faded. Absent entirely once the sources are UTF-8, which is the normal case.
-    const encoding = languages.createLanguageStatusItem('alanif.status.0-encoding', SELECTOR);
-    encoding.name = 'Alan IF: Encoding';
-    const renderEncoding = () => {
-        const legacy = legacyFiles();
-        if (legacy.length === 0) {
-            encoding.text = 'UTF-8';
-            encoding.detail = 'all sources';
-            encoding.severity = LanguageStatusSeverity.Information;
-            encoding.command = undefined;
-            return;
-        }
-        encoding.text = `${legacy.length} file${legacy.length === 1 ? '' : 's'} not UTF-8`;
-        encoding.detail = 'the compiler cannot read them';
-        encoding.severity = LanguageStatusSeverity.Error;
-        encoding.command = {
-            command: 'alanif.convertSources', title: 'Convert…'
-        };
-    };
-    renderEncoding();
+    createEncodingItem(context);
 
-    // Sits just right of Play, and only while an Alan file is in front.
-    const alarm = window.createStatusBarItem(StatusBarAlignment.Left, 99);
-    alarm.command = 'alanif.checkToolchain';
+    const showAlarm = createAlarmItem(context);
 
     const render = (env: Environment) => {
-        // Java: an Error, not a Warning. Without it there is no language server at
-        // all, so nothing else in this list can even be true.
-        if (env.java.ok) {
-            java.text = `Java ${env.java.version}`;
-            java.detail = env.java.warning
-                ? `alanif.java.home ignored — using ${env.java.source}`
-                : `from ${env.java.source}`;
-            java.severity = env.java.warning
-                ? LanguageStatusSeverity.Warning
-                : LanguageStatusSeverity.Information;
-            java.command = settingsCommand('alanif.java.home');
-        } else {
-            const old = env.java.tooOld[0];
-            java.text = old ? `Java ${old.version} — too old` : 'Java not found';
-            // Say WHICH build this is when it has no runtime of its own: without that,
-            // "needs Java 21" contradicts a settings page promising a bundled one.
-            java.detail = env.java.bundled
-                ? `The language server needs Java ${MINIMUM_JAVA} or later`
-                : `Needs Java ${MINIMUM_JAVA}+; this platform-neutral build bundles none`;
-            java.severity = LanguageStatusSeverity.Error;
-            java.command = settingsCommand('alanif.java.home');
-        }
+        apply(java, describeJava(env.java));
 
-        if (env.compiler.ok) {
-            compiler.text = `Compiler ${env.compiler.version}`;
-            compiler.detail = env.compiler.warning
-                ? `alanif.compiler.path ignored — using ${shortenPath(env.compiler.command)}`
-                : where(env.compiler.command, env.compiler.source);
-            compiler.severity = env.compiler.warning
-                ? LanguageStatusSeverity.Warning
-                : LanguageStatusSeverity.Information;
-            compiler.command = settingsCommand('alanif.compiler.path');
-        } else {
-            compiler.text = 'Compiler not found';
-            compiler.detail = 'No diagnostics, no Play';
-            compiler.severity = LanguageStatusSeverity.Warning;
-            compiler.command = { command: 'alanif.locateCompiler', title: 'Locate…' };
-        }
+        apply(compiler, describeTool(env.compiler, {
+            noun: 'Compiler',
+            setting: 'alanif.compiler.path',
+            lost: 'No diagnostics, no Play',
+            locate: 'alanif.locateCompiler',
+        }));
 
-        if (env.arun.ok) {
-            arun.text = `Interpreter ${env.arun.version}`;
-            arun.detail = env.arun.warning
-                ? `alanif.arun.path ignored — using ${shortenPath(env.arun.command)}`
-                : where(env.arun.command, env.arun.source);
-            arun.severity = env.arun.warning
-                ? LanguageStatusSeverity.Warning
-                : LanguageStatusSeverity.Information;
-            arun.command = settingsCommand('alanif.arun.path');
-        } else {
-            arun.text = 'Interpreter not found';
-            arun.detail = 'Play cannot start the game';
-            arun.severity = LanguageStatusSeverity.Warning;
-            arun.command = { command: 'alanif.locateInterpreter', title: 'Locate…' };
-        }
+        apply(arun, describeTool(env.arun, {
+            noun: 'Interpreter',
+            setting: 'alanif.arun.path',
+            lost: 'Play cannot start the game',
+            locate: 'alanif.locateInterpreter',
+        }));
 
-        // Applied mechanically, never decided here: the alarm's whole state comes
-        // from one pure function, so there is no path that hides the item while
-        // leaving it armed. That was the bug -- see alarmFor.
-        const state = alarmFor(env, serverProblem);
-        alarm.text = state?.text ?? '';
-        alarm.tooltip = state?.tooltip;
-        if (!state) {
-            alarm.hide();
-            return;
-        }
-        alarm.backgroundColor = new ThemeColor(state.severe
-            ? 'statusBarItem.errorBackground'
-            : 'statusBarItem.warningBackground');
-        showIfAlanIsInFront(alarm);
+        showAlarm(alarmFor(env, serverProblem));
     };
 
     render(getEnvironment());
     refresh = () => render(getEnvironment());
     context.subscriptions.push(
-        java, compiler, arun, alarm, encoding,
-        onEncodingChanged(renderEncoding),
+        java, compiler, arun,
         onEnvironmentChanged(render),
-        window.onDidChangeActiveTextEditor(() => {
-            if (alarm.text) {
-                showIfAlanIsInFront(alarm);
-            }
-        })
     );
 }
 
@@ -233,17 +234,6 @@ export function createPlayStatusItem(context: ExtensionContext): void {
     context.subscriptions.push(play, window.onDidChangeActiveTextEditor(update));
 }
 
-/**
- * Open the Settings UI focused on one setting.
- *
- * This is the deliberate answer to "how do I go back to automatic?": a file dialog
- * can only ever produce an explicit path, so once used it is a one-way door. The
- * settings page offers both directions -- clear the box (or hit the reset gear) to
- * return to automatic discovery, or follow its Browse link to pick a file.
- */
-function settingsCommand(id: string) {
-    return { command: 'workbench.action.openSettings', title: 'Settings…', arguments: [id] };
-}
 
 function showIfAlanIsInFront(item: { show(): void; hide(): void }): void {
     if (window.activeTextEditor?.document.languageId === 'alanif') {
@@ -252,37 +242,3 @@ function showIfAlanIsInFront(item: { show(): void; hide(): void }): void {
         item.hide();
     }
 }
-
-/**
- * Where a tool came from, short enough for the language status popup.
- *
- * That popup has a fixed, fairly narrow width, so a full absolute path is simply
- * cut off -- and the end of the path (the folder and the binary) is the part worth
- * keeping, not the beginning. So: home becomes `~`, and anything still too long
- * loses its MIDDLE rather than its tail.
- */
-function where(command: string, source: string): string {
-    return `${shortenPath(command)} — ${source}`;
-}
-
-function shortenPath(command: string): string {
-    if (!command.includes('/') && !command.includes('\\')) {
-        return command;                       // a bare name found on PATH
-    }
-
-    const home = os.homedir();
-    const withTilde = command.startsWith(home + '/') || command.startsWith(home + '\\')
-        ? '~' + command.slice(home.length)
-        : command;
-    if (withTilde.length <= 40) {
-        return withTilde;
-    }
-
-    const parts = withTilde.split(/[/\\]/);
-    if (parts.length <= 3) {
-        return withTilde;
-    }
-    const head = parts[0] === '' ? '' : parts[0];
-    return `${head}/…/${parts[parts.length - 2]}/${parts[parts.length - 1]}`;
-}
-
