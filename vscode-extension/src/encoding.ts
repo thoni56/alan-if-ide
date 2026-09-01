@@ -82,20 +82,41 @@ export function convertToUtf8(path: string): void {
 }
 
 /**
- * Files a compile reaches through `Import` that lie outside the given set.
+ * The text of a source, whichever of the two encodings it is in.
+ *
+ * <p>The IDE's position is that everything becomes UTF-8, but a file it will not
+ * convert must still be READ correctly meanwhile: the imported library outside the
+ * folder is exactly where the unusual words are, and it is exactly the file that
+ * stays ISO-8859-1. Decoding it as UTF-8 would fail and yield replacement characters
+ * where the accented names are, which is worse than not reading it at all.
+ */
+export function sourceText(bytes: Buffer): string {
+    return isUtf8(bytes) ? bytes.toString('utf8') : bytes.toString('latin1');
+}
+
+/**
+ * Hand every file a compile reaches through `Import` to `visit`, once each.
  *
  * <p>A project is its main plus everything Import pulls in, and that routinely leaves
  * the folder the author has open: an Italian Cloak of Darkness is one file importing
- * a library two directories up. We follow the same trail the compiler does so we can
- * SAY which outside files are still in the old encoding -- but not convert them. They
- * are typically a shared library inside someone else's checkout, used by every other
- * game on the disk, and rewriting ten files because one demo was opened is not a
- * decision this dialog is entitled to make.
+ * a library two directories up. Both the things we do to a whole project -- checking
+ * its encoding and collecting its names -- need that same trail, so the walk is here
+ * once rather than written twice, differently.
+ *
+ * <p>The roots are visited too, so passing the workspace's own sources yields the
+ * UNION of what is open and what is imported. Neither half is sufficient alone: the
+ * trail alone misses a file the main never imports (Wyldkynd's walkthru.i, which
+ * holds 14 of that game's typos), and the workspace alone misses the outside library.
+ *
+ * <p>The 500-file ceiling is a guard against a pathological trail, not a real limit --
+ * Wyldkynd, the largest Alan game we know of, is 83 files.
  */
-export function legacyOutside(workspaceFiles: string[], unreadable: string[] = []): Legacy[] {
-    const inside = new Set(workspaceFiles.map(f => path.resolve(f)));
+export function followImports(
+    roots: string[],
+    visit: (file: string, bytes: Buffer) => void,
+    unreadable: string[] = [],
+): void {
     const seen = new Set<string>();
-    const found: Legacy[] = [];
 
     const follow = (file: string) => {
         const here = path.resolve(file);
@@ -113,9 +134,7 @@ export function legacyOutside(workspaceFiles: string[], unreadable: string[] = [
             unreadable.push(here);
             return;
         }
-        if (!inside.has(here) && !isUtf8(bytes)) {
-            found.push({ path: here, highBytes: bytes.filter(b => b >= 0x80).length });
-        }
+        visit(here, bytes);
         // Read as latin1 so a file in ANY single-byte encoding still yields readable
         // ASCII import lines -- decoding as UTF-8 would fail on the very files we want.
         const text = bytes.toString('latin1');
@@ -126,6 +145,25 @@ export function legacyOutside(workspaceFiles: string[], unreadable: string[] = [
         }
     };
 
-    workspaceFiles.forEach(follow);
+    roots.forEach(follow);
+}
+
+/**
+ * Files a compile reaches through `Import` that lie outside the given set.
+ *
+ * <p>We follow the same trail the compiler does so we can SAY which outside files are
+ * still in the old encoding -- but not convert them. They are typically a shared
+ * library inside someone else's checkout, used by every other game on the disk, and
+ * rewriting ten files because one demo was opened is not a decision this dialog is
+ * entitled to make.
+ */
+export function legacyOutside(workspaceFiles: string[], unreadable: string[] = []): Legacy[] {
+    const inside = new Set(workspaceFiles.map(f => path.resolve(f)));
+    const found: Legacy[] = [];
+    followImports(workspaceFiles, (file, bytes) => {
+        if (!inside.has(file) && !isUtf8(bytes)) {
+            found.push({ path: file, highBytes: bytes.filter(b => b >= 0x80).length });
+        }
+    }, unreadable);
     return found;
 }
