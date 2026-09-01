@@ -5,34 +5,36 @@ a language server (built with [Xtext](https://www.eclipse.org/Xtext/)) plus a
 [VS Code](https://code.visualstudio.com/) extension. It is the successor to the
 older Eclipse-RCP *AlanIDE*.
 
-> **Alan IF**, not the [M-industries Alan](https://alan-platform.com/) application
-> platform — same name, different language. This project is for the interactive-fiction
-> Alan (`alan-if.github.io`).
+> **Alan IF**, for the interactive-fiction Alan (`alan-if.github.io`). It is not the
+> [M-industries Alan](https://alan-platform.com/) application platform — same name,
+> different language.
 
 ![Alan IF IDE editing a multi-file adventure](https://raw.githubusercontent.com/thoni56/alan-if-ide/main/docs/images/alan-if-ide-overview.png)
 
 ## Features
 
+You can easily see, and activate, all `Alan IF IDE` features from the Command
+Palette. Press Ctrl+Shift+P and type "alan if".
+
 - **Syntax highlighting** for `.alan` and `.i` files.
 - **Document outline** — classes, instances, additions, events, imports, verbs,
   syntax, scripts and synonyms, nested and with distinct icons.
 - **Go to Definition** (F12) — across files, and aware of what a name means. A loop
-  variable resolves to its `for each`, not to an instance elsewhere that shares the
-  name; `this` resolves to the enclosing class or instance. Everything else resolves
-  by name across the project, which is right for classes and instances because those
-  names are global in Alan — and it works from the many places Alan references them:
-  `isa`, `locate`, `describe`, exits, and so on.
+  variable resolves to its `for each`, `this` resolves to the enclosing class or
+  instance. Everything else resolves by name across the project, and works from
+  anywhere they appear - `isa`, `locate`, `describe`, exits, and so on.
 - **Go to Definition on a verb** shows what decides its behaviour: the `syntax` that
-  says how the player phrases it, then the `verb` in each class down the hierarchy
-  that overrides it, ending where you are — in Alan's own lookup order, rather than
-  every declaration of the name at once.
-- **Find All References** (Shift+F12) — scoped the same way, so it agrees with Go to
-  Definition: inside a loop you get that loop's uses, outside it the global's. On a
-  verb it still lists every implementation, which is the question it answers.
-- **Highlighting the name under the cursor**, with the declaration marked apart from
-  the uses.
-- **Compiler diagnostics** — the real Alan compiler's errors, in-editor, for a whole
-  multi-file adventure (it compiles the *main* and routes each error to its file).
+  says how the player phrases it, and all the `verb` in each class down the hierarchy
+  that overrides it, ending where you are.
+- **Find All References** (Shift+F12) — will show all occurrences of the item or
+  symbol. It is scoped so it agrees with Go to Definition: inside a loop you get all
+  uses of that loop variable. On a verb it lists _every_ implementation.
+- **Highlighting the name under the cursor**, when on a symbol other occurrences in view
+  is highlighted with the declaration marked slightly different.
+- **Compiler diagnostics** — continuous compilation, using the configured Alan compiler,
+  shows any errors and warnings, on the error location in the editor view, and on a
+  separate *Problems* tab for any, even multi-file, adventure (it compiles the *main*
+  `.alan` file and shows each error in the correct file).
 - **Run / Play** (▶) — compile the project and launch the game in an integrated
   terminal.
 - **Format Document** — a structure-aware indenter with optional keyword-case
@@ -44,13 +46,15 @@ older Eclipse-RCP *AlanIDE*.
   Alan string is collapsed by the interpreter, which wraps to the player's terminal,
   so how a string is laid out in the source cannot change what the game prints.
 
-**If `Alt+Q` does nothing**, the [Rewrap](https://marketplace.visualstudio.com/items?itemName=stkb.rewrap)
-extension binds the same key for every language, and VS Code may hand it the key
-rather than us. Rewrap has no parser for Alan, so it runs and does nothing at all —
-which looks like a broken feature here. If you have Rewrap installed, Alan IF IDE
-offers to settle it the first time you re-wrap a string in a window; say yes and it
-writes the binding below into your `keybindings.json`. To do it by hand instead — a
-*user* keybinding beats any extension's:
+**If `Alt+Q` does nothing**: the
+[Rewrap](https://marketplace.visualstudio.com/items?itemName=stkb.rewrap) extension
+binds the same key for every language, so it may be bound to that rather than to the
+`Alan IF IDE`. The command is always available from the right-click menu and the Command
+Palette (Ctrl+Shift+P). The Rewrap extension does nothing at all with an Alan file —
+which looks like a broken feature. If so, Alan IF IDE will offer to settle it the first
+time you re-wrap a string; say yes and it writes the binding below into your
+`keybindings.json`. To do it by hand instead — a *user* keybinding beats any
+extension's:
 
 ```json
 {
@@ -60,11 +64,9 @@ writes the binding below into your `keybindings.json`. To do it by hand instead 
 }
 ```
 
-Alan files then go to Re-wrap String, and every other language stays with Rewrap.
-The command is always available from the right-click menu and the Command Palette.
+`Alt+Q` in an Alan file will then go to Re-wrap String, and every other type of file
+stays with Rewrap.
 
-Division of labour: the **Alan compiler is the source of truth** for diagnostics;
-the language server provides the **ergonomics** (navigation, outline, formatting).
 
 ## Requirements
 
@@ -89,8 +91,8 @@ set up for writing adventures rather than code: no minimap, no breadcrumbs, word
 and the enclosing `every X` or `verb Y` kept in view while you scroll. Import it with
 **File → Preferences → Profiles → Import Profile…**.
 
-If you would rather install a file directly — for an older version, or a machine without
-marketplace access — every release also carries the packaged extensions:
+If you would rather install a file directly — for an older version, or on a machine
+without marketplace access — every release also carries the packaged extensions:
 
 1. Download the `.vsix` for your platform from the
    [Releases](https://github.com/thoni56/alan-if-ide/releases) page, e.g.
