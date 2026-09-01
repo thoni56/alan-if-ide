@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.7.11 — 2026-09-01
+
+- **The language server now follows your compiler, instead of the setting that once
+  named it.** If the path it was started with stopped being a real file — the SDK moved,
+  or was installed after the window was already open, or you opened the same project
+  from the other side of a WSL/remote switch, where a Windows path is simply not a file
+  — diagnostics went silent and stayed silent. Nothing in your settings had changed, so
+  nothing ever told the server to look again, and reloading the window was the only
+  cure. It now notices whenever the compiler it can actually find differs from the one
+  it is holding — which it checks on every Play and every toolchain check — and restarts
+  itself to pick it up.
+- **A busy server no longer loses its own restart.** Restarting gave the old server two
+  seconds to shut down, which it often cannot manage while it is in the middle of
+  compiling your project. Missing that window meant the new server was never started at
+  all: no diagnostics, no navigation and no formatting until you reloaded, for a server
+  that had in fact stopped cleanly a moment later.
+- **And a compiler that fails in a way we cannot read now says so.** One that ran,
+  failed, and printed something in an unexpected format used to leave the Problems panel
+  empty — which is exactly what a clean project looks like. The Alan IF Language Server
+  output now names the exit status and quotes what the compiler actually said, which is
+  the whole answer when the cause is a compiler too old for the flags this passes it.
+
 ## 0.7.10 — 2026-08-30
 
 - **Go to Definition no longer points at where a declaration used to be.** Once you had
