@@ -117,7 +117,8 @@ public final class AlanCompilerRunner {
                         + "seconds and was stopped; no diagnostics for this compile.");
                 return out;
             }
-            for (String raw : new String(outBytes, StandardCharsets.UTF_8).split("\n")) {
+            String output = new String(outBytes, StandardCharsets.UTF_8);
+            for (String raw : output.split("\n")) {
                 Matcher m = LINE.matcher(raw.trim());
                 if (!m.matches()) {
                     continue;
@@ -135,6 +136,8 @@ public final class AlanCompilerRunner {
                 out.add(new Diagnostic(file, start, Math.max(0, end - start),
                         severity(m.group("sev")), m.group("code"), m.group("msg")));
             }
+            se.alanif.alan.util.AlanLog.warn(
+                    unreadableOutputWarning(proc.exitValue(), output, out.size()));
         } catch (IOException | InterruptedException e) {
             // Still no diagnostics rather than a broken validation -- but say so. An
             // author whose compiler path is wrong sees an empty Problems panel, which
@@ -184,6 +187,49 @@ public final class AlanCompilerRunner {
                 // dir gone / unreadable -- nothing to clean there
             }
         }
+    }
+
+    /**
+     * What to say when the compile FAILED and we understood none of it.
+     *
+     * <p>This was the last silence left in this class. A compiler that cannot be
+     * started says so, and one that never finishes says so, but one that ran, failed,
+     * and printed something outside the {@code -ide} format simply fell out of the
+     * parse loop leaving an empty list -- which is the same empty list a clean project
+     * produces, and therefore an empty Problems panel that looks like success. That
+     * equivalence is the shape of every diagnostics bug this project has had.
+     *
+     * <p>A compiler too old for {@code -ide} or {@code -encoding} fails exactly here,
+     * printing a usage message we cannot read, so its first line is quoted: it is the
+     * whole diagnosis, and nothing else would ever show it to anyone.
+     *
+     * <p>Silence is still correct for a clean compile (status 0, nothing to report)
+     * and for a failure we DID parse -- the errors are on screen, and repeating them
+     * in the log would only train an author to ignore it.
+     *
+     * @return the warning, or null when there is nothing worth saying
+     */
+    static String unreadableOutputWarning(int status, String output, int parsed) {
+        if (status == 0 || parsed > 0) {
+            return null;
+        }
+        String first = firstNonBlankLine(output);
+        return "The Alan compiler exited with status " + status
+                + (first == null ? " without printing anything" : " and said: \"" + first + "\"")
+                + ", but none of its output was in the -ide format this reads, so its "
+                + "problems could not be reported. The compile really did fail -- the "
+                + "errors are missing, not absent. An Alan compiler too old for -ide or "
+                + "-encoding fails exactly like this.";
+    }
+
+    private static String firstNonBlankLine(String output) {
+        for (String line : output.split("\n")) {
+            String trimmed = line.trim();
+            if (!trimmed.isEmpty()) {
+                return trimmed.length() > 200 ? trimmed.substring(0, 197) + "..." : trimmed;
+            }
+        }
+        return null;
     }
 
     private static Severity severity(String s) {

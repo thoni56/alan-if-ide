@@ -49,8 +49,6 @@ import se.alanif.alan.util.ProjectFiles;
  */
 public class AlanResourceValidator extends ResourceValidatorImpl {
 
-    private final AlanCompilerRunner compiler = AlanCompilerRunner.fromConfiguration();
-
     /** One cached project compile per directory, keyed by the source files' state. */
     private static final Map<Path, ProjectCompile> CACHE = new ConcurrentHashMap<>();
 
@@ -148,6 +146,13 @@ public class AlanResourceValidator extends ResourceValidatorImpl {
     private List<Issue> compilerIssues(Resource resource) {
         List<Issue> result = new ArrayList<>();
         URI uri = resource.getURI();
+        // Resolved per validation, not once per validator. As a field this captured
+        // whatever AlanConfiguration held when Guice first built the validator, and
+        // nothing could move it afterwards -- so a server that came up holding a path
+        // it could not run stayed that way for the life of the process, and "Reload
+        // Window" was the only cure. That is a long way to travel for a static field
+        // read, which is all this costs.
+        AlanCompilerRunner compiler = AlanCompilerRunner.fromConfiguration();
         if (!compiler.isAvailable()) {
             // The commonest reason an author sees an empty Problems panel, and the one
             // that looks most like "my project is fine". Worth saying out loud.
@@ -199,7 +204,7 @@ public class AlanResourceValidator extends ResourceValidatorImpl {
             if (disk == null || !disk.equals(resourceText)) {
                 return result;
             }
-            diags = projectDiagnostics(dir, main);
+            diags = projectDiagnostics(compiler, dir, main);
         }
         boolean scannedClean = Latin1Check.scan(resourceText).isEmpty();
         for (AlanCompilerRunner.Diagnostic d : diags) {
@@ -295,7 +300,8 @@ public class AlanResourceValidator extends ResourceValidatorImpl {
      * costs one compile, not one per file. (The main is handled separately from its
      * live buffer, so unsaved main edits still validate.)
      */
-    private List<AlanCompilerRunner.Diagnostic> projectDiagnostics(Path dir, Path main) {
+    private List<AlanCompilerRunner.Diagnostic> projectDiagnostics(AlanCompilerRunner compiler,
+            Path dir, Path main) {
         String signature = signatureOf(dir);
         ProjectCompile cached = CACHE.get(dir);
         if (cached != null && cached.signature.equals(signature)) {

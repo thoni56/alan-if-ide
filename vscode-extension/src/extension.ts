@@ -3,14 +3,15 @@ import * as fs from 'fs';
 import { ExtensionContext, commands, window } from 'vscode';
 import { play, watchPlayTerminals } from './play';
 import { JavaMissing, missingJavaMessage } from './java';
-import { Environment, initEnvironment } from './environment';
+import { Environment, initEnvironment, onEnvironmentChanged } from './environment';
 import { overriddenPathWarnings } from './toolchain';
 import { createStatusItems, createPlayStatusItem, createRewrapKeyStatusItem } from './status';
 import { locateCompiler, locateInterpreter, checkToolchain } from './locate';
 import { ensureUtf8Sources } from './convert';
 import { rewrapStringCommand, bindRewrapKeyCommand, registerRewrapAction } from './rewrap';
 import { registerEncodingFixes } from './quickfix';
-import { startLanguageClient, stopLanguageClient, restartWhenServerSettingsChange } from './client';
+import { startLanguageClient, stopLanguageClient, restartWhenServerSettingsChange,
+    syncServerCompiler } from './client';
 import { initNotices, compilerNoticeSuppressed, suppressCompilerNotice } from './notices';
 
 export function activate(context: ExtensionContext) {
@@ -40,7 +41,15 @@ export function activate(context: ExtensionContext) {
 
     startLanguageClient(jar, setup.java, setup.compiler);
     createPlayStatusItem(context);
-    context.subscriptions.push(restartWhenServerSettingsChange());
+    context.subscriptions.push(
+        restartWhenServerSettingsChange(),
+        // The server holds the compiler it was started with, and nothing in the
+        // configuration changes when that path stops being one -- an SDK moved or
+        // newly installed, or the same global setting read from the other side of a
+        // remote/local switch. So the server follows the RESOLVED toolchain, which
+        // is re-resolved on every Play and every toolchain check.
+        onEnvironmentChanged(env => syncServerCompiler(env.compiler)),
+    );
     offerCompilerNotice(setup);
 
     // Settle the project's encoding before the author edits anything: a file shown
