@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.7.12 — 2026-09-02
 
 - **Spell checking, set up for the way an Alan source is actually written.** The
   compiler is correctly indifferent to a typo in your prose, and the prose is most of
