@@ -45,6 +45,11 @@ Palette. Press Ctrl+Shift+P and type "alan if".
   comes to look like what the player reads. Safe to use freely: whitespace inside an
   Alan string is collapsed by the interpreter, which wraps to the player's terminal,
   so how a string is laid out in the source cannot change what the game prints.
+- **Convert Sources to UTF-8** — Alan sources in the older ISO-8859-1 show their
+  accented text wrongly in the editor, and the compiler cannot read them at all, so
+  the project goes quiet with no error to point at. The extension notices and offers
+  the repair; it is lossless, and the game it builds is identical. An imported library
+  outside the open folder is reported but never rewritten — that is its owner's call.
 
 **If `Alt+Q` does nothing**: the
 [Rewrap](https://marketplace.visualstudio.com/items?itemName=stkb.rewrap) extension
@@ -53,7 +58,8 @@ binds the same key for every language, so it may be bound to that rather than to
 Palette (Ctrl+Shift+P). The Rewrap extension does nothing at all with an Alan file —
 which looks like a broken feature. If so, Alan IF IDE will offer to settle it the first
 time you re-wrap a string; say yes and it writes the binding below into your
-`keybindings.json`. To do it by hand instead — a *user* keybinding beats any
+`keybindings.json`. **Alan IF: Bind Alt+Q to Re-wrap String** does the same thing
+later, if you dismissed the offer. To do it by hand instead — a *user* keybinding beats any
 extension's:
 
 ```json
@@ -110,12 +116,14 @@ without marketplace access — every release also carries the packaged extension
 | `alanif.arun.path` | Path to `arun` (else next to the compiler, or on `PATH`). |
 | `alanif.mainFile` | The `.alan` file to compile and Play (else auto-detected). |
 | `alanif.format.keywordCase` | `off` (default) / `lower` / `upper` / `capitalize`. |
+| `alanif.format.stringWidth` | Column **Re-wrap String** wraps before (default 80). |
 | `alanif.java.home` | JDK/JRE 21+ home (else the bundled runtime). |
 
 Every one of these can be left empty; clearing a path setting always returns to
 finding the tool automatically. **Alan IF: Check Setup** (Command Palette) reports
 what was found and where, and the language status bubble in the status bar shows
-the same while an Alan file is open.
+the same while an Alan file is open. **Alan IF: Locate Alan Compiler…** and
+**Alan IF: Locate Alan Interpreter…** browse for either one instead of typing a path.
 
 ## Using the server from another editor
 

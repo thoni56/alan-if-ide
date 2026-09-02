@@ -44,6 +44,23 @@ Play, powered by a language server built with [Xtext](https://www.eclipse.org/Xt
   rigid blocks and are never reflowed internally.
 
   ![Format Document reindenting a file and normalising keyword case](https://raw.githubusercontent.com/thoni56/alan-if-ide/main/docs/images/alan-if-ide-format-document.gif)
+- **Re-wrap String** (`Alt+Q`, or right-click) — reflows the string your cursor is in,
+  or every string a selection touches, to `alanif.format.stringWidth`. `$p` and `$n`
+  are laid out as the paragraph and line break they print as, so the source comes to
+  look like what the player reads. Safe to use freely: the interpreter collapses
+  whitespace inside a string and wraps to the player's terminal, so how a string is
+  laid out in the source cannot change what the game prints.
+
+  If `Alt+Q` does nothing, the
+  [Rewrap](https://marketplace.visualstudio.com/items?itemName=stkb.rewrap) extension
+  has claimed that key for every language — and it does nothing at all with an Alan
+  file, which looks exactly like a broken feature. **Bind Alt+Q to Re-wrap String**
+  settles it by writing a user keybinding, which beats any extension's; you are
+  offered it the first time you re-wrap.
+- **Convert Sources to UTF-8** — sources written in the older ISO-8859-1 show their
+  accented text wrongly in the editor, and the Alan compiler cannot read them at all,
+  so a whole project can go quiet with no error to point at. The extension notices and
+  offers the repair. It is lossless: the game it builds is identical.
 
 The **Alan compiler is the source of truth** for diagnostics; the language server
 provides the ergonomics — navigation, outline, and formatting.
@@ -73,6 +90,7 @@ Without them, editing features still work — diagnostics are simply skipped.
 | `alanif.arun.path` | Path to `arun` (else next to the compiler, or on `PATH`). |
 | `alanif.mainFile` | The `.alan` file to compile and Play (else auto-detected). |
 | `alanif.format.keywordCase` | `off` (default) / `lower` / `upper` / `capitalize`. |
+| `alanif.format.stringWidth` | Column **Re-wrap String** wraps before (default 80). |
 | `alanif.java.home` | JDK/JRE 21+ home (else the bundled runtime). |
 
 You should not need to set the paths: leave them empty and the tools are found
@@ -90,7 +108,7 @@ language mode in the status bar) lists what the extension found:
 If something is missing, a warning appears in the status bar instead — click it,
 or run **Alan IF: Check Setup**, to see all three at once and fix any of them.
 There is also **Alan IF: Locate Alan Compiler…** to browse for the compiler, and
-the same for the interpreter.
+**Alan IF: Locate Alan Interpreter…** for the interpreter.
 
 ## A note on `.i` files
 
