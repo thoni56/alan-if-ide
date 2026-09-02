@@ -1,5 +1,32 @@
 # Changelog
 
+## Unreleased
+
+- **Spell checking, set up for the way an Alan source is actually written.** The
+  compiler is correctly indifferent to a typo in your prose, and the prose is most of
+  the game — so a misspelling ships to the player with nothing having warned you. The
+  new **Alan IF: Set Up Spell Checking** command configures
+  [Code Spell Checker](https://marketplace.visualstudio.com/items?itemName=streetsidesoftware.code-spell-checker)
+  in your project's own folder to know three things no general checker can: your prose
+  lives in string literals and nowhere else, `$p` and `$n` glue themselves to the word
+  that follows and must not be read as part of it, and a word built against `$$` is a
+  fragment no dictionary in any language will ever hold.
+
+  It also collects your game's own vocabulary — class and instance names, `Name`
+  clauses, synonyms, verbs, exits — into a generated word list, so the words you
+  invented are not underlined on every page. That list holds the *correct* spelling,
+  which is what makes the wrong one stand out: on the 83-file *Wyldkynd Project* this
+  takes the checker from 178 unknown words to 57, and those 57 are almost all genuine —
+  `satifsy`, `sidways`, `jewelery`, and `Arrowan` where the character is Aerrowan.
+
+  You are asked which language your prose is written in — English is already part of
+  Code Spell Checker, and the other 49 install a dictionary — and shown exactly what
+  will be written before anything is. An existing `cspell.json` is merged into, never
+  replaced, so the words you have added to your own dictionary stay yours. The word
+  list is generated, so it is gitignored and rebuilt by running the command again.
+  Misspellings are reported as *Information*: the game will run fine, and you may want
+  to know.
+
 ## 0.7.11 — 2026-09-01
 
 - **The language server now follows your compiler, instead of the setting that once

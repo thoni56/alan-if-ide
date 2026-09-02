@@ -35,7 +35,8 @@
     "onCommand:alanif.locateInterpreter",
     "onCommand:alanif.checkToolchain",
     "onCommand:alanif.rewrapString",
-    "onCommand:alanif.convertSources"
+    "onCommand:alanif.convertSources",
+    "onCommand:alanif.setupSpellChecking"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -75,6 +76,11 @@
         "command": "alanif.bindRewrapKey",
         "title": "Bind Alt+Q to Re-wrap String",
         "category": "Alan IF"
+      },
+      {
+        "command": "alanif.setupSpellChecking",
+        "title": "Set Up Spell Checking",
+        "category": "Alan IF"
       }
     ],
     "menus": {
@@ -113,6 +119,9 @@
         },
         {
           "command": "alanif.convertSources"
+        },
+        {
+          "command": "alanif.setupSpellChecking"
         },
         {
           "command": "alanif.bindRewrapKey",

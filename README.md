@@ -50,6 +50,18 @@ Palette. Press Ctrl+Shift+P and type "alan if".
   the project goes quiet with no error to point at. The extension notices and offers
   the repair; it is lossless, and the game it builds is identical. An imported library
   outside the open folder is reported but never rewritten — that is its owner's call.
+- **Set Up Spell Checking** — the compiler is indifferent to a typo in the prose, and
+  the prose is most of the game. This configures
+  [Code Spell Checker](https://marketplace.visualstudio.com/items?itemName=streetsidesoftware.code-spell-checker)
+  for Alan in your project's own folder: it checks string literals only, keeps `$p` and
+  `$n` from gluing to the next word, ignores the stems that `$$` builds words from, and
+  feeds your game's own names — classes, instances, `Name` clauses, synonyms, verbs,
+  exits — into a generated dictionary so they are not underlined. On the 83-file
+  *Wyldkynd Project* that is 178 unknown words down to 57, nearly all of them genuine.
+  Choose the language your prose is written in; run the command again to rebuild the
+  list after a rename. A word that is genuinely yours — a surname, a dialect spelling —
+  goes in with **Add to dictionary**; pick the option naming the project's
+  `cspell.json`, which travels with the game and is never rebuilt over.
 
 **If `Alt+Q` does nothing**: the
 [Rewrap](https://marketplace.visualstudio.com/items?itemName=stkb.rewrap) extension

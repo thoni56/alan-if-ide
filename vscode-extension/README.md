@@ -61,6 +61,29 @@ Play, powered by a language server built with [Xtext](https://www.eclipse.org/Xt
   accented text wrongly in the editor, and the Alan compiler cannot read them at all,
   so a whole project can go quiet with no error to point at. The extension notices and
   offers the repair. It is lossless: the game it builds is identical.
+- **Set Up Spell Checking** — an interactive fiction author writes thousands of words
+  of player-facing prose, and the Alan compiler is correctly indifferent to every typo
+  in it. This command configures
+  [Code Spell Checker](https://marketplace.visualstudio.com/items?itemName=streetsidesoftware.code-spell-checker)
+  for the way an Alan source is actually written, in your project's own folder: only
+  string literals are checked, `$p` and `$n` no longer glue themselves to the following
+  word, and fragments built with `$$` are left alone. It then collects your game's own
+  vocabulary — class and instance names, `Name` clauses, synonyms, verbs, exits — into a
+  generated word list, so Aerrowan and wyldkynd are not underlined on every page.
+
+  Holding the correct spelling is what makes the wrong one stand out: on the 83-file
+  *Wyldkynd Project* this takes the checker from 178 unknown words to 57, and what
+  survives is real — `satifsy`, `sidways`, and `Arrowan` where the character is
+  Aerrowan. Pick your prose's language from the list (English is already included with
+  the checker; the others install a dictionary), and run the command again after
+  renaming things to rebuild the list. Misspellings are reported as *Information*: the
+  game runs fine, and you may want to know.
+
+  A word that is genuinely yours — a surname in the credits, a dialect spelling — goes
+  in with **Add to dictionary**. Choose the option naming your project's `cspell.json`:
+  it travels with the game, and the generated list is never rebuilt over it. The other
+  two put your game's private vocabulary into your editor's settings, where *user
+  settings* makes it correct in every project you own.
 
 The **Alan compiler is the source of truth** for diagnostics; the language server
 provides the ergonomics — navigation, outline, and formatting.
