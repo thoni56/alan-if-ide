@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.7.13 — 2026-09-03
+## 0.8.0 — 2026-09-03
 
 - **Every time you save an Alan file, the names it declares are collected again.** Your
   game's own vocabulary stays current as you write. Until now the list was only as fresh
@@ -18,6 +18,10 @@
   If you set spell checking up under 0.7.12, run **Alan IF: Set Up Spell Checking** once
   to pick up the new name; the old file is left behind, referenced by nothing, and is
   yours to delete.
+
+  *These changes first went out as 0.7.13, a few minutes earlier. 0.8.0 is the same
+  release under the number it should have carried; there is nothing in 0.7.13 that is
+  not here.*
 
 ## 0.7.12 — 2026-09-02
 
