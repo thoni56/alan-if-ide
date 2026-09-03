@@ -1,10 +1,13 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import {
-    QuickPickItem, QuickPickItemKind, Uri, WorkspaceFolder,
-    commands, extensions, window, workspace,
+    ExtensionContext, QuickPickItem, QuickPickItemKind, TextDocument, Uri,
+    WorkspaceFolder, commands, extensions, window, workspace,
 } from 'vscode';
-import { readThrough, concordance, writeIfChanged } from './names';
+import {
+    Contributions, affects, concordance, couldContribute, readThrough, touchUp,
+    writeIfChanged,
+} from './names';
 import {
     ALL_LANGUAGES, BUNDLED, CSPELL_EXTENSION, BRIEF_FILE, Language,
     LANGUAGES, CONCORDANCE_FILE, briefFor, languagesFor, gitignoreFor, languageNames,
@@ -23,6 +26,24 @@ import {
  * watcher -- drift that a deliberate read-through already cures is not worth a
  * permanent process.
  */
+/**
+ * Each set-up project's contributions, by workspace folder.
+ *
+ * <p>Module state, and empty after every window reload -- which is the trap this
+ * whole slice has to avoid. Touching one file up into an empty set and settling the
+ * result would replace a thousand-name concordance with a dozen, and the author would
+ * watch their own game light up. So a project absent from here has not been read
+ * through THIS SESSION, and the first save that concerns it does the read-through
+ * before anything is written.
+ */
+const projects = new Map<string, Contributions>();
+
+/** Read-throughs in flight, so a Save All does not start one per file. */
+const scanning = new Map<string, Promise<Contributions>>();
+
+/** Projects we have already failed to write to, so a save handler cannot nag. */
+const complained = new Set<string>();
+
 export async function setupSpellChecking(): Promise<void> {
     const folder = targetFolder();
     if (folder === undefined) {
@@ -39,13 +60,12 @@ export async function setupSpellChecking(): Promise<void> {
 
     // Read through before asking, so the confirmation can say how many names it found
     // rather than promising something it has not looked at yet.
+    const root = folder.uri.fsPath;
     const unreadable: string[] = [];
-    const sources = await workspace.findFiles('**/*.{alan,i}', '**/node_modules/**');
-    const contributions = readThrough(sources.map(u => u.fsPath), new Map(), unreadable);
+    const contributions = await readThroughProject(root, unreadable);
     const list = concordance(contributions);
     const words = list.split('\n').filter(l => l !== '' && !l.startsWith('#')).length;
 
-    const root = folder.uri.fsPath;
     const brief = briefFor(read(path.join(root, BRIEF_FILE)), languages);
     if (!brief.ok) {
         reportUnwritableBrief(brief.reason, path.join(root, BRIEF_FILE));
@@ -55,7 +75,7 @@ export async function setupSpellChecking(): Promise<void> {
     const gitignore = gitignorePath(root);
     const plan = {
         merging: read(path.join(root, BRIEF_FILE)) !== undefined,
-        gitignore, words, files: contributions.size, sources: sources.length, unreadable,
+        gitignore, words, files: contributions.size, unreadable,
     };
     // Modal on purpose, as the encoding offer is: this writes into the author's own
     // folder, and a notification that fades in fifteen seconds is not where a
@@ -91,6 +111,113 @@ export async function setupSpellChecking(): Promise<void> {
     }
 
     await reportAndOfferInstalls(languages, words, contributions.size);
+}
+
+/**
+ * Keep the concordance current as the author writes.
+ *
+ * <p>THE TOUCH-UP, wired to the editor. Without it the concordance is only as fresh
+ * as the last time someone ran the command, and nobody re-runs a setup command: a
+ * character renamed at breakfast stays underlined all morning, and -- worse, because
+ * it is silent -- the name they renamed AWAY from goes on being spelled correctly
+ * everywhere in the prose.
+ *
+ * <p>Only projects that have opted in. A folder with no brief has never asked for
+ * any of this, and a file appearing unexplained in someone's manuscript is exactly
+ * what the setup command's modal exists to prevent.
+ *
+ * <p>Every workspace folder is offered the save, not just the one the file sits in,
+ * because the trail leaves the folder: saving an imported library two directories up
+ * must still update the game that imports it.
+ */
+export function keepConcordanceCurrent(context: ExtensionContext): void {
+    context.subscriptions.push(
+        workspace.onDidSaveTextDocument(document => { void touchUpSaved(document); }));
+}
+
+async function touchUpSaved(document: TextDocument): Promise<void> {
+    const file = document.uri.fsPath;
+    for (const folder of workspace.workspaceFolders ?? []) {
+        const root = folder.uri.fsPath;
+        if (!fs.existsSync(path.join(root, BRIEF_FILE))) {
+            continue;
+        }
+        try {
+            const known = projects.get(root);
+            // Nothing read through for this project yet, and this file is not
+            // obviously its own -- so there is nothing here worth a whole read-through
+            // to find out. The cost is one corner: an outside library saved before
+            // anything else in the session waits for the next in-folder save.
+            if (known === undefined && !couldContribute(root, file)) {
+                continue;
+            }
+            const contributions = known ?? await contributionsOf(root);
+            if (!affects(root, file, contributions)) {
+                continue;
+            }
+            touchUp(file, contributions);
+            settle(root, contributions);
+        } catch (e) {
+            warnOnce(root, e);
+        }
+    }
+}
+
+/**
+ * This project's contributions, reading the whole project through if this session
+ * has not yet. Concurrent savers share the one scan rather than each starting their
+ * own, which is what a Save All would otherwise do.
+ */
+async function contributionsOf(root: string): Promise<Contributions> {
+    const known = projects.get(root);
+    if (known !== undefined) {
+        return known;
+    }
+    let pending = scanning.get(root);
+    if (pending === undefined) {
+        pending = readThroughProject(root);
+        scanning.set(root, pending);
+    }
+    try {
+        return await pending;
+    } finally {
+        scanning.delete(root);
+    }
+}
+
+/**
+ * The read-through, and the only place the file set is decided: the workspace's own
+ * sources plus everything the trail reaches from them. Remembered against the folder,
+ * so the next save is a touch-up rather than another full pass.
+ */
+async function readThroughProject(
+    root: string, unreadable: string[] = [],
+): Promise<Contributions> {
+    const sources = await workspace.findFiles('**/*.{alan,i}', '**/node_modules/**');
+    const contributions = readThrough(sources.map(u => u.fsPath), new Map(), unreadable);
+    projects.set(root, contributions);
+    return contributions;
+}
+
+/** Settle the concordance: written only when the sorted list has actually moved. */
+function settle(root: string, contributions: Contributions): void {
+    writeIfChanged(path.join(root, CONCORDANCE_FILE), concordance(contributions));
+}
+
+/**
+ * A save handler must not throw, and must not nag -- but it must not go quiet either.
+ * A concordance that has stopped being written looks exactly like one that never
+ * needed to be, right up until the author's own names start being underlined.
+ */
+function warnOnce(root: string, e: unknown): void {
+    if (complained.has(root)) {
+        return;
+    }
+    complained.add(root);
+    window.showWarningMessage(
+        `Alan IF: could not update ${CONCORDANCE_FILE} in ${path.basename(root)}, so `
+        + 'names you add may be marked as misspellings. Run Set Up Spell Checking '
+        + `again once it is writable. (${e instanceof Error ? e.message : String(e)})`);
 }
 
 /**
@@ -167,7 +294,6 @@ interface Plan {
     gitignore: string | undefined;
     words: number;
     files: number;
-    sources: number;
     unreadable: string[];
 }
 

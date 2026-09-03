@@ -4,7 +4,10 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 
-import { Contributions, readThrough, touchUp, concordance, writeIfChanged } from './names';
+import {
+    Contributions, affects, concordance, couldContribute, readThrough, touchUp,
+    writeIfChanged,
+} from './names';
 
 /**
  * Building the concordance, over the file set a compile actually reaches.
@@ -128,4 +131,42 @@ test('a concordance that has not moved settles without being rewritten', () => {
     assert.equal(fs.statSync(target).mtimeMs, written, 'not even touched');
     assert.equal(writeIfChanged(target, 'two\n'), true, 'different: written');
     assert.equal(fs.readFileSync(target, 'utf8'), 'two\n');
+});
+
+/**
+ * Which saves reach the concordance -- the question the save handler asks before it
+ * touches anything, and the only part of that handler that can be tested here.
+ */
+
+test('an Alan source inside the folder could contribute; other files could not', () => {
+    const root = path.join(path.sep, 'games', 'cloak');
+    assert.ok(couldContribute(root, path.join(root, 'cloak.alan')));
+    assert.ok(couldContribute(root, path.join(root, 'src', 'rooms.i')));
+    assert.ok(!couldContribute(root, path.join(root, 'README.md')), 'not a source');
+    assert.ok(!couldContribute(root, path.join(path.sep, 'games', 'other.alan')),
+        'another folder entirely');
+    // The prefix trap: a sibling folder whose name merely starts with this one's.
+    assert.ok(!couldContribute(root, path.join(path.sep, 'games', 'cloak2', 'x.alan')));
+    assert.ok(!couldContribute(root, root), 'the folder is not a file in itself');
+});
+
+test('a file already contributing goes on doing so, wherever it lives', () => {
+    const { main, lib } = project();
+    const root = path.dirname(main);
+    const contributions = readThrough([main], new Map());
+
+    // Outside the folder and reached only through Import -- the Italian shape.
+    assert.ok(!couldContribute(root, lib), 'not the folder\'s own file');
+    assert.ok(affects(root, lib, contributions), 'but it does contribute');
+    assert.ok(affects(root, main, contributions), 'and so does the main');
+    assert.ok(!affects(root, path.join(path.sep, 'elsewhere', 'x.alan'), contributions));
+});
+
+test('a source not yet contributing still affects the project it sits in', () => {
+    const { main } = project();
+    const root = path.dirname(main);
+    // A file the author has only just created: no contribution yet, and it must not
+    // need one to be noticed, or a new file's names would never arrive.
+    const fresh = path.join(root, 'npc_kassi.i');
+    assert.ok(affects(root, fresh, readThrough([main], new Map())));
 });

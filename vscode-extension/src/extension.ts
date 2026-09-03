@@ -10,7 +10,7 @@ import { locateCompiler, locateInterpreter, checkToolchain } from './locate';
 import { ensureUtf8Sources } from './convert';
 import { rewrapStringCommand, bindRewrapKeyCommand, registerRewrapAction } from './rewrap';
 import { registerEncodingFixes } from './quickfix';
-import { setupSpellChecking } from './spellcheck';
+import { setupSpellChecking, keepConcordanceCurrent } from './spellcheck';
 import { startLanguageClient, stopLanguageClient, restartWhenServerSettingsChange,
     syncServerCompiler } from './client';
 import { initNotices, compilerNoticeSuppressed, suppressCompilerNotice } from './notices';
@@ -28,6 +28,9 @@ export function activate(context: ExtensionContext) {
     registerRewrapAction(context);
     registerCommands(context);
     watchPlayTerminals(context);
+    // Before the language server, and surviving its absence: spell checking is the
+    // one feature that needs nothing from the compiler or from Java.
+    keepConcordanceCurrent(context);
 
     const jar = context.asAbsolutePath(path.join('server', 'alan-lsp.jar'));
     if (!fs.existsSync(jar)) {

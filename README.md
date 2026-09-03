@@ -58,13 +58,14 @@ Palette. Press Ctrl+Shift+P and type "alan if".
   feeds your game's own names — classes, instances, `Name` clauses, synonyms, verbs,
   exits — into a generated word list so they are not underlined. On the 83-file
   *Wyldkynd Project* that is 178 unknown words down to 57, nearly all of them genuine.
-  Choose the language your prose is written in, and run the command again to rebuild
-  the list after a rename.
+  Choose the language your prose is written in; after that, saving an Alan file
+  collects its names again, so renames take effect as you work. Re-run the command
+  when something changed outside the editor, such as a `git pull`.
 
   Three things do the work, and naming them makes the rest obvious. The `cspell.json`
   is the **brief**: it tells the checker where your prose is and which lists to trust.
   The **concordance**, `alan-concordance.txt`, holds your game's own names and is
-  rebuilt from your sources — never edit it. And a word that is genuinely yours, a surname or a
+  rebuilt from your sources on every save — never edit it. And a word that is genuinely yours, a surname or a
   dialect spelling, goes in with **Add to dictionary** to become your **glossary**,
   which lives inside the brief, travels with the game, and is never rebuilt over. Pick
   the option naming the project's own `cspell.json` when it offers you three.

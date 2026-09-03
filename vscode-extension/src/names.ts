@@ -36,6 +36,35 @@ import { contribution, concordanceText } from './spelling';
 export type Contributions = Map<string, string[]>;
 
 /**
+ * The extensions the read-through's glob collects, so that a save is judged by the
+ * same rule the full pass used rather than by a second one that could disagree.
+ */
+const SOURCE = /\.(alan|i)$/i;
+
+/**
+ * Whether a file could contribute to this project at all: an Alan source inside the
+ * folder. Cheap, and answerable before anything has been read.
+ */
+export function couldContribute(root: string, file: string): boolean {
+    const here = path.resolve(file);
+    return SOURCE.test(here) && here.startsWith(path.resolve(root) + path.sep);
+}
+
+/**
+ * Whether a save changes this project's concordance -- the question a save handler
+ * must answer before it does anything at all.
+ *
+ * <p>Two ways in, and the second is not redundant. The trail leaves the folder: an
+ * Italian game is one file importing a library two directories up, and that library
+ * is where the unusual names are. So a file that ALREADY contributes goes on
+ * contributing wherever it lives and whatever it is called, since an Import can name
+ * any extension it likes.
+ */
+export function affects(root: string, file: string, contributions: Contributions): boolean {
+    return contributions.has(path.resolve(file)) || couldContribute(root, file);
+}
+
+/**
  * The read-through: every file in the reach re-contributes, from nothing.
  *
  * <p>Pass the workspace's own sources as `roots`: they are visited too, so the walk

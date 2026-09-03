@@ -75,16 +75,19 @@ Play, powered by a language server built with [Xtext](https://www.eclipse.org/Xt
   *Wyldkynd Project* this takes the checker from 178 unknown words to 57, and what
   survives is real — `satifsy`, `sidways`, and `Arrowan` where the character is
   Aerrowan. Pick your prose's language from the list (English is already included with
-  the checker; the others install a dictionary), and run the command again after
-  renaming things to rebuild the list. Misspellings are reported as *Information*: the
-  game runs fine, and you may want to know.
+  the checker; the others install a dictionary). After that it keeps itself current:
+  every time you save an Alan file, the names it declares are collected again, so a
+  character you rename is spelled right from the moment you save and the name you
+  renamed away from stops being accepted. Run the command again only when something
+  changed outside the editor — a `git pull`, or a file edited elsewhere. Misspellings
+  are reported as *Information*: the game runs fine, and you may want to know.
 
   Two files appear in your project, and one sentence says how they fit together: **the
   brief tells the checker where your prose is and which lists to trust — the
   concordance, which is rebuilt from your sources, and the glossary, which is yours and
   is never touched.** The **brief** is `cspell.json`. The **concordance** is
-  `alan-concordance.txt`: your game's own names, regenerated every time you run the
-  command, so nothing you write in it survives.
+  `alan-concordance.txt`: your game's own names, rebuilt as you save, so nothing you
+  write in it survives.
 
   The **glossary** is the third, and it is the one you add to. A word that is genuinely
   yours — a surname in the credits, a dialect spelling — goes in with **Add to
