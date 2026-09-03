@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.7.13 — 2026-09-03
+
+- **Every time you save an Alan file, the names it declares are collected again.** Your
+  game's own vocabulary stays current as you write. Until now the list was only as fresh
+  as the last time you ran **Alan IF: Set Up Spell Checking**: a changed character name
+  stayed underlined until you remembered to re-run it, and the name you changed from
+  went on being accepted in your prose, so a misspelling of it was never flagged.
+
+  The list is rewritten only when it has actually changed, so an ordinary prose edit
+  writes nothing and your open files are not re-checked. Names count from the moment you
+  save. Run the command again only when something changed outside the editor, such as a
+  `git pull`.
+
+- **The generated word list is now called `alan-concordance.txt`**, where it used to be
+  `alan-project-names.txt` — a concordance being the list of words a work itself uses.
+  If you set spell checking up under 0.7.12, run **Alan IF: Set Up Spell Checking** once
+  to pick up the new name; the old file is left behind, referenced by nothing, and is
+  yours to delete.
+
 ## 0.7.12 — 2026-09-02
 
 - **Spell checking, set up for the way an Alan source is actually written.** The
