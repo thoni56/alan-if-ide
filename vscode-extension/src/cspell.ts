@@ -1,7 +1,20 @@
 import { ALAN_PATTERNS, ALAN_INCLUDE, ALAN_IGNORE, CODE_DICTIONARIES } from './spelling';
 
 /**
- * The cspell.json an Alan project needs, and the catalogue it is chosen from.
+ * The brief an Alan project needs, and the catalogue of languages it is chosen from.
+ *
+ * <p>THE VOCABULARY, because it is the design:
+ *
+ * <p>The BRIEF tells the proofreader where the prose is and which lists to trust --
+ * the CONCORDANCE, which we regenerate, and the GLOSSARY, which is the author's and
+ * which we never touch.
+ *
+ * <p>The brief is cspell.json. The concordance is alan-project-names.txt, derived from
+ * the game's own declarations by names.ts and rebuilt whenever the sources move. The
+ * glossary is the `words` list inside the brief, where cSpell's "Add to dictionary"
+ * puts an author's decisions -- a surname in the credits, a dialect spelling -- and it
+ * is the reason the concordance is registered with `addWords: false`. The third list is
+ * simply the LANGUAGE, en or it or en,it, which is not about this game at all.
  *
  * <p>Everything here is pure text and data, so the shape of the file the author ends
  * up with can be tested without a running editor. The command in spellcheck.ts is the
@@ -15,11 +28,18 @@ import { ALAN_PATTERNS, ALAN_INCLUDE, ALAN_IGNORE, CODE_DICTIONARIES } from './s
 /** The checker itself. Everything else is optional; without this, nothing checks. */
 export const CSPELL_EXTENSION = 'streetsidesoftware.code-spell-checker';
 
-export const CSPELL_FILE = 'cspell.json';
-export const NAMES_FILE = 'alan-project-names.txt';
+/** The brief. */
+export const BRIEF_FILE = 'cspell.json';
 
-/** The dictionary name our generated word list is registered under. */
-const NAMES_DICTIONARY = 'alan-project-names';
+/**
+ * The concordance. Named for the author, who did not ask for a word from literary
+ * scholarship in their game folder: the file says what it holds, and the vocabulary
+ * stays on this side of it.
+ */
+export const CONCORDANCE_FILE = 'alan-project-names.txt';
+
+/** The dictionary name the concordance is registered under, inside the brief. */
+const CONCORDANCE_DICTIONARY = 'alan-project-names';
 
 /**
  * A language the author can write their game in.
@@ -30,7 +50,7 @@ const NAMES_DICTIONARY = 'alan-project-names';
  * English should not be asked to download anything, and an author choosing Italian
  * must be told that they are.
  */
-export interface Dictionary {
+export interface Language {
     /** As the author would name it, and as the quick pick lists it. */
     name: string;
     /** What goes in cSpell's `language` setting: `it`, `en-GB`, `pt-BR`. */
@@ -40,7 +60,7 @@ export interface Dictionary {
 }
 
 /** English, which is already there. Listed first, so that fact is visible. */
-export const BUNDLED: Dictionary = { name: 'English', code: 'en' };
+export const BUNDLED: Language = { name: 'English', code: 'en' };
 
 /**
  * Every other language Code Spell Checker's publisher provides a dictionary for.
@@ -52,7 +72,7 @@ export const BUNDLED: Dictionary = { name: 'English', code: 'en' };
  * does not support. Several entries are variants rather than languages of their own
  * -- en-GB, de-AT, pt-BR -- and they matter for the same reason.
  */
-export const DICTIONARIES: Dictionary[] = [
+export const LANGUAGES: Language[] = [
     ['Ancient Greek', 'grc', 'ancient-greek'],
     ['Arabic', 'ar', 'arabic'],
     ['Armenian', 'hy', 'armenian'],
@@ -105,16 +125,16 @@ export const DICTIONARIES: Dictionary[] = [
 ].map(([name, code, id]) => ({ name, code, extension: `${CSPELL_EXTENSION}-${id}` }));
 
 /** English, then the rest -- the order the picker shows and the config records. */
-export const ALL_DICTIONARIES: Dictionary[] = [BUNDLED, ...DICTIONARIES];
+export const ALL_LANGUAGES: Language[] = [BUNDLED, ...LANGUAGES];
 
 /** The languages a set of codes names, in catalogue order. */
-export function dictionariesFor(codes: string[]): Dictionary[] {
-    return ALL_DICTIONARIES.filter(d => codes.includes(d.code));
+export function languagesFor(codes: string[]): Language[] {
+    return ALL_LANGUAGES.filter(d => codes.includes(d.code));
 }
 
 /** How to say a chosen set of languages to a human: "English and Italian". */
 export function languageNames(codes: string[]): string {
-    const names = dictionariesFor(codes).map(d => d.name);
+    const names = languagesFor(codes).map(d => d.name);
     if (names.length === 0) { return BUNDLED.name; }
     if (names.length === 1) { return names[0]; }
     return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
@@ -126,12 +146,13 @@ function alanKeys(languages: string[]): Record<string, unknown> {
         language: (languages.length > 0 ? languages : [BUNDLED.code]).join(','),
         patterns: ALAN_PATTERNS,
         dictionaryDefinitions: [{
-            name: NAMES_DICTIONARY,
-            path: `./${NAMES_FILE}`,
-            // Never the target of "Add to dictionary". This file is regenerated from
-            // the sources, so a word added here would disappear at the next save --
-            // silently, which is the worst way for a decision to be lost. The
-            // author's own words belong in `words` below, where cSpell puts them.
+            name: CONCORDANCE_DICTIONARY,
+            path: `./${CONCORDANCE_FILE}`,
+            // Never the target of "Add to dictionary". The concordance is rebuilt
+            // from the sources, so a word added here would disappear at the next
+            // save -- silently, which is the worst way for a decision to be lost.
+            // The author's own words are the glossary, in `words` below, where
+            // cSpell puts them.
             addWords: false,
         }],
         languageSettings: [{
@@ -141,7 +162,7 @@ function alanKeys(languages: string[]): Record<string, unknown> {
             languageId: 'alanif',
             includeRegExpList: ALAN_INCLUDE,
             ignoreRegExpList: ALAN_IGNORE,
-            dictionaries: [NAMES_DICTIONARY, ...CODE_DICTIONARIES.map(d => `!${d}`)],
+            dictionaries: [CONCORDANCE_DICTIONARY, ...CODE_DICTIONARIES.map(d => `!${d}`)],
         }],
     };
 }
@@ -151,29 +172,29 @@ function ours(key: string, entry: unknown): boolean {
     const named = entry as { name?: unknown; languageId?: unknown };
     if (key === 'languageSettings') { return named?.languageId === 'alanif'; }
     const mine = key === 'dictionaryDefinitions'
-        ? [NAMES_DICTIONARY]
+        ? [CONCORDANCE_DICTIONARY]
         : ALAN_PATTERNS.map(p => p.name);
     return typeof named?.name === 'string' && mine.includes(named.name);
 }
 
-export type Config =
+export type Brief =
     | { ok: true; text: string }
     | { ok: false; reason: string };
 
 /**
- * The cspell.json to write, given whatever is already there.
+ * The brief to write, given whatever is already there.
  *
- * <p>MERGED, never replaced. This file is the author's: cSpell's own "Add to
- * dictionary" writes their words into it, and a project may already have one for
- * its prose or its README. So our entries are removed by name and re-appended,
- * which makes running the command twice produce the same file, while every key we
- * do not own is carried through untouched.
+ * <p>MERGED, never replaced, because the brief is where the glossary lives: cSpell's
+ * own "Add to dictionary" writes the author's words into it, and a project may already
+ * have a brief of its own for its prose or its README. So our entries are removed by
+ * name and re-appended, which makes running the command twice produce the same file,
+ * while every key we do not own -- `words` above all -- is carried through untouched.
  *
  * <p>We refuse rather than guess when the file is not what we expect. An unparseable
- * cspell.json, or one whose `patterns` is not a list, is a file we would have to
- * damage to write into -- and it is a manuscript's spelling settings, not scratch.
+ * brief, or one whose `patterns` is not a list, is a file we would have to damage to
+ * write into -- and it is a manuscript's spelling settings, not scratch.
  */
-export function configFor(existing: string | undefined, languages: string[]): Config {
+export function briefFor(existing: string | undefined, languages: string[]): Brief {
     const keys = alanKeys(languages);
     if (existing === undefined) {
         return { ok: true, text: text({ version: '0.2', words: [], ...keys }) };
@@ -183,17 +204,17 @@ export function configFor(existing: string | undefined, languages: string[]): Co
     try {
         parsed = JSON.parse(existing);
     } catch {
-        return { ok: false, reason: `${CSPELL_FILE} is not valid JSON` };
+        return { ok: false, reason: `${BRIEF_FILE} is not valid JSON` };
     }
     if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-        return { ok: false, reason: `${CSPELL_FILE} does not hold a JSON object` };
+        return { ok: false, reason: `${BRIEF_FILE} does not hold a JSON object` };
     }
 
     const config = parsed as Record<string, unknown>;
     const lists = ['patterns', 'dictionaryDefinitions', 'languageSettings'];
     for (const key of lists) {
         if (config[key] !== undefined && !Array.isArray(config[key])) {
-            return { ok: false, reason: `${CSPELL_FILE}'s "${key}" is not a list` };
+            return { ok: false, reason: `${BRIEF_FILE}'s "${key}" is not a list` };
         }
     }
 
@@ -213,17 +234,17 @@ function text(config: Record<string, unknown>): string {
 /**
  * The .gitignore to write, or undefined when the file already covers us.
  *
- * <p>The word list is derived from the sources, so committing it would put a second
- * source of truth under version control and make a rename touch both. Regenerating
- * in a fresh clone is the repair, and the command is the way to do it.
+ * <p>The concordance is derived from the sources, so committing it would put a second
+ * source of truth under version control and make a rename touch both. A read-through
+ * in a fresh clone is the cure, and the command is the way to ask for one.
  */
 export function gitignoreFor(existing: string | undefined): string | undefined {
     const lines = (existing ?? '').split('\n').map(l => l.trim());
-    if (lines.some(l => l === NAMES_FILE || l === `/${NAMES_FILE}`)) {
+    if (lines.some(l => l === CONCORDANCE_FILE || l === `/${CONCORDANCE_FILE}`)) {
         return undefined;
     }
     const before = existing === undefined || existing === '' ? ''
         : existing.endsWith('\n') ? existing : `${existing}\n`;
     return `${before}\n# Generated by Alan IF IDE from this project's own sources.\n`
-        + `/${NAMES_FILE}\n`;
+        + `/${CONCORDANCE_FILE}\n`;
 }

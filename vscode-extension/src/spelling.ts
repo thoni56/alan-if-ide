@@ -84,13 +84,13 @@ const SYNONYMS = ident(/^\s*synonyms?\b([^=]*)=/i);
 const EXIT = ident(/^\s*exit\s+(.*?)\bto\b/i);
 
 /**
- * Every word this file contributes to the project's dictionary.
+ * One file's contribution to the concordance: every player-facing word it declares.
  *
  * <p>Strings are blanked first, then comments: a quote inside a comment is not a
  * string, and `--` inside a string is not a comment, so the order is the only one
  * that is right. What is left is declarations, read line by line.
  */
-export function projectWords(source: string): string[] {
+export function contribution(source: string): string[] {
     const code = commentsRemoved(stringsBlanked(source));
     const found = new Set<string>();
     const collect = (raw: string) => splitIdentifier(raw).forEach(w => found.add(w));
@@ -117,12 +117,17 @@ export function projectWords(source: string): string[] {
     return [...found].sort();
 }
 
-/** Sorted, deduplicated, and a header saying the file is not the author's to edit. */
-export function dictionaryFile(words: string[]): string {
+/**
+ * The concordance as cSpell reads it: sorted, deduplicated, and headed by a note
+ * saying whose file it is. The header names the glossary, because the one thing an
+ * author must not do is add a word here.
+ */
+export function concordanceText(words: string[]): string {
     return [
         '# Written by Alan IF IDE from this project\'s own declarations.',
         '# It is rewritten whenever the sources change, so edits here are lost.',
-        '# Words of your own belong in cspell.json, where "Add to dictionary" puts them.',
+        '# Words of your own belong in cspell.json -- your glossary -- where',
+        '# "Add to dictionary" puts them, and where nothing rebuilds over them.',
         ...words,
         '',
     ].join('\n');

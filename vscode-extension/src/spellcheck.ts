@@ -4,10 +4,10 @@ import {
     QuickPickItem, QuickPickItemKind, Uri, WorkspaceFolder,
     commands, extensions, window, workspace,
 } from 'vscode';
-import { indexProject, namesDictionary, writeIfChanged } from './names';
+import { readThrough, concordance, writeIfChanged } from './names';
 import {
-    ALL_DICTIONARIES, BUNDLED, CSPELL_EXTENSION, CSPELL_FILE, Dictionary,
-    DICTIONARIES, NAMES_FILE, configFor, dictionariesFor, gitignoreFor, languageNames,
+    ALL_LANGUAGES, BUNDLED, CSPELL_EXTENSION, BRIEF_FILE, Language,
+    LANGUAGES, CONCORDANCE_FILE, briefFor, languagesFor, gitignoreFor, languageNames,
 } from './cspell';
 
 /**
@@ -17,10 +17,11 @@ import {
  * game folder, which is a manuscript: it asks first, says exactly what it will write,
  * and merges into anything that is already there rather than replacing it.
  *
- * <p>It is also the REPAIR. The word list is generated from the sources, so a pull, a
- * rename, or an edit made in another editor can leave it stale; running the command
- * again rebuilds it. That is why there is no watcher -- a rare case a manual refresh
- * already covers is not worth a permanent process.
+ * <p>It is also the READ-THROUGH. The concordance is derived from the sources, so a
+ * pull, a rename, or an edit made in another editor leaves it drifting; running the
+ * command again rebuilds every contribution from nothing. That is why there is no
+ * watcher -- drift that a deliberate read-through already cures is not worth a
+ * permanent process.
  */
 export async function setupSpellChecking(): Promise<void> {
     const folder = targetFolder();
@@ -36,25 +37,25 @@ export async function setupSpellChecking(): Promise<void> {
         return;   // cancelled, and nothing has been written
     }
 
-    // Scan before asking, so the confirmation can say how many names it found rather
-    // than promising something it has not looked at yet.
+    // Read through before asking, so the confirmation can say how many names it found
+    // rather than promising something it has not looked at yet.
     const unreadable: string[] = [];
     const sources = await workspace.findFiles('**/*.{alan,i}', '**/node_modules/**');
-    const index = indexProject(sources.map(u => u.fsPath), new Map(), unreadable);
-    const dictionary = namesDictionary(index);
-    const words = dictionary.split('\n').filter(l => l !== '' && !l.startsWith('#')).length;
+    const contributions = readThrough(sources.map(u => u.fsPath), new Map(), unreadable);
+    const list = concordance(contributions);
+    const words = list.split('\n').filter(l => l !== '' && !l.startsWith('#')).length;
 
     const root = folder.uri.fsPath;
-    const config = configFor(read(path.join(root, CSPELL_FILE)), languages);
-    if (!config.ok) {
-        reportUnwritableConfig(config.reason, path.join(root, CSPELL_FILE));
+    const brief = briefFor(read(path.join(root, BRIEF_FILE)), languages);
+    if (!brief.ok) {
+        reportUnwritableBrief(brief.reason, path.join(root, BRIEF_FILE));
         return;
     }
 
     const gitignore = gitignorePath(root);
     const plan = {
-        merging: read(path.join(root, CSPELL_FILE)) !== undefined,
-        gitignore, words, files: index.size, sources: sources.length, unreadable,
+        merging: read(path.join(root, BRIEF_FILE)) !== undefined,
+        gitignore, words, files: contributions.size, sources: sources.length, unreadable,
     };
     // Modal on purpose, as the encoding offer is: this writes into the author's own
     // folder, and a notification that fades in fifteen seconds is not where a
@@ -68,8 +69,8 @@ export async function setupSpellChecking(): Promise<void> {
     }
 
     try {
-        fs.writeFileSync(path.join(root, CSPELL_FILE), config.text, 'utf8');
-        writeIfChanged(path.join(root, NAMES_FILE), dictionary);
+        fs.writeFileSync(path.join(root, BRIEF_FILE), brief.text, 'utf8');
+        writeIfChanged(path.join(root, CONCORDANCE_FILE), list);
     } catch (e) {
         window.showErrorMessage(
             `Alan IF: could not write to ${folder.name}. Check the folder permissions. `
@@ -82,14 +83,14 @@ export async function setupSpellChecking(): Promise<void> {
             try {
                 fs.writeFileSync(gitignore, updated, 'utf8');
             } catch {
-                // The dictionary is written and the feature works; an unwritable
+                // The concordance is written and the feature works; an unwritable
                 // .gitignore only means the file may get committed. Not worth an
                 // error over, and the summary below is where it would go unread.
             }
         }
     }
 
-    await reportAndOfferInstalls(languages, words, index.size);
+    await reportAndOfferInstalls(languages, words, contributions.size);
 }
 
 /**
@@ -104,7 +105,7 @@ function targetFolder(): WorkspaceFolder | undefined {
 }
 
 interface LanguageItem extends QuickPickItem {
-    dictionary: Dictionary;
+    language: Language;
 }
 
 /**
@@ -120,11 +121,11 @@ interface LanguageItem extends QuickPickItem {
  * library needs both, which is the shape of the only two Alan corpora we have.
  */
 async function pickLanguages(): Promise<string[] | undefined> {
-    const item = (dictionary: Dictionary): LanguageItem => ({
-        label: dictionary.name,
-        description: `${dictionary.code} — ${availability(dictionary)}`,
-        picked: dictionary.code === BUNDLED.code,
-        dictionary,
+    const item = (language: Language): LanguageItem => ({
+        label: language.name,
+        description: `${language.code} — ${availability(language)}`,
+        picked: language.code === BUNDLED.code,
+        language,
     });
     const separator = (label: string): QuickPickItem =>
         ({ label, kind: QuickPickItemKind.Separator });
@@ -133,7 +134,7 @@ async function pickLanguages(): Promise<string[] | undefined> {
         separator('Your game\'s language'),
         item(BUNDLED),
         separator('Add a language'),
-        ...DICTIONARIES.map(item),
+        ...LANGUAGES.map(item),
     ], {
         canPickMany: true,
         title: 'Alan IF: Spell checking languages',
@@ -145,16 +146,16 @@ async function pickLanguages(): Promise<string[] | undefined> {
     // Unchecking everything is allowed, and means the default rather than nothing:
     // an empty `language` would leave cSpell checking against no dictionary at all.
     const codes = chosen
-        .filter((c): c is LanguageItem => 'dictionary' in c)
-        .map(c => c.dictionary.code);
+        .filter((c): c is LanguageItem => 'language' in c)
+        .map(c => c.language.code);
     return codes.length > 0 ? codes : [BUNDLED.code];
 }
 
-function availability(dictionary: Dictionary): string {
-    if (dictionary.extension === undefined) {
+function availability(language: Language): string {
+    if (language.extension === undefined) {
         return 'included with Code Spell Checker';
     }
-    return installed(dictionary.extension) ? 'installed' : 'adds a dictionary';
+    return installed(language.extension) ? 'installed' : 'adds a dictionary';
 }
 
 function installed(extension: string): boolean {
@@ -176,21 +177,22 @@ function describePlan(languages: string[], plan: Plan): string {
         `Language: ${languageNames(languages)}.`,
         '',
         plan.merging
-            ? `• Alan's settings will be merged into the ${CSPELL_FILE} already here. `
+            ? `• Alan's settings will be merged into the ${BRIEF_FILE} already here. `
               + 'Your own words and settings are kept, but comments and formatting in '
               + 'that file are not preserved.'
-            : `• ${CSPELL_FILE} will be created, holding the rules that tell the `
+            : `• ${BRIEF_FILE} will be created, holding the rules that tell the `
               + 'checker where your prose is.',
         plan.words === 0
-            ? `• ${NAMES_FILE} will be created, but no Alan sources were found here `
+            ? `• ${CONCORDANCE_FILE} will be created, but no Alan sources were found here `
               + 'yet, so it is empty. Run this again once you have some.'
-            : `• ${NAMES_FILE} will hold ${plan.words} names taken from your `
+            : `• ${CONCORDANCE_FILE} will hold ${plan.words} names taken from your `
               + `${plan.files} source file${plan.files === 1 ? '' : 's'}, so nothing `
               + 'in your game\'s own vocabulary is marked as a misspelling. It is '
-              + 'generated — run this command again to rebuild it.',
+              + 'generated — run this command again to rebuild it. Words of your own '
+              + 'go in cspell.json instead, and are never rebuilt over.',
     ];
     if (plan.gitignore !== undefined) {
-        lines.push(`• ${NAMES_FILE} will be added to .gitignore, since it is rebuilt `
+        lines.push(`• ${CONCORDANCE_FILE} will be added to .gitignore, since it is rebuilt `
             + 'from your sources rather than written by hand.');
     }
     if (plan.unreadable.length > 0) {
@@ -219,7 +221,7 @@ async function reportAndOfferInstalls(
         ...(installed(CSPELL_EXTENSION) ? [] : [{
             name: 'Code Spell Checker', code: '', extension: CSPELL_EXTENSION,
         }]),
-        ...dictionariesFor(languages).filter(
+        ...languagesFor(languages).filter(
             d => d.extension !== undefined && !installed(d.extension)),
     ];
     const found = words === 0 ? 'no names yet'
@@ -257,12 +259,12 @@ async function reportAndOfferInstalls(
 }
 
 /**
- * A cspell.json we will not touch.
+ * A brief we will not touch.
  *
- * <p>Refusing is the point. This is where an author's own added words live, and a
- * file we cannot parse is one we would have to overwrite to write into.
+ * <p>Refusing is the point. The brief is where the glossary lives, and a file we
+ * cannot parse is one we would have to overwrite to write into.
  */
-function reportUnwritableConfig(reason: string, file: string): void {
+function reportUnwritableBrief(reason: string, file: string): void {
     window.showErrorMessage(
         `Alan IF: ${reason}, so it was left alone and nothing was written. Fix it and `
         + 'run this command again.',

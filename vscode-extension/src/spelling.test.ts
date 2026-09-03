@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import * as assert from 'node:assert';
-import { projectWords, dictionaryFile, ALAN_PATTERNS, ALAN_INCLUDE, ALAN_IGNORE } from './spelling';
+import { contribution, concordanceText, ALAN_PATTERNS, ALAN_INCLUDE, ALAN_IGNORE } from './spelling';
 
 test('the words an author types are collected, and the programmer\'s are not', () => {
-    const words = projectWords(`
+    const words = contribution(`
         Every wyldkynd Isa actor
           Is describedAs "".
           Has feetcover 0.
@@ -28,23 +28,23 @@ test('the words an author types are collected, and the programmer\'s are not', (
 });
 
 test('a name is split the way prose would use it, and short fragments go', () => {
-    const words = projectWords("The night_stand Isa object\n  Name night stand Name 'bedside table'\nEnd The.");
+    const words = contribution("The night_stand Isa object\n  Name night stand Name 'bedside table'\nEnd The.");
     assert.deepStrictEqual(words, ['bedside', 'night', 'stand', 'table']);
 });
 
 test('a quoted id keeps its word, not its quotes', () => {
-    assert.deepStrictEqual(projectWords("Verb 'show'\nEnd Verb."), ['show']);
+    assert.deepStrictEqual(contribution("Verb 'show'\nEnd Verb."), ['show']);
 });
 
-test('prose is not a source of dictionary words', () => {
+test('prose contributes nothing; only declarations do', () => {
     // The whole point: the dictionary comes from what the author DECLARED, never from
     // what they wrote. A misspelling in a string must stay a misspelling.
-    const words = projectWords('The lamp Isa object\n  Description "The lamp is a wyldkynd artifact."\nEnd The.');
+    const words = contribution('The lamp Isa object\n  Description "The lamp is a wyldkynd artifact."\nEnd The.');
     assert.deepStrictEqual(words, ['lamp']);
 });
 
 test('a quote inside a comment does not start a string, and -- inside one is not a comment', () => {
-    const words = projectWords([
+    const words = contribution([
         '-- The "shiny" lamp -- a note',
         'The gadget Isa object',
         '  Description "A well-made -- some say shiny -- gadget."',
@@ -55,13 +55,13 @@ test('a quote inside a comment does not start a string, and -- inside one is not
 });
 
 test('synonyms and exits are collected; both are words a player types', () => {
-    const words = projectWords('Synonyms lampada, lanterna = lamp.\nExit northeast, sudest to hall');
+    const words = contribution('Synonyms lampada, lanterna = lamp.\nExit northeast, sudest to hall');
     ['lampada', 'lanterna', 'northeast', 'sudest'].forEach(
         w => assert.ok(words.includes(w), `${w} should be in the dictionary`));
 });
 
-test('the generated file says it is generated, and where the author\'s own words go', () => {
-    const file = dictionaryFile(['aerrowan', 'wyldkynd']);
+test('the concordance says it is generated, and points at the glossary', () => {
+    const file = concordanceText(['aerrowan', 'wyldkynd']);
     assert.match(file, /^# Written by Alan IF IDE/);
     assert.match(file, /cspell\.json/);
     assert.ok(file.endsWith('aerrowan\nwyldkynd\n'));

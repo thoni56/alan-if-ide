@@ -4,10 +4,10 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 
-import { NameIndex, indexProject, indexFile, namesDictionary, writeIfChanged } from './names';
+import { Contributions, readThrough, touchUp, concordance, writeIfChanged } from './names';
 
 /**
- * Collecting a project's own names, over the file set a compile actually reaches.
+ * Building the concordance, over the file set a compile actually reaches.
  *
  * <p>The shape under test is the Italian one, because it is the case both halves of
  * the union are needed for: a game whose library lives outside the open folder and is
@@ -43,7 +43,7 @@ function project(): { main: string; lib: string; loose: string; root: string } {
 
 test('the union covers both an outside import and a file nothing imports', () => {
     const { main, loose } = project();
-    const words = [...indexProject([main, loose], new Map()).values()].flat();
+    const words = [...readThrough([main, loose], new Map()).values()].flat();
 
     assert.ok(words.includes('guardaroba'), 'a name in the workspace file');
     assert.ok(words.includes('spogliatoio'), 'a Name clause in the workspace file');
@@ -57,50 +57,50 @@ test('the union covers both an outside import and a file nothing imports', () =>
 
 test('a Latin-1 library is read in its own encoding, not mangled', () => {
     const { main } = project();
-    const words = [...indexProject([main], new Map()).values()].flat();
+    const words = [...readThrough([main], new Map()).values()].flat();
     // The accented form, not the two characters a UTF-8 decode would have produced,
     // and not the replacement character a strict one would have.
     assert.ok(words.includes('attaccapànni'));
     assert.ok(!words.some(w => w.includes('�')));
 });
 
-test('a re-indexed file replaces its own words and leaves the rest alone', () => {
+test('a touched-up file replaces its own contribution and leaves the rest alone', () => {
     const { main, loose } = project();
-    const index: NameIndex = indexProject([main, loose], new Map());
-    assert.ok(namesDictionary(index).includes('sciarpa'));
+    const contributions: Contributions = readThrough([main, loose], new Map());
+    assert.ok(concordance(contributions).includes('sciarpa'));
 
     fs.writeFileSync(loose, 'The cappello Isa object\nEnd The.\n', 'utf8');
-    indexFile(loose, index);
+    touchUp(loose, contributions);
 
-    const dictionary = namesDictionary(index);
-    assert.ok(dictionary.includes('cappello'), 'the new name arrives');
-    assert.ok(!dictionary.includes('sciarpa'), 'the old name is gone');
-    assert.ok(dictionary.includes('guardaroba'), 'the other file is untouched');
+    const list = concordance(contributions);
+    assert.ok(list.includes('cappello'), 'the new name arrives');
+    assert.ok(!list.includes('sciarpa'), 'the old name is gone');
+    assert.ok(list.includes('guardaroba'), 'the other file is untouched');
 });
 
 test('a file that has been deleted stops contributing', () => {
     const { main, loose } = project();
-    const index = indexProject([main, loose], new Map());
+    const contributions = readThrough([main, loose], new Map());
     fs.rmSync(loose);
-    indexFile(loose, index);
-    assert.ok(!namesDictionary(index).includes('sciarpa'));
+    touchUp(loose, contributions);
+    assert.ok(!concordance(contributions).includes('sciarpa'));
 });
 
-test('the dictionary is sorted, deduplicated, and headed', () => {
+test('the concordance is sorted, deduplicated, and headed', () => {
     const { main, loose } = project();
-    const lines = namesDictionary(indexProject([main, loose], new Map()))
+    const lines = concordance(readThrough([main, loose], new Map()))
         .split('\n').filter(l => l.length > 0 && !l.startsWith('#'));
 
     assert.deepEqual(lines, [...lines].sort(), 'sorted');
     assert.equal(new Set(lines).size, lines.length, 'deduplicated');
-    assert.ok(namesDictionary(new Map()).startsWith('# Written by Alan IF IDE'));
+    assert.ok(concordance(new Map()).startsWith('# Written by Alan IF IDE'));
 });
 
 test('the same sources produce the same file whatever order they were walked in', () => {
     const { main, loose } = project();
     assert.equal(
-        namesDictionary(indexProject([main, loose], new Map())),
-        namesDictionary(indexProject([loose, main], new Map())));
+        concordance(readThrough([main, loose], new Map())),
+        concordance(readThrough([loose, main], new Map())));
 });
 
 test('an unreadable file is collected, not silently dropped', () => {
@@ -110,7 +110,7 @@ test('an unreadable file is collected, not silently dropped', () => {
     fs.writeFileSync(missing, 'The x Isa object\nEnd The.\n', 'utf8');
     fs.chmodSync(missing, 0o000);
 
-    indexProject([main, missing], new Map(), unreadable);
+    readThrough([main, missing], new Map(), unreadable);
     // Running as root defeats the permission, so only assert what the mode allows.
     if (unreadable.length > 0) {
         assert.deepEqual(unreadable, [missing]);
@@ -118,7 +118,7 @@ test('an unreadable file is collected, not silently dropped', () => {
     fs.chmodSync(missing, 0o644);
 });
 
-test('an unchanged dictionary is not rewritten', () => {
+test('a concordance that has not moved settles without being rewritten', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'alan-names-'));
     const target = path.join(root, 'alan-project-names.txt');
 

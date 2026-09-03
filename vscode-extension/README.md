@@ -79,9 +79,17 @@ Play, powered by a language server built with [Xtext](https://www.eclipse.org/Xt
   renaming things to rebuild the list. Misspellings are reported as *Information*: the
   game runs fine, and you may want to know.
 
-  A word that is genuinely yours — a surname in the credits, a dialect spelling — goes
-  in with **Add to dictionary**. Choose the option naming your project's `cspell.json`:
-  it travels with the game, and the generated list is never rebuilt over it. The other
+  Two files appear in your project, and one sentence says how they fit together: **the
+  brief tells the checker where your prose is and which lists to trust — the
+  concordance, which is rebuilt from your sources, and the glossary, which is yours and
+  is never touched.** The **brief** is `cspell.json`. The **concordance** is
+  `alan-project-names.txt`: your game's own names, regenerated every time you run the
+  command, so nothing you write in it survives.
+
+  The **glossary** is the third, and it is the one you add to. A word that is genuinely
+  yours — a surname in the credits, a dialect spelling — goes in with **Add to
+  dictionary**. Choose the option naming your project's `cspell.json`: your glossary
+  lives inside the brief, travels with the game, and is never rebuilt over. The other
   two put your game's private vocabulary into your editor's settings, where *user
   settings* makes it correct in every project you own.
 

@@ -1,10 +1,15 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { followImports, sourceText } from './encoding';
-import { projectWords, dictionaryFile } from './spelling';
+import { contribution, concordanceText } from './spelling';
 
 /**
- * The generated word list: every player-facing name the project declares.
+ * The concordance: every player-facing name the project declares, gathered from the
+ * sources it declares them in.
+ *
+ * <p>A concordance is derived from the work by machine, and that is the whole of what
+ * this file is. cspell.ts writes the other half, the brief. See its header for how the
+ * three lists fit together.
  *
  * <p>This is the half of spell checking that decides whether an author keeps it
  * switched on. Wyldkynd's prose is ordinary English -- only 101 distinct words in it
@@ -14,83 +19,89 @@ import { projectWords, dictionaryFile } from './spelling';
  * prose, and misspellings of the game's own characters. Holding the CORRECT spelling
  * of Aerrowan is precisely what makes `Arrowan` stand out.
  *
- * <p>The list is DERIVED, so it is machine-owned: generated, gitignored, and always
- * correct to rebuild. The author's own exceptions live in cspell.json instead, where
- * cSpell's "Add to dictionary" puts them, so that regenerating this file can never
- * silently discard a decision the author made.
+ * <p>The concordance is DERIVED, so it is machine-owned: generated, gitignored, and
+ * always correct to rebuild. The author's own words are the glossary, and they live in
+ * the brief instead, where cSpell's "Add to dictionary" puts them -- so rebuilding the
+ * concordance can never silently discard a decision the author made.
  *
- * <p>THE INDEX IS PER FILE, not one flat set, because that is what makes the cheap
- * update possible: on save, one file's words are replaced wholesale and the dictionary
- * is rewritten only if the sorted list actually changed. Prose edits vastly outnumber
- * name changes, and cSpell re-checks every open document whenever a dictionary file
- * changes, so writing an identical file on every save would re-check the world for
- * nothing.
+ * <p>CONTRIBUTIONS ARE HELD PER FILE, not as one flat set, because that is what makes
+ * the touch-up possible: on save, one file's contribution is replaced wholesale and the
+ * concordance settles -- it is rewritten only if the sorted list actually changed.
+ * Prose edits vastly outnumber name changes, and cSpell re-checks every open document
+ * whenever a dictionary file changes, so writing an identical file on every save would
+ * make the whole project flicker for nothing.
  */
 
 /** Each source file, by resolved path, and the words it contributes. */
-export type NameIndex = Map<string, string[]>;
+export type Contributions = Map<string, string[]>;
 
 /**
- * Rebuild the whole index from the project.
+ * The read-through: every file in the reach re-contributes, from nothing.
  *
  * <p>Pass the workspace's own sources as `roots`: they are visited too, so the walk
  * yields the union of what the author has open and what the compile imports from
- * outside the folder. This is also the repair for anything that has drifted -- a
- * pull, a rename, an edit made in another editor -- which is why it clears first
- * rather than merging into what is already there.
+ * outside the folder. This is also the cure for drift -- a pull, a rename, an edit
+ * made in another editor -- which is why it clears first rather than merging into
+ * what is already there.
  */
-export function indexProject(
+export function readThrough(
     roots: string[],
-    index: NameIndex,
+    contributions: Contributions,
     unreadable: string[] = [],
-): NameIndex {
-    index.clear();
+): Contributions {
+    contributions.clear();
     followImports(roots, (file, bytes) => {
-        index.set(file, projectWords(sourceText(bytes)));
+        contributions.set(file, contribution(sourceText(bytes)));
     }, unreadable);
-    return index;
+    return contributions;
 }
 
 /**
- * Replace one file's contribution, for the save that just happened.
+ * The touch-up: one file re-contributes, for the save that just happened.
  *
  * <p>A file we can no longer read drops out entirely rather than keeping its old
  * words: that is what makes a deleted file's names disappear, and a name that has
  * been renamed away stop vouching for itself. Nothing is reported, because this runs
  * on every save -- the file the author just deleted is not a problem to announce.
  */
-export function indexFile(file: string, index: NameIndex): NameIndex {
+export function touchUp(file: string, contributions: Contributions): Contributions {
     const here = path.resolve(file);
     try {
-        index.set(here, projectWords(sourceText(fs.readFileSync(here))));
+        contributions.set(here, contribution(sourceText(fs.readFileSync(here))));
     } catch {
-        index.delete(here);
+        contributions.delete(here);
     }
-    return index;
+    return contributions;
 }
 
 /**
- * The dictionary file's full text.
+ * The concordance's full text: every contribution, merged and sorted.
+ *
+ * <p>The union is recomputed rather than patched, because a name can be declared in
+ * two files: dropping it from one contribution does not mean it leaves the concordance,
+ * and only the union knows that.
  *
  * <p>Sorted with the default comparison rather than a locale-aware one, so that the
- * output is a pure function of the sources: the index is built from a directory walk
- * whose order nothing guarantees, and only a stable sort makes "has it changed?" a
- * question about the project instead of about the machine it ran on.
+ * output is a pure function of the sources: contributions are gathered by a directory
+ * walk whose order nothing guarantees, and only a stable sort makes "has it changed?"
+ * a question about the project instead of about the machine it ran on.
  */
-export function namesDictionary(index: NameIndex): string {
+export function concordance(contributions: Contributions): string {
     const words = new Set<string>();
-    for (const fileWords of index.values()) {
-        fileWords.forEach(w => words.add(w));
+    for (const contributed of contributions.values()) {
+        contributed.forEach(w => words.add(w));
     }
-    return dictionaryFile([...words].sort());
+    return concordanceText([...words].sort());
 }
 
 /**
- * Write only when the content differs, and say whether it did.
+ * Settling: write only when the text has actually moved, and say whether it did.
  *
- * <p>The guard is not an optimisation. cSpell reloads a custom dictionary when its
- * file changes and re-checks every open document, so an identical rewrite on each
- * save would make the whole project flicker for no reason at all.
+ * <p>The interesting outcome is the one where nothing is written, so the guard is not
+ * an optimisation. cSpell reloads a custom dictionary when its file changes and
+ * re-checks every open document, so an identical rewrite on each save would make the
+ * whole project flicker for no reason at all. Named for the mechanic rather than the
+ * domain because that is all it is: no part of it knows about concordances.
  */
 export function writeIfChanged(target: string, contents: string): boolean {
     try {

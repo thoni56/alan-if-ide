@@ -56,12 +56,18 @@ Palette. Press Ctrl+Shift+P and type "alan if".
   for Alan in your project's own folder: it checks string literals only, keeps `$p` and
   `$n` from gluing to the next word, ignores the stems that `$$` builds words from, and
   feeds your game's own names — classes, instances, `Name` clauses, synonyms, verbs,
-  exits — into a generated dictionary so they are not underlined. On the 83-file
+  exits — into a generated word list so they are not underlined. On the 83-file
   *Wyldkynd Project* that is 178 unknown words down to 57, nearly all of them genuine.
-  Choose the language your prose is written in; run the command again to rebuild the
-  list after a rename. A word that is genuinely yours — a surname, a dialect spelling —
-  goes in with **Add to dictionary**; pick the option naming the project's
-  `cspell.json`, which travels with the game and is never rebuilt over.
+  Choose the language your prose is written in, and run the command again to rebuild
+  the list after a rename.
+
+  Three things do the work, and naming them makes the rest obvious. The `cspell.json`
+  is the **brief**: it tells the checker where your prose is and which lists to trust.
+  `alan-project-names.txt` is the **concordance**, your game's own names, rebuilt from
+  your sources — never edit it. And a word that is genuinely yours, a surname or a
+  dialect spelling, goes in with **Add to dictionary** to become your **glossary**,
+  which lives inside the brief, travels with the game, and is never rebuilt over. Pick
+  the option naming the project's own `cspell.json` when it offers you three.
 
 **If `Alt+Q` does nothing**: the
 [Rewrap](https://marketplace.visualstudio.com/items?itemName=stkb.rewrap) extension
