@@ -120,7 +120,7 @@ test('an unreadable file is collected, not silently dropped', () => {
 
 test('a concordance that has not moved settles without being rewritten', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'alan-names-'));
-    const target = path.join(root, 'alan-project-names.txt');
+    const target = path.join(root, 'alan-concordance.txt');
 
     assert.equal(writeIfChanged(target, 'one\n'), true, 'absent: written');
     const written = fs.statSync(target).mtimeMs;

@@ -63,8 +63,8 @@ Palette. Press Ctrl+Shift+P and type "alan if".
 
   Three things do the work, and naming them makes the rest obvious. The `cspell.json`
   is the **brief**: it tells the checker where your prose is and which lists to trust.
-  `alan-project-names.txt` is the **concordance**, your game's own names, rebuilt from
-  your sources — never edit it. And a word that is genuinely yours, a surname or a
+  The **concordance**, `alan-concordance.txt`, holds your game's own names and is
+  rebuilt from your sources — never edit it. And a word that is genuinely yours, a surname or a
   dialect spelling, goes in with **Add to dictionary** to become your **glossary**,
   which lives inside the brief, travels with the game, and is never rebuilt over. Pick
   the option naming the project's own `cspell.json` when it offers you three.

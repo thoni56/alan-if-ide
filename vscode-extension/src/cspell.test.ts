@@ -41,8 +41,8 @@ test('a fresh brief carries the rules the measurement proved', () => {
     // The concordance is never the target of "Add to dictionary": a word added
     // there would vanish at the next rebuild, silently.
     assert.deepEqual(c.dictionaryDefinitions, [
-        { name: 'alan-project-names', path: `./${CONCORDANCE_FILE}`, addWords: false }]);
-    assert.ok(alan.dictionaries.includes('alan-project-names'));
+        { name: 'alan-concordance', path: `./${CONCORDANCE_FILE}`, addWords: false }]);
+    assert.ok(alan.dictionaries.includes('alan-concordance'));
     // And `words` is present and empty, which is where cSpell puts them instead.
     assert.deepEqual(c.words, []);
 });

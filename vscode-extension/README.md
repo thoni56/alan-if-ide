@@ -83,7 +83,7 @@ Play, powered by a language server built with [Xtext](https://www.eclipse.org/Xt
   brief tells the checker where your prose is and which lists to trust — the
   concordance, which is rebuilt from your sources, and the glossary, which is yours and
   is never touched.** The **brief** is `cspell.json`. The **concordance** is
-  `alan-project-names.txt`: your game's own names, regenerated every time you run the
+  `alan-concordance.txt`: your game's own names, regenerated every time you run the
   command, so nothing you write in it survives.
 
   The **glossary** is the third, and it is the one you add to. A word that is genuinely

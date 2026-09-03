@@ -9,7 +9,7 @@ import { ALAN_PATTERNS, ALAN_INCLUDE, ALAN_IGNORE, CODE_DICTIONARIES } from './s
  * the CONCORDANCE, which we regenerate, and the GLOSSARY, which is the author's and
  * which we never touch.
  *
- * <p>The brief is cspell.json. The concordance is alan-project-names.txt, derived from
+ * <p>The brief is cspell.json. The concordance is alan-concordance.txt, derived from
  * the game's own declarations by names.ts and rebuilt whenever the sources move. The
  * glossary is the `words` list inside the brief, where cSpell's "Add to dictionary"
  * puts an author's decisions -- a surname in the credits, a dialect spelling -- and it
@@ -32,14 +32,13 @@ export const CSPELL_EXTENSION = 'streetsidesoftware.code-spell-checker';
 export const BRIEF_FILE = 'cspell.json';
 
 /**
- * The concordance. Named for the author, who did not ask for a word from literary
- * scholarship in their game folder: the file says what it holds, and the vocabulary
- * stays on this side of it.
+ * The concordance. "project" would be redundant in the name: a concordance is of a
+ * work by definition, which is the whole reason the word earns its place here.
  */
-export const CONCORDANCE_FILE = 'alan-project-names.txt';
+export const CONCORDANCE_FILE = 'alan-concordance.txt';
 
 /** The dictionary name the concordance is registered under, inside the brief. */
-const CONCORDANCE_DICTIONARY = 'alan-project-names';
+const CONCORDANCE_DICTIONARY = 'alan-concordance';
 
 /**
  * A language the author can write their game in.
