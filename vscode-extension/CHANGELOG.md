@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.8.1 — 2026-09-05
+
+- **Toggle Block Comment now writes a comment Alan can read.** Select a few lines, ask
+  for a block comment, and the closing `////` used to land at the end of the last line —
+  `on ////`. That closes nothing: the comment ran on to the end of the file and took the
+  rest of the adventure with it, so what you saw was a syntax error a long way from
+  anything you had touched. Alan's delimiters are whole lines. The opening `////` has to
+  stand in the first column, and the comment ends only at a line that is slashes and
+  nothing else, not even a trailing space.
+
+  That was VS Code's own command, working from what we had told it about the language,
+  and no setting could have told it better — so **Alan IF: Toggle Block Comment** is now
+  ours: `Shift+Alt+A` in an Alan file, the right-click menu, or the Command Palette. It
+  comments whole lines and takes the comment away again, including when the cursor is in
+  the middle of one and the delimiters are off the screen.
+
+  One thing to know: **Edit ▸ Toggle Block Comment** in the menu bar is still VS Code's,
+  and there is no way for an extension to take it over. It now does nothing in an Alan
+  file instead of something wrong. The key, the right-click menu and the palette are
+  where the working command is.
+
+- **A block comment is coloured the way the compiler reads it.** Four slashes in the
+  middle of a line used to end the colouring, so a comment that had not really closed
+  looked closed — the one surface that could have shown you the file had gone wrong
+  agreed with the mistake instead. Now the colouring runs on until a line of slashes,
+  and an indented `////`, which the compiler rejects, no longer starts a comment at all.
+
 ## 0.8.0 — 2026-09-03
 
 - **Every time you save an Alan file, the names it declares are collected again.** Your
