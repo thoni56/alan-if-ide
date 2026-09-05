@@ -57,6 +57,13 @@ Play, powered by a language server built with [Xtext](https://www.eclipse.org/Xt
   file, which looks exactly like a broken feature. **Bind Alt+Q to Re-wrap String**
   settles it by writing a user keybinding, which beats any extension's; you are
   offered it the first time you re-wrap.
+- **Toggle Block Comment** (`Shift+Alt+A`, or right-click) — comments the selected
+  lines out, and takes the comment away again. Alan's `////` delimiters are whole
+  lines: the opening one has to stand in the first column, and the comment ends only
+  at a line that is slashes and nothing else — not even a trailing space. VS Code's
+  built-in command puts its delimiters inline, at the two ends of the selection, so it
+  cannot produce either; the comment it writes never closes and swallows the rest of
+  the file. Alan files get this command instead, on the same key.
 - **Convert Sources to UTF-8** — sources written in the older ISO-8859-1 show their
   accented text wrongly in the editor, and the Alan compiler cannot read them at all,
   so a whole project can go quiet with no error to point at. The extension notices and

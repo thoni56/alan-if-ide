@@ -45,6 +45,12 @@ Palette. Press Ctrl+Shift+P and type "alan if".
   comes to look like what the player reads. Safe to use freely: whitespace inside an
   Alan string is collapsed by the interpreter, which wraps to the player's terminal,
   so how a string is laid out in the source cannot change what the game prints.
+- **Toggle Block Comment** (`Shift+Alt+A`, or right-click) — comments the selected
+  lines out, and takes the comment away again. Alan's `////` delimiters are whole
+  lines: the opening one has to stand in the first column, and the comment ends only
+  at a line of slashes and nothing else. VS Code's built-in command puts its
+  delimiters inline instead, which closes nothing and quietly swallows the rest of
+  the file, so Alan files get this one.
 - **Convert Sources to UTF-8** — Alan sources in the older ISO-8859-1 show their
   accented text wrongly in the editor, and the compiler cannot read them at all, so
   the project goes quiet with no error to point at. The extension notices and offers

@@ -28,8 +28,8 @@
         },
         {
           "name": "comment.block.alanif",
-          "begin": "////",
-          "end": "////"
+          "begin": "^////",
+          "end": "^/{4,}$"
         }
       ]
     },

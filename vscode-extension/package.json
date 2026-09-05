@@ -35,6 +35,7 @@
     "onCommand:alanif.locateInterpreter",
     "onCommand:alanif.checkToolchain",
     "onCommand:alanif.rewrapString",
+    "onCommand:alanif.toggleBlockComment",
     "onCommand:alanif.convertSources",
     "onCommand:alanif.setupSpellChecking"
   ],
@@ -65,6 +66,11 @@
       {
         "command": "alanif.rewrapString",
         "title": "Re-wrap String",
+        "category": "Alan IF"
+      },
+      {
+        "command": "alanif.toggleBlockComment",
+        "title": "Toggle Block Comment",
         "category": "Alan IF"
       },
       {
@@ -101,6 +107,11 @@
           "command": "alanif.rewrapString",
           "when": "resourceLangId == alanif",
           "group": "1_modification"
+        },
+        {
+          "command": "alanif.toggleBlockComment",
+          "when": "resourceLangId == alanif",
+          "group": "1_modification"
         }
       ],
       "commandPalette": [
@@ -121,6 +132,10 @@
           "command": "alanif.convertSources"
         },
         {
+          "command": "alanif.toggleBlockComment",
+          "when": "resourceLangId == alanif"
+        },
+        {
           "command": "alanif.setupSpellChecking"
         },
         {
@@ -133,6 +148,11 @@
       {
         "command": "alanif.rewrapString",
         "key": "alt+q",
+        "when": "editorTextFocus && editorLangId == alanif"
+      },
+      {
+        "command": "alanif.toggleBlockComment",
+        "key": "shift+alt+a",
         "when": "editorTextFocus && editorLangId == alanif"
       }
     ],
