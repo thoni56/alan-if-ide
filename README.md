@@ -1,9 +1,9 @@
 # Alan IF IDE
 
-Modern editor tooling for the [Alan interactive-fiction language](https://www.alanif.se/) —
-a language server (built with [Xtext](https://www.eclipse.org/Xtext/)) plus a
-[VS Code](https://code.visualstudio.com/) extension. It is the successor to the
-older Eclipse-RCP *AlanIDE*.
+Editor tooling for the [Alan interactive-fiction language](https://www.alanif.se/): a
+language server built with [Xtext](https://www.eclipse.org/Xtext/), plus a
+[VS Code](https://code.visualstudio.com/) extension. It is the successor to the older
+Eclipse-RCP *AlanIDE*.
 
 > **Alan IF**, for the interactive-fiction Alan (`alan-if.github.io`). It is not the
 > [M-industries Alan](https://alan-platform.com/) application platform — same name,
@@ -17,7 +17,7 @@ You can easily see, and activate, all `Alan IF IDE` features from the Command
 Palette. Press Ctrl+Shift+P and type "alan if".
 
 - **Syntax highlighting** for `.alan` and `.i` files.
-- **Document outline** — classes, instances, additions, events, imports, verbs,
+- **Document outline** with classes, instances, additions, events, imports, verbs,
   syntax, scripts and synonyms, nested and with distinct icons.
 - **Go to Definition** (F12) — across files, and aware of what a name means. A loop
   variable resolves to its `for each`, `this` resolves to the enclosing class or
@@ -35,46 +35,45 @@ Palette. Press Ctrl+Shift+P and type "alan if".
   shows any errors and warnings, on the error location in the editor view, and on a
   separate *Problems* tab for any, even multi-file, adventure (it compiles the *main*
   `.alan` file and shows each error in the correct file).
-- **Run / Play** (▶) — compile the project and launch the game in an integrated
-  terminal.
-- **Format Document** — a structure-aware indenter with optional keyword-case
-  normalization; never reflows the interior of a string.
-- **Re-wrap String** (`Alt+Q`, or right-click) — re-flows the string your cursor is
-  in, or every string a selection touches, to `alanif.format.stringWidth`. `$p` and
-  `$n` are laid out as the paragraph and line break they print as, so the source
-  comes to look like what the player reads. Safe to use freely: whitespace inside an
-  Alan string is collapsed by the interpreter, which wraps to the player's terminal,
-  so how a string is laid out in the source cannot change what the game prints.
-- **Toggle Block Comment** (`Shift+Alt+A`, or right-click) — comments the selected
-  lines out, and takes the comment away again. Alan's `////` delimiters are whole
-  lines: the opening one has to stand in the first column, and the comment ends only
-  at a line of slashes and nothing else. VS Code's built-in command puts its
-  delimiters inline instead, which closes nothing and quietly swallows the rest of
-  the file, so Alan files get this one.
-- **Convert Sources to UTF-8** — Alan sources in the older ISO-8859-1 show their
-  accented text wrongly in the editor, and the compiler cannot read them at all, so
-  the project goes quiet with no error to point at. The extension notices and offers
-  the repair; it is lossless, and the game it builds is identical. An imported library
-  outside the open folder is reported but never rewritten — that is its owner's call.
-- **Set Up Spell Checking** — the compiler is indifferent to a typo in the prose, and
+- **Play** (▶) compiles the project and launches the game in an integrated terminal.
+- **Format Document** indents from the real block nesting, and will normalise keyword
+  case if you ask it to. It never reflows the interior of a string.
+- **Re-wrap String** (`Alt+Q`, or right-click) reflows the string your cursor is in, or
+  every string a selection touches, to `alanif.format.stringWidth`. `$p` and `$n` are
+  laid out as the paragraph and line break they print as, so the source starts to look
+  like what the player reads. Use it freely. The interpreter collapses whitespace inside
+  a string and wraps to the player's terminal, so how you lay a string out cannot change
+  what the game prints.
+- **Toggle Block Comment** (`Shift+Alt+A`, or right-click) comments the selected lines
+  out, and takes the comment away again. Alan's `////` delimiters are whole lines. The
+  opening one has to stand in the first column, and the comment ends only at a line of
+  slashes and nothing else. VS Code's built-in command puts its delimiters inline
+  instead, which closes nothing and swallows the rest of the file, so Alan files get
+  this one.
+- **Convert Sources to UTF-8**. Alan sources in the older ISO-8859-1 show their accented
+  text wrongly in the editor, and the compiler cannot read them at all, so the project
+  goes quiet with no error to point at. The extension notices, and offers to repair it.
+  It is lossless, the game it builds is identical. An imported library outside the open
+  folder is reported but never rewritten, that is its owner's call.
+- **Set Up Spell Checking**. The compiler does not care about a typo in the prose, and
   the prose is most of the game. This configures
   [Code Spell Checker](https://marketplace.visualstudio.com/items?itemName=streetsidesoftware.code-spell-checker)
-  for Alan in your project's own folder: it checks string literals only, keeps `$p` and
+  for Alan in your project's own folder. It checks string literals only, keeps `$p` and
   `$n` from gluing to the next word, ignores the stems that `$$` builds words from, and
-  feeds your game's own names — classes, instances, `Name` clauses, synonyms, verbs,
-  exits — into a generated word list so they are not underlined. On the 83-file
+  feeds your game's own names into a generated word list so they are not underlined:
+  classes, instances, `Name` clauses, synonyms, verbs and exits. On the 83-file
   *Wyldkynd Project* that is 178 unknown words down to 57, nearly all of them genuine.
-  Choose the language your prose is written in; after that, saving an Alan file
-  collects its names again, so renames take effect as you work. Re-run the command
-  when something changed outside the editor, such as a `git pull`.
+  Choose the language your prose is written in. After that, saving an Alan file collects
+  its names again, so renames take effect as you work. Re-run the command when something
+  changed outside the editor, such as a `git pull`.
 
-  Three things do the work, and naming them makes the rest obvious. The `cspell.json`
-  is the **brief**: it tells the checker where your prose is and which lists to trust.
-  The **concordance**, `alan-concordance.txt`, holds your game's own names and is
-  rebuilt from your sources on every save — never edit it. And a word that is genuinely yours, a surname or a
-  dialect spelling, goes in with **Add to dictionary** to become your **glossary**,
-  which lives inside the brief, travels with the game, and is never rebuilt over. Pick
-  the option naming the project's own `cspell.json` when it offers you three.
+  Three files do the work. The **brief** is `cspell.json`, which tells the checker where
+  your prose is and which lists to trust. The **concordance** is `alan-concordance.txt`,
+  your game's own names, rebuilt from your sources on every save, so never edit it. The
+  **glossary** is the one you add to: a word that is genuinely yours, a surname or a
+  dialect spelling, goes in with **Add to dictionary**. It lives inside the brief,
+  travels with the game, and is never rebuilt over. Pick the option naming the project's
+  own `cspell.json` when it offers you three.
 
 **If `Alt+Q` does nothing**: the
 [Rewrap](https://marketplace.visualstudio.com/items?itemName=stkb.rewrap) extension
@@ -101,13 +100,13 @@ stays with Rewrap.
 
 ## Requirements
 
-- **Java 21+** — the language server runs on the JVM. The platform-specific builds
-  bundle a trimmed runtime, so authors need install nothing; the platform-neutral
-  build uses `alanif.java.home`, then `JAVA_HOME`, then `java` on your `PATH`.
-- The **Alan compiler** (`alan`, 3.0beta8) — for diagnostics and Play. Set
-  `alanif.compiler.path`, or have `alan` on your `PATH`. Without it, editing features
-  still work; diagnostics are simply skipped.
-- **`arun`** — the Alan interpreter, for Play. Found next to the compiler, or on `PATH`.
+- **Java 21+**. The language server runs on the JVM. The platform-specific builds bundle
+  a trimmed runtime, so an author needs to install nothing. The platform-neutral build
+  uses `alanif.java.home`, then `JAVA_HOME`, then `java` on your `PATH`.
+- The **Alan compiler** (`alan`, 3.0beta8), for diagnostics and Play. Set
+  `alanif.compiler.path`, or have `alan` on your `PATH`. Without it the editing features
+  still work, diagnostics are simply skipped.
+- **`arun`**, the Alan interpreter, for Play. Found next to the compiler, or on `PATH`.
 
 ## Install
 
@@ -144,29 +143,28 @@ without marketplace access — every release also carries the packaged extension
 | `alanif.format.stringWidth` | Column **Re-wrap String** wraps before (default 80). |
 | `alanif.java.home` | JDK/JRE 21+ home (else the bundled runtime). |
 
-Every one of these can be left empty; clearing a path setting always returns to
-finding the tool automatically. **Alan IF: Check Setup** (Command Palette) reports
-what was found and where, and whether spell checking is set up in the folder you
-are working in — that one is per-project rather than per-machine. The language
-status bubble in the status bar shows the toolchain part while an Alan file is
-open. **Alan IF: Locate Alan Compiler…** and **Alan IF: Locate Alan Interpreter…**
+Every one of these can be left empty. Clearing a path setting always returns to finding
+the tool automatically. **Alan IF: Check Setup** (Command Palette) reports what was found
+and where, and whether spell checking is set up in the folder you are working in. That
+one is per project rather than per machine, so it is easy to have it in one game and not
+in another. The language status bubble in the status bar says the same while an Alan file
+is open. **Alan IF: Locate Alan Compiler…** and **Alan IF: Locate Alan Interpreter…**
 browse for either one instead of typing a path.
 
 ## Using the server from another editor
 
-The language server is a plain LSP server — `java -jar alan-lsp.jar`, speaking over
-stdio — and knows nothing about VS Code. Configure it through the **environment of
-the process you launch**:
+The language server is a plain LSP server, `java -jar alan-lsp.jar`, speaking over
+stdio. It knows nothing about VS Code. You configure it through the **environment of the
+process you launch**:
 
 | variable | meaning |
 | --- | --- |
 | `ALAN_COMPILER` | Path to the Alan compiler. Omit and the server tries `alan` on `PATH`. |
 | `ALANIF_KEYWORD_CASE` | `off` / `lower` / `upper` / `capitalize` for Format Document. |
 
-The server also has code to read the same two settings from LSP
-`initializationOptions` (`compilerPath`, `keywordCase`) — the more idiomatic channel,
-and the intended one — but that code never runs, so today the environment is the only
-thing that configures it.
+The server also has code to read the same two settings from LSP `initializationOptions`
+(`compilerPath`, `keywordCase`), which is the intended channel. That code never runs, so
+today the environment is the only thing that configures it.
 
 The jar is inside any release VSIX (a `.vsix` is a zip) at `extension/server/alan-lsp.jar`,
 or `./build.sh` produces it. It needs Java 21+.
@@ -199,8 +197,8 @@ environment = { ALAN_COMPILER = "/usr/local/bin/alan", ALANIF_KEYWORD_CASE = "of
 
 Two things do not travel. **Syntax highlighting** is a TextMate grammar that only VS Code
 reads, so other editors need their own until the server offers semantic tokens. And
-**Play** is a VS Code command, because only the client can host an interactive terminal —
-elsewhere, run `arun` yourself.
+**Play** is a VS Code command, since only the client can host an interactive terminal.
+Elsewhere, run `arun` yourself.
 
 ## Build from source
 
@@ -210,9 +208,9 @@ A plain Maven-Central build (no Tycho). Needs **JDK 21**, **Maven**, and **Node 
     ./build.sh                                    # server jar + compiled extension
     cd vscode-extension && npx vsce package       # packages the .vsix
 
-`build.sh` deliberately does not build the bundled Java runtime — the dev loop falls
-back to `java` on your `PATH`, so paying for it on every build would be waste. To
-produce a platform build the way CI does:
+`build.sh` deliberately does not build the bundled Java runtime. The dev loop falls back
+to `java` on your `PATH`, so paying for it on every build would be waste. To produce a
+platform build the way CI does:
 
     cd vscode-extension
     ./build-jre.sh                                # jlink a runtime for this machine
@@ -224,19 +222,42 @@ the `.vsix`, and installs it into your local VS Code.
 
 ## Layout
 
-- `se.alanif.alan/` — the language runtime: grammar (`Alan.xtext`), the generated ANTLR
-  parser + EMF model, and hand-written services (validation, scoping, formatting).
-- `se.alanif.alan.ide/` — the LSP server and its Alan-specific service overrides
+- `se.alanif.alan/` is the language runtime: the grammar (`Alan.xtext`), the generated
+  ANTLR parser and EMF model, and hand-written services (validation, scoping,
+  formatting).
+- `se.alanif.alan.ide/` is the LSP server and its Alan-specific service overrides
   (navigation, outline, formatting).
-- `vscode-extension/` — the VS Code client (thin: launches the server, ships the
-  grammar, icon, and Run/Play command).
+- `vscode-extension/` is the VS Code client. It is thin: it launches the server and ships
+  the grammar, the icon and the Play command.
 
 ## Provenance
 
-The Xtext grammar was bootstrapped from the Alan compiler's own grammar
-(`alan.pmk`) via `tools/pmk2xtext.py`, then hand-authored from there;
-`grammar-baseline/` snapshots the compiler grammar at handoff so later drift can be
-audited.
+The Xtext grammar was bootstrapped from the Alan compiler's own grammar (`alan.pmk`)
+via `tools/pmk2xtext.py`, then hand-authored from there. `grammar-baseline/` snapshots
+the compiler grammar at handoff, so later drift can be audited.
+
+## Acknowledgements
+
+- **AlanIDE**, the Eclipse-RCP one this replaces. It served Alan authors for years, and
+  it is where most of what belongs in an Alan IDE was worked out the first time.
+- **[Xtext](https://www.eclipse.org/Xtext/)** does the language work: the grammar, the
+  generated ANTLR parser and EMF model, and the LSP scaffolding around them.
+- **[VS Code](https://code.visualstudio.com/)** and the Language Server Protocol, which
+  is also what lets the same server work in other editors.
+- **[Eclipse Temurin](https://adoptium.net/)** provides the Java that is trimmed down
+  and bundled into each platform build, so nobody has to install it.
+- **[Code Spell Checker](https://marketplace.visualstudio.com/items?itemName=streetsidesoftware.code-spell-checker)**
+  by Street Side Software does the actual spell checking. **Set Up Spell Checking** only
+  tells it where an Alan author's prose is, and what the game calls things.
+- **[Open VSX](https://open-vsx.org/)**, so the extension can be installed outside the
+  Microsoft marketplace.
+
+And two people. **Robert DeFord** wrote the *Alan IDE Reference Guide* for the old IDE,
+and has been finding the bugs in this one. **Tristano Ajmone** wrote the Alan standard
+library and the Italian one, and converted the documentation to AsciiDoc.
+
+Much of this was written with **[Claude Code](https://claude.com/claude-code)**, as the
+commit log records.
 
 ## License
 
