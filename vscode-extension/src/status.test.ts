@@ -57,6 +57,10 @@ const vscode = {
     workspace: {
         getConfiguration: () => ({ get: () => undefined }),
         onDidChangeConfiguration: () => ({ dispose() { /* nothing */ } }),
+        // The spell-checking row recounts the concordance on every save, since a save
+        // is exactly when the touch-up rewrites it.
+        onDidSaveTextDocument: () => ({ dispose() { /* nothing */ } }),
+        workspaceFolders: undefined,
     },
     extensions: { getExtension: () => undefined },
     EventEmitter: class {
@@ -153,4 +157,27 @@ test('the alarm follows the active editor while it is armed', () => {
     alanInFront = true;
     onEditorChanged?.();
     assert.strictEqual(bar!.visible, true);
+});
+
+/**
+ * THE ROW THAT WAS MISSING.
+ *
+ * Spell checking reached the Check Setup quick pick and not the bubble, so an author
+ * who went looking where the other four rows live found cSpell's own item -- which is
+ * registered for `{language: '*'}` and so sits in the same popup -- and concluded
+ * nothing had been added. Two surfaces, and only one of them had been told.
+ */
+test('spell checking is a row in the bubble, not only in Check Setup', () => {
+    build(HEALTHY);
+    const texts = items.map(i => i.text);
+    assert.ok(texts.some(t => t.startsWith('Spell checking')),
+        `spell checking missing from ${JSON.stringify(texts)}`);
+});
+
+test('a folder that never opted in is Information, so the bubble is not marked', () => {
+    build(HEALTHY);
+    const spell = items.find(i => i.text.startsWith('Spell checking'));
+    // No workspace folder in the stub, so this is the "no folder open" answer -- the
+    // quietest of them, and the one that must never wear a warning.
+    assert.strictEqual(spell?.severity, vscode.LanguageStatusSeverity.Information);
 });

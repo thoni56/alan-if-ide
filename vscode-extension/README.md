@@ -148,6 +148,10 @@ language mode in the status bar) lists what the extension found:
 
 If something is missing, a warning appears in the status bar instead — click it,
 or run **Alan IF: Check Setup**, to see all three at once and fix any of them.
+Check Setup also tells you whether spell checking is set up **in the folder you
+are working in**, and how many of your game's own names it has collected, because
+that one is per-project rather than per-machine and so is easy to have in one game
+and not another.
 There is also **Alan IF: Locate Alan Compiler…** to browse for the compiler, and
 **Alan IF: Locate Alan Interpreter…** for the interpreter.
 

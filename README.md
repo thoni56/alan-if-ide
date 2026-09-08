@@ -146,9 +146,11 @@ without marketplace access — every release also carries the packaged extension
 
 Every one of these can be left empty; clearing a path setting always returns to
 finding the tool automatically. **Alan IF: Check Setup** (Command Palette) reports
-what was found and where, and the language status bubble in the status bar shows
-the same while an Alan file is open. **Alan IF: Locate Alan Compiler…** and
-**Alan IF: Locate Alan Interpreter…** browse for either one instead of typing a path.
+what was found and where, and whether spell checking is set up in the folder you
+are working in — that one is per-project rather than per-machine. The language
+status bubble in the status bar shows the toolchain part while an Alan file is
+open. **Alan IF: Locate Alan Compiler…** and **Alan IF: Locate Alan Interpreter…**
+browse for either one instead of typing a path.
 
 ## Using the server from another editor
 

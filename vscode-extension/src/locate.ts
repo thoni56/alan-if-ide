@@ -1,9 +1,13 @@
-import { window, workspace, commands, ConfigurationTarget, QuickPickItem, Uri } from 'vscode';
+import {
+    window, workspace, commands, ConfigurationTarget, QuickPickItem, Uri
+} from 'vscode';
 import { probeTool, glkHint } from './toolchain';
 import { Environment, getEnvironment, refreshEnvironment } from './environment';
 import { MINIMUM_JAVA } from './java';
 import { restoreCompilerNotice } from './notices';
 import { serverProblemMessage } from './status';
+import { CSPELL_EXTENSION, describeSpellChecking } from './cspell';
+import { spellCheckingFacts } from './spellcheck';
 import * as path from 'path';
 
 /**
@@ -98,7 +102,7 @@ export async function checkToolchain(): Promise<void> {
     }
 
     const env = refreshEnvironment();
-    const items = [javaItem(env), compilerItem(env), arunItem(env)];
+    const items = [javaItem(env), compilerItem(env), arunItem(env), spellCheckingItem()];
     // Only when there is something to say. This is the surface the alarm sends the
     // author to, so a fault the alarm counts must be a row they can find here --
     // otherwise clicking a warning lands on "Everything is in place", and the alarm
@@ -146,6 +150,41 @@ function serverItem(): SetupItem | undefined {
         run: () => { commands.executeCommand('workbench.action.reloadWindow'); },
     };
 }
+
+/**
+ * Spell checking, which is set up PER FOLDER and so cannot be seen from anywhere else.
+ *
+ * <p>Reported on the same folder {@link targetFolder} gives the setup command, because
+ * a check that answered for a different folder than the command acts on would be worse
+ * than no check at all.
+ *
+ * <p>Always present, unlike the server row: the question "is this on for this game?"
+ * is one an author genuinely has, and answering it only when something is wrong leaves
+ * the ordinary case -- set up, working, quietly collecting names -- invisible.
+ */
+function spellCheckingItem(): SetupItem {
+    const report = describeSpellChecking(spellCheckingFacts());
+    return {
+        label: report.attention ? '$(warning) Spell checking' : '$(check) Spell checking',
+        description: report.text,
+        detail: report.detail,
+        attention: report.attention,
+        run: () => {
+            switch (report.action) {
+                case 'install-extension':
+                    void commands.executeCommand(
+                        'workbench.extensions.search', CSPELL_EXTENSION);
+                    break;
+                case 'open-folder':
+                    void commands.executeCommand('workbench.action.files.openFolder');
+                    break;
+                default:
+                    void commands.executeCommand('alanif.setupSpellChecking');
+            }
+        },
+    };
+}
+
 
 function javaItem(env: Environment): SetupItem {
     if (env.java.ok) {

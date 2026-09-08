@@ -1,11 +1,13 @@
 import {
     ExtensionContext, LanguageStatusItem, LanguageStatusSeverity, StatusBarAlignment,
-    ThemeColor, commands, languages, window
+    ThemeColor, commands, languages, window, workspace
 } from 'vscode';
 import { Environment, getEnvironment, onEnvironmentChanged } from './environment';
 import { Alarm, StatusDescription, alarmFor, describeTool } from './toolchain';
 import { legacyFiles, onEncodingChanged } from './convert';
 import { describeJava } from './java';
+import { CSPELL_EXTENSION, describeSpellChecking } from './cspell';
+import { spellCheckingFacts } from './spellcheck';
 import { rewrapKeyBindable, rewrapKeyContested } from './notices';
 
 /**
@@ -130,7 +132,52 @@ function createAlarmItem(context: ExtensionContext): (alarm: Alarm | undefined) 
     };
 }
 
+/**
+ * Spell checking in the bubble, answering the same question the other rows answer:
+ * what is my setup?
+ *
+ * <p>Its own factory for the reason the encoding item has one -- it reports what this
+ * PROJECT contains rather than what this INSTALLATION can find, and refreshes on its
+ * own events. The folder can change under it without any tool being re-probed, so it
+ * follows the active editor; the count can change on any save, so it follows those too.
+ *
+ * <p>NOT SET UP IS INFORMATION, NOT A WARNING. VS Code marks the whole bubble when any
+ * item is Warning or worse, and a folder that simply never opted in must not make the
+ * Alan toolchain look broken -- that mark is spent on things that are actually wrong.
+ */
+function createSpellCheckingItem(context: ExtensionContext): void {
+    const spell = languages.createLanguageStatusItem('alanif.status.4-spell', SELECTOR);
+    spell.name = 'Alan IF: Spell checking';
+    const render = () => {
+        const facts = spellCheckingFacts();
+        const report = describeSpellChecking(facts);
+        spell.text = report.short;
+        spell.detail = facts.folder ?? '';
+        spell.severity = report.attention
+            ? LanguageStatusSeverity.Warning
+            : LanguageStatusSeverity.Information;
+        spell.command = report.action === 'install-extension'
+            ? {
+                command: 'workbench.extensions.search',
+                title: 'Install\u2026',
+                arguments: [CSPELL_EXTENSION],
+            }
+            : report.action === 'setup'
+                ? { command: 'alanif.setupSpellChecking', title: 'Set Up\u2026' }
+                : undefined;
+    };
+    render();
+    context.subscriptions.push(spell,
+        window.onDidChangeActiveTextEditor(render),
+        workspace.onDidSaveTextDocument(render));
+}
+
 export function createStatusItems(context: ExtensionContext): void {
+    // Created FIRST so it lands LAST: the ids are numbered to sort into the order we
+    // want and the items created in the reverse of it, which is what satisfies both
+    // of the orderings VS Code might be using. See the note below.
+    createSpellCheckingItem(context);
+
     // Order in the popup is VS Code's to decide, and it is not creation order as
     // written: with ids java/compiler/arun created in that order, the interpreter
     // came out on top -- consistent both with sorting by id ('arun' < 'compiler' <

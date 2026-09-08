@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import {
     ALL_LANGUAGES, BUNDLED, CSPELL_EXTENSION, LANGUAGES, CONCORDANCE_FILE,
     briefFor, languagesFor, gitignoreFor, languageNames,
+    describeSpellChecking, SpellCheckingFacts,
 } from './cspell';
 import { ALAN_PATTERNS, CODE_DICTIONARIES } from './spelling';
 
@@ -158,4 +159,125 @@ test('the languages are named back to the author the way they chose them', () =>
     assert.deepEqual(
         languagesFor(['en', 'it']).filter(d => d.extension !== undefined).map(d => d.code),
         ['it']);
+});
+
+/**
+ * WHAT CHECK SETUP SAYS ABOUT SPELL CHECKING.
+ *
+ * Robert asked for a per-project dictionary that already existed, was told its name
+ * in bold, said "I will try it right now", and went on adding his own locations to
+ * the GLOBAL dictionary by hand. None of the three explanations -- ran it in another
+ * folder, dismissed the modal, never got to it -- can be told apart from the outside,
+ * and asking an author to run experiments to find out is the wrong way round.
+ *
+ * So the state becomes visible on the surface that already answers "what is my
+ * setup?". The rule this instance of: ANYTHING AN AUTHOR MIGHT HAVE TO SET UP
+ * BELONGS IN CHECK SETUP.
+ *
+ * Not being set up is NOT a fault -- spell checking is optional and an author who
+ * never wanted it must not be nagged. Being set up and not working IS one, because
+ * the author asked for the thing and is not getting it.
+ */
+
+test('no folder open: the question cannot be answered, and that is not a fault', () => {
+    const r = describeSpellChecking({ extensionInstalled: true, brief: false });
+    assert.equal(r.attention, false);
+    assert.equal(r.action, 'open-folder');
+    assert.match(r.detail, /folder/i);
+});
+
+test('never set up here: an invitation, not a warning', () => {
+    const r = describeSpellChecking(
+        { folder: 'wyldkynd', extensionInstalled: true, brief: false });
+    assert.equal(r.attention, false);
+    assert.equal(r.action, 'setup');
+    assert.match(r.text, /not set up/i);
+    // The folder is named because per-folder is the whole point: an author who set it
+    // up once, elsewhere, reads a bare "not set up" as wrong.
+    assert.match(r.text, /wyldkynd/);
+});
+
+test('set up and collecting: the reassuring case says how many names', () => {
+    const r = describeSpellChecking(
+        { folder: 'wyldkynd', extensionInstalled: true, brief: true, names: 1240 });
+    assert.equal(r.attention, false);
+    assert.match(r.text, /wyldkynd/);
+    assert.match(r.detail, /1240/);
+});
+
+test('set up but no names collected: that is a fault, because it was asked for', () => {
+    const r = describeSpellChecking(
+        { folder: 'wyldkynd', extensionInstalled: true, brief: true, names: 0 });
+    assert.equal(r.attention, true);
+    assert.equal(r.action, 'setup');
+});
+
+test('set up but the concordance is missing entirely: also a fault', () => {
+    const r = describeSpellChecking(
+        { folder: 'wyldkynd', extensionInstalled: true, brief: true });
+    assert.equal(r.attention, true);
+    assert.equal(r.action, 'setup');
+});
+
+test('opted in, but cSpell is not installed: inert, and the author cannot see why', () => {
+    const r = describeSpellChecking(
+        { folder: 'wyldkynd', extensionInstalled: false, brief: true, names: 1240 });
+    assert.equal(r.attention, true);
+    assert.equal(r.action, 'install-extension');
+});
+
+test('cSpell missing and never opted in: nothing was asked for, so nothing is wrong', () => {
+    const r = describeSpellChecking(
+        { folder: 'wyldkynd', extensionInstalled: false, brief: false });
+    assert.equal(r.attention, false);
+});
+
+/**
+ * THE SAME ANSWER, ABBREVIATED, FOR THE LANGUAGE STATUS BUBBLE.
+ *
+ * Two surfaces, two questions (status.ts): the bubble answers "what is my setup?" and
+ * the Check Setup quick pick holds the full, untruncated truth. Spell checking reached
+ * the second and not the first, so an author who looked where the other four rows live
+ * found cSpell's own item instead of ours and reasonably concluded nothing had changed.
+ *
+ * <p>ONE describer feeds both, so the two surfaces cannot drift into disagreeing about
+ * a folder -- which is the failure this whole row exists to prevent.
+ *
+ * <p>"Not set up" must NOT say "off": cSpell is running and checking the author's
+ * English, and what is missing is only their game's own vocabulary. Saying the feature
+ * is off would be a plain lie about what they are looking at.
+ */
+
+test('the bubble text is short enough for a narrow popup', () => {
+    const states: SpellCheckingFacts[] = [
+        { extensionInstalled: true, brief: false },
+        { folder: 'wyldkynd', extensionInstalled: true, brief: false },
+        { folder: 'wyldkynd', extensionInstalled: true, brief: true, names: 962 },
+        { folder: 'wyldkynd', extensionInstalled: true, brief: true, names: 0 },
+        { folder: 'wyldkynd', extensionInstalled: true, brief: true },
+        { folder: 'wyldkynd', extensionInstalled: false, brief: true, names: 962 },
+    ];
+    for (const facts of states) {
+        const { short } = describeSpellChecking(facts);
+        assert.ok(short.length <= 34, `too long for the bubble: ${short}`);
+        // The folder belongs in the detail line, not in the abbreviated text: the
+        // popup cannot be widened and a long game name would push the state off it.
+        assert.ok(!short.includes('wyldkynd'), `the folder must not be in: ${short}`);
+    }
+});
+
+test('set up: the bubble carries the number, which is the whole answer', () => {
+    const r = describeSpellChecking(
+        { folder: 'wyldkynd', extensionInstalled: true, brief: true, names: 962 });
+    assert.match(r.short, /962/);
+});
+
+test('not set up never claims spell checking is off, because cSpell is still running', () => {
+    const r = describeSpellChecking(
+        { folder: 'wyldkynd', extensionInstalled: true, brief: true, names: 962 });
+    const not = describeSpellChecking(
+        { folder: 'wyldkynd', extensionInstalled: true, brief: false });
+    assert.doesNotMatch(not.short, /\boff\b/i);
+    assert.match(not.short, /not set up/i);
+    assert.notEqual(not.short, r.short);
 });

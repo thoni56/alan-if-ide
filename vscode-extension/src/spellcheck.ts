@@ -11,6 +11,7 @@ import {
 import {
     ALL_LANGUAGES, BUNDLED, CSPELL_EXTENSION, BRIEF_FILE, Language,
     LANGUAGES, CONCORDANCE_FILE, briefFor, languagesFor, gitignoreFor, languageNames,
+    SpellCheckingFacts,
 } from './cspell';
 
 /**
@@ -225,7 +226,7 @@ function warnOnce(root: string, e: unknown): void {
  * first. A multi-root workspace with two games in it would otherwise silently
  * configure whichever happened to be first.
  */
-function targetFolder(): WorkspaceFolder | undefined {
+export function targetFolder(): WorkspaceFolder | undefined {
     const open = window.activeTextEditor?.document.uri;
     return (open !== undefined ? workspace.getWorkspaceFolder(open) : undefined)
         ?? workspace.workspaceFolders?.[0];
@@ -417,4 +418,41 @@ function gitignorePath(root: string): string | undefined {
     return fs.existsSync(path.join(root, '.git'))
         ? path.join(root, '.gitignore')
         : undefined;
+}
+
+/**
+ * What can be seen about spell checking in the folder the setup command would act on.
+ *
+ * <p>Shared by BOTH surfaces that report it -- the language status bubble and the
+ * Check Setup quick pick -- so the two can never disagree about a folder. Two answers
+ * to "is this on for this game?" that differ would be worse than either alone.
+ */
+export function spellCheckingFacts(): SpellCheckingFacts {
+    const root = targetFolder();
+    return {
+        folder: root?.name,
+        extensionInstalled: extensions.getExtension(CSPELL_EXTENSION) !== undefined,
+        brief: root !== undefined
+            && fs.existsSync(path.join(root.uri.fsPath, BRIEF_FILE)),
+        names: root === undefined ? undefined
+            : namesInConcordance(path.join(root.uri.fsPath, CONCORDANCE_FILE)),
+    };
+}
+
+/**
+ * How many names the concordance holds, or undefined when the file is not there.
+ *
+ * <p>The header lines are comments and the file ends with a blank one, so the count is
+ * of lines that are neither -- the number the author would get by looking. Unreadable
+ * counts as missing: either way there is no usable list.
+ */
+function namesInConcordance(file: string): number | undefined {
+    try {
+        return fs.readFileSync(file, 'utf8')
+            .split('\n')
+            .filter(line => line.trim() !== '' && !line.startsWith('#'))
+            .length;
+    } catch {
+        return undefined;
+    }
 }
