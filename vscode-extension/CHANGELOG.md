@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.8.2 — 2026-09-08
+
+- **You can now see whether spell checking is set up for the game you are working
+  on.** Setting it up is per folder — each game keeps its own word list, built from
+  the names your own sources declare — and until now there was no way to tell which
+  of your projects had one. An author who ran **Alan IF: Set Up Spell Checking** once
+  reasonably assumed it was on everywhere, started a new game, and found their
+  locations and characters marked as misspellings again with nothing to explain why.
+
+  Two places answer it now. The Alan entry in the status bar (the `{}` beside the
+  language mode) carries a line saying either how many of your names have been
+  collected or that this folder is not set up, with a button to set it up. **Alan IF:
+  Check Setup** says the same at more length, and names the folder it is talking
+  about — because "not set up" means nothing if you cannot see which game is meant.
+
+  Not being set up is not treated as a problem, since spell checking is yours to want
+  or not. Being set up and *not working* is: if the word list is missing or empty, or
+  the Code Spell Checker extension is not installed, the entry says so and offers the
+  fix.
+
 ## 0.8.1 — 2026-09-05
 
 - **Toggle Block Comment now writes a comment Alan can read.** Select a few lines, ask
