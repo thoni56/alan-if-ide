@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.8.3 — 2026-09-09
+
+- **The Alan entry now says when your Alan files are not being checked at all.** The
+  Code Spell Checker has a menu of its own, and the first thing in it is *Disable File
+  Type: alanif*, already highlighted — one stray Enter and nothing in any Alan file is
+  checked again. Your word list is still there and still correct, so the entry went on
+  telling you how many names it holds while nothing at all was being looked at.
+
+  It now says that Alan files are not being checked, and offers to turn them back on.
+  Both of the places this can be switched off are read: the `cspell.json` in your game
+  folder, and VS Code's own settings. The entry also follows those files now, so it
+  answers for how things are rather than how they were when you opened the file.
+
+- **That entry is called Alan spell checking now.** The Code Spell Checker puts an entry
+  of its own in the same place, and the two answer different questions — theirs about the
+  checker, ours about this game.
+
 ## 0.8.2 — 2026-09-08
 
 - **You can now see whether spell checking is set up for the game you are working
