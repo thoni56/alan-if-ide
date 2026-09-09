@@ -400,7 +400,7 @@ export function describeSpellChecking(facts: SpellCheckingFacts): SpellCheckingR
     if (folder === undefined) {
         return {
             text: 'no folder open',
-            short: 'Spell checking',
+            short: 'Alan spell checking',
             detail: 'Open the folder holding your game to set up or check spell checking.',
             attention: false,
             action: 'open-folder',
@@ -412,7 +412,7 @@ export function describeSpellChecking(facts: SpellCheckingFacts): SpellCheckingR
     if (brief && !extensionInstalled) {
         return {
             text: `set up in ${folder}, but not running`,
-            short: 'Spell checking not running',
+            short: 'Alan spell checking not running',
             detail: `This folder is set up, but the Code Spell Checker extension `
                 + `(${CSPELL_EXTENSION}) is not installed, so nothing is checked.`,
             attention: true,
@@ -423,7 +423,7 @@ export function describeSpellChecking(facts: SpellCheckingFacts): SpellCheckingR
     if (!brief) {
         return {
             text: `not set up in ${folder}`,
-            short: 'Spell checking not set up',
+            short: 'Alan spell checking not set up',
             detail: 'Set Up Spell Checking writes a word list built from the names your '
                 + 'own sources declare, so your locations and characters stop being '
                 + 'marked. Setting up is per folder, so each game asks separately.',
@@ -437,7 +437,7 @@ export function describeSpellChecking(facts: SpellCheckingFacts): SpellCheckingR
     if (fileTypeDisabled) {
         return {
             text: `set up in ${folder}, but Alan files are not being checked`,
-            short: 'Spell checking \u2014 not checked',
+            short: 'Alan spell checking \u2014 not checked',
             detail: 'Spell checking is set up in this folder, but cSpell has been told '
                 + 'not to check Alan files, so nothing in them is checked. Enable it '
                 + 'again to get what this folder is set up for.',
@@ -451,7 +451,7 @@ export function describeSpellChecking(facts: SpellCheckingFacts): SpellCheckingR
     if (names === undefined) {
         return {
             text: `set up in ${folder}, but the name list is missing`,
-            short: 'Spell checking — no name list',
+            short: 'Alan spell checking — no name list',
             detail: `${CONCORDANCE_FILE} is not in this folder. Run Set Up Spell `
                 + 'Checking again to rebuild it from your sources.',
             attention: true,
@@ -461,7 +461,7 @@ export function describeSpellChecking(facts: SpellCheckingFacts): SpellCheckingR
     if (names === 0) {
         return {
             text: `set up in ${folder}, but no names were collected`,
-            short: 'Spell checking — no names',
+            short: 'Alan spell checking — no names',
             detail: 'No player-facing names were found in this folder\'s sources. If the '
                 + 'game is here, run Set Up Spell Checking again; if it is somewhere '
                 + 'else, run it there.',
@@ -471,7 +471,7 @@ export function describeSpellChecking(facts: SpellCheckingFacts): SpellCheckingR
     }
     return {
         text: `set up in ${folder}`,
-            short: `Spell checking — ${names} names`,
+            short: `Alan spell checking — ${names} names`,
         detail: `${names} names collected from your sources into ${CONCORDANCE_FILE}, `
             + `rebuilt whenever you save. Your own additions live in ${BRIEF_FILE}.`,
         attention: false,

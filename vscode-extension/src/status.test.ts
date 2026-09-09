@@ -196,13 +196,13 @@ test('the alarm follows the active editor while it is armed', () => {
 test('spell checking is a row in the bubble, not only in Check Setup', () => {
     build(HEALTHY);
     const texts = items.map(i => i.text);
-    assert.ok(texts.some(t => t.startsWith('Spell checking')),
+    assert.ok(texts.some(t => t.startsWith('Alan spell checking')),
         `spell checking missing from ${JSON.stringify(texts)}`);
 });
 
 test('a folder that never opted in is Information, so the bubble is not marked', () => {
     build(HEALTHY);
-    const spell = items.find(i => i.text.startsWith('Spell checking'));
+    const spell = items.find(i => i.text.startsWith('Alan spell checking'));
     // No workspace folder in the stub, so this is the "no folder open" answer -- the
     // quietest of them, and the one that must never wear a warning.
     assert.strictEqual(spell?.severity, vscode.LanguageStatusSeverity.Information);
@@ -226,7 +226,7 @@ test('the row re-reads when the brief changes underneath it', () => {
         fileTypeDisabled: true,
     };
     build(HEALTHY);
-    const spell = () => items.find(i => i.text.startsWith('Spell checking'));
+    const spell = () => items.find(i => i.text.startsWith('Alan spell checking'));
     assert.match(spell()!.text, /not checked/);
 
     // cSpell writes the brief; no save, no editor change, no setting moved.

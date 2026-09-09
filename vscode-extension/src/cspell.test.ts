@@ -263,6 +263,10 @@ test('the bubble text is short enough for a narrow popup', () => {
     for (const facts of states) {
         const { short } = describeSpellChecking(facts);
         assert.ok(short.length <= 34, `too long for the bubble: ${short}`);
+        // OURS, NOT cSPELL'S. cSpell puts its own row in the same bubble, for every
+        // file type, and an author who mixes the two would take our answer about their
+        // game for a claim about the checker itself.
+        assert.ok(short.startsWith('Alan '), `does not say whose it is: ${short}`);
         // The folder belongs in the detail line, not in the abbreviated text: the
         // popup cannot be widened and a long game name would push the state off it.
         assert.ok(!short.includes('wyldkynd'), `the folder must not be in: ${short}`);
