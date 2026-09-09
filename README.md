@@ -14,7 +14,7 @@ Eclipse-RCP *AlanIDE*.
 ## Features
 
 You can easily see, and activate, all `Alan IF IDE` features from the Command
-Palette. Press Ctrl+Shift+P and type "alan if".
+Palette in VS Code. Press Ctrl+Shift+P and type "alan if".
 
 - **Syntax highlighting** for `.alan` and `.i` files.
 - **Document outline** with classes, instances, additions, events, imports, verbs,
@@ -28,63 +28,72 @@ Palette. Press Ctrl+Shift+P and type "alan if".
   that overrides it, ending where you are.
 - **Find All References** (Shift+F12) — will show all occurrences of the item or
   symbol. It is scoped so it agrees with Go to Definition: inside a loop you get all
-  uses of that loop variable. On a verb it lists _every_ implementation.
+  uses of that loop variable. Used on a verb this lists _every_ implementation.
 - **Highlighting the name under the cursor**, when on a symbol other occurrences in view
   is highlighted with the declaration marked slightly different.
 - **Compiler diagnostics** — continuous compilation, using the configured Alan compiler,
-  shows any errors and warnings, on the error location in the editor view, and on a
-  separate *Problems* tab for any, even multi-file, adventure (it compiles the *main*
-  `.alan` file and shows each error in the correct file).
-- **Play** (▶) compiles the project and launches the game in an integrated terminal.
-- **Format Document** indents from the real block nesting, and will normalise keyword
-  case if you ask it to. It never reflows the interior of a string.
-- **Re-wrap String** (`Alt+Q`, or right-click) reflows the string your cursor is in, or
-  every string a selection touches, to `alanif.format.stringWidth`. `$p` and `$n` are
-  laid out as the paragraph and line break they print as, so the source starts to look
-  like what the player reads. Use it freely. The interpreter collapses whitespace inside
-  a string and wraps to the player's terminal, so how you lay a string out cannot change
-  what the game prints.
+  shows any errors and warnings. They will be marked on the error location in the editor
+  view, and on a separate *Problems* tab for any, even multi-file, adventure (it
+  compiles the *main* `.alan` file and shows each error in the correct file).
+- **Play** (▶) compiles the project and launches the game in an integrated terminal, or
+  with the interpreter you have configured, like WinArun.
+- **Format Document** indents from the real block nesting, and will also normalise
+  keyword case if you configure it to. It never reflows the interior of a string as this
+  is the authors preference.
+- **Re-wrap String** (`Alt+Q`, or right-click), on the other hand, reflows just the
+  string your cursor is in, or all strings the current selection touches, to
+  `alanif.format.stringWidth`. `$p` and `$n` are laid out as the paragraph and line
+  break they print as, so the source starts to look like what the player reads. It might
+  be ensuring to known that since the interpreter collapses whitespace inside a string
+  and wraps to the player's terminal when the game runs, the source layout of a string
+  out cannot change what the game prints.
 - **Toggle Block Comment** (`Shift+Alt+A`, or right-click) comments the selected lines
   out, and takes the comment away again. Alan's `////` delimiters are whole lines. The
-  opening one has to stand in the first column, and the comment ends only at a line of
-  slashes and nothing else. VS Code's built-in command puts its delimiters inline
-  instead, which closes nothing and swallows the rest of the file, so Alan files get
-  this one.
+  opening one has to start in the first column, and the comment ends only at a line of
+  slashes and nothing else.
 - **Convert Sources to UTF-8**. Alan sources in the older ISO-8859-1 show their accented
-  text wrongly in the editor, and the compiler cannot read them at all, so the project
-  goes quiet with no error to point at. The extension notices, and offers to repair it.
-  It is lossless, the game it builds is identical. An imported library outside the open
-  folder is reported but never rewritten, that is its owner's call.
-- **Set Up Spell Checking**. The compiler does not care about a typo in the prose, and
-  the prose is most of the game. This configures
-  [Code Spell Checker](https://marketplace.visualstudio.com/items?itemName=streetsidesoftware.code-spell-checker)
-  for Alan in your project's own folder. It checks string literals only, keeps `$p` and
-  `$n` from gluing to the next word, ignores the stems that `$$` builds words from, and
-  feeds your game's own names into a generated word list so they are not underlined:
-  classes, instances, `Name` clauses, synonyms, verbs and exits. On the 83-file
-  *Wyldkynd Project* that is 178 unknown words down to 57, nearly all of them genuine.
-  Choose the language your prose is written in. After that, saving an Alan file collects
-  its names again, so renames take effect as you work. Re-run the command when something
-  changed outside the editor, such as a `git pull`.
+  text wrongly when read into the editor, and as the compiler, which will run on the
+  editor content, cannot read those characters at all. The extension itself notices the
+  encoding error, and offers to repair it.  It is lossless, the game it builds is
+  identical. An imported library outside the open folder is reported but never
+  rewritten, that is its owner's call. (You can open that folder and do the conversion
+  of those files, of course.)
+- **Set Up Spell Checking**. The compiler does analyse the prose, the text in your
+  strings for typos, and that prose is most of the game. This command configures [Code
+  Spell
+  Checker](https://marketplace.visualstudio.com/items?itemName=streetsidesoftware.code-spell-checker)
+  for Alan in your project's own folder. It checks string literals only, understand `$p`
+  and `$n` so they don't false-flag as spelling errors. It also ignores the partial
+  words that `$$` can be used to concatenate words from. More over it feeds your game's
+  own names into a generated word list so they are not underlined: classes, instances,
+  `Name` clauses, synonyms, verbs and exits. This creatly reduces the amount of words in
+  you prose that are considered unkown or misspellings.  Select the language your prose
+  is written in. Once setup, the names will be re-saved and updated every time you save
+  an Alan file, so renaming a character, say, take effect as you work. If something
+  changes your files outside the IDE, such as a `git pull`, re-run this command to
+  ensure a refresh.
 
   Three files do the work. The **brief** is `cspell.json`, which tells the checker where
-  your prose is and which lists to trust. The **concordance** is `alan-concordance.txt`,
-  your game's own names, rebuilt from your sources on every save, so never edit it. The
+  your prose is and which dictionaries to trust. If this file exists in your project,
+  the spell checking is setup. The **concordance** is `alan-concordance.txt`, your
+  game's own names, rebuilt from your sources on every save, so never edit it. The
   **glossary** is the one you add to: a word that is genuinely yours, a surname or a
   dialect spelling, goes in with **Add to dictionary**. It lives inside the brief,
-  travels with the game, and is never rebuilt over. Pick the option naming the project's
-  own `cspell.json` when it offers you three.
+  travels with the game, and is never rebuilt over. When a misspelling is indicated,
+  choose the lightbulb and pick the option naming the project's own `cspell.json` when
+  it offers you three (ignore the others, these belong to the spell checker itself, not
+  the IDE's use of it).
 
-**If `Alt+Q` does nothing**: the
-[Rewrap](https://marketplace.visualstudio.com/items?itemName=stkb.rewrap) extension
-binds the same key for every language, so it may be bound to that rather than to the
-`Alan IF IDE`. The command is always available from the right-click menu and the Command
-Palette (Ctrl+Shift+P). The Rewrap extension does nothing at all with an Alan file —
-which looks like a broken feature. If so, Alan IF IDE will offer to settle it the first
-time you re-wrap a string; say yes and it writes the binding below into your
-`keybindings.json`. **Alan IF: Bind Alt+Q to Re-wrap String** does the same thing
-later, if you dismissed the offer. To do it by hand instead — a *user* keybinding beats any
-extension's:
+**If `Alt+Q` (Re-wrap String) does nothing**: the
+[Rewrap](https://marketplace.visualstudio.com/items?itemName=stkb.rewrap) extension has
+probably already bound the same key for every type of file, rather than it being bound
+to the `Alan IF IDE`. The Rewrap extension does nothing at all with an Alan file — which
+might look like this feature is broken. You can always invoke **Re-wrap String** from
+the right-click menu and the Command Palette (Ctrl+Shift+P). If `Alt+Q` isn't bound to
+**Re-wrap String**, the Alan IF IDE will offer to settle it the first time you re-wrap a
+string; say yes and it writes the binding below into your `keybindings.json`. **Alan IF:
+Bind Alt+Q to Re-wrap String** does the same thing later, if you dismissed the
+offer. You can also do it by hand — a *user* keybinding beats any extension's:
 
 ```json
 {
@@ -110,10 +119,10 @@ stays with Rewrap.
 
 ## Install
 
-**Search for "Alan IF IDE" in the Extensions view and click Install.** That works in
-VS Code, and in VSCodium, Gitpod, Cursor or anything else built on Open VSX — the
-extension is published to both registries. The build for your platform is chosen
-automatically and bundles a Java runtime, so there is nothing else to install.
+**In the Extensions View search for "Alan IF IDE" and click Install.** That works in VS
+Code, and in VSCodium, Gitpod, Cursor or anything else built on Open VSX — the extension
+is published to both registries. The build for your platform is chosen automatically and
+bundles a Java runtime, so there is nothing else to install.
 
 **Or import the author profile** — [`alanif.code-profile`](https://github.com/thoni56/alan-if-ide/releases/latest)
 from the release page. It installs this extension *and* a calmer, prose-oriented editor
@@ -253,8 +262,9 @@ the compiler grammar at handoff, so later drift can be audited.
   Microsoft marketplace.
 
 And two people. **Robert DeFord** wrote the *Alan IDE Reference Guide* for the old IDE,
-and has been finding the bugs in this one. **Tristano Ajmone** wrote the Alan standard
-library and the Italian one, and converted the documentation to AsciiDoc.
+and has been the first user of this one, finding bugs and giving feedback. **Tristano
+Ajmone** converted the Alan standard library into an Italian one, and converted almost
+all the documentation to AsciiDoc.
 
 Much of this was written with **[Claude Code](https://claude.com/claude-code)**, as the
 commit log records.
