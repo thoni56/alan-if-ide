@@ -178,6 +178,18 @@ function spellCheckingItem(): SetupItem {
                 case 'open-folder':
                     void commands.executeCommand('workbench.action.files.openFolder');
                     break;
+                case 'enable-file-type':
+                    // cSpell's command acts on the file type of the ACTIVE editor, and
+                    // Check Setup can be opened over anything, so enabling blind would
+                    // switch on whatever happened to be in front. With no Alan file
+                    // open, show the setting instead of guessing.
+                    if (window.activeTextEditor?.document.languageId === 'alanif') {
+                        void commands.executeCommand('cSpell.enableCurrentFileType');
+                    } else {
+                        void commands.executeCommand(
+                            'workbench.action.openSettings', 'cSpell.enabledFileTypes');
+                    }
+                    break;
                 default:
                     void commands.executeCommand('alanif.setupSpellChecking');
             }

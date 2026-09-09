@@ -4,7 +4,8 @@ import { test } from 'node:test';
 import {
     ALL_LANGUAGES, BUNDLED, CSPELL_EXTENSION, LANGUAGES, CONCORDANCE_FILE,
     briefFor, languagesFor, gitignoreFor, languageNames,
-    describeSpellChecking, SpellCheckingFacts,
+    describeSpellChecking, SpellCheckingFacts, fileTypeDisabledBy, fileTypeDisabledIn,
+    fileTypeDisabledInBrief, fileTypeDisabledFor,
 } from './cspell';
 import { ALAN_PATTERNS, CODE_DICTIONARIES } from './spelling';
 
@@ -256,6 +257,8 @@ test('the bubble text is short enough for a narrow popup', () => {
         { folder: 'wyldkynd', extensionInstalled: true, brief: true, names: 0 },
         { folder: 'wyldkynd', extensionInstalled: true, brief: true },
         { folder: 'wyldkynd', extensionInstalled: false, brief: true, names: 962 },
+        { folder: 'wyldkynd', extensionInstalled: true, brief: true, names: 962,
+            fileTypeDisabled: true },
     ];
     for (const facts of states) {
         const { short } = describeSpellChecking(facts);
@@ -280,4 +283,206 @@ test('not set up never claims spell checking is off, because cSpell is still run
     assert.doesNotMatch(not.short, /\boff\b/i);
     assert.match(not.short, /not set up/i);
     assert.notEqual(not.short, r.short);
+});
+
+
+/**
+ * SET UP, AND SWITCHED OFF UNDERNEATH -- the state the row could not see.
+ *
+ * <p>cSpell's own Actions Menu leads with `Disable File Type: alanif`, already
+ * highlighted, and one stray Enter writes `alanif: false` into
+ * `cSpell.enabledFileTypes`. That beats the `{"*": true}` default our brief relies on,
+ * and our brief writes nothing that enables the file type. Both files stay on disk, so
+ * the row went on saying "set up in <folder>, 962 names" while nothing was checked --
+ * an author who asked for this, is not getting it, and is being told they are.
+ *
+ * <p>WE READ ONE THING AND FAIL TOWARD SILENCE. Three settings can decide whether a
+ * file type is checked, the setting is `scope: resource`, and how VS Code merges object
+ * settings across scopes is not something we have verified. Reproducing cSpell's
+ * resolution would build the same class of bug in a new place, so an explicit
+ * `alanif: false` is the only thing we call disabled. Everything else stays quiet.
+ */
+
+test('an explicit alanif:false is the one thing we call disabled', () => {
+    assert.equal(fileTypeDisabledBy({ alanif: false }), true);
+});
+
+test('anything short of that explicit false leaves the row alone', () => {
+    // Nothing to read: the setting is unset, or empty, or cSpell's own default.
+    assert.equal(fileTypeDisabledBy(undefined), false);
+    assert.equal(fileTypeDisabledBy({}), false);
+    assert.equal(fileTypeDisabledBy({ '*': true, markdown: true }), false);
+    // Enabled outright.
+    assert.equal(fileTypeDisabledBy({ alanif: true }), false);
+    // A blanket false says nothing about us, and resolving what it means for Alan
+    // files is exactly the resolution we decided not to reproduce.
+    assert.equal(fileTypeDisabledBy({ '*': false }), false);
+    // The legacy array form (`enableFiletypes: ["!alanif"]`) is a different setting
+    // and is deliberately not resolved here.
+    assert.equal(fileTypeDisabledBy(['!alanif']), false);
+    // Junk, from a hand-edited settings file.
+    assert.equal(fileTypeDisabledBy('alanif'), false);
+    assert.equal(fileTypeDisabledBy(null), false);
+});
+
+test('set up but the file type is off: they asked for it and are not getting it', () => {
+    const r = describeSpellChecking({
+        folder: 'wyldkynd', extensionInstalled: true, brief: true, names: 962,
+        fileTypeDisabled: true,
+    });
+    assert.equal(r.attention, true);
+    assert.equal(r.action, 'enable-file-type');
+    assert.match(r.text, /wyldkynd/);
+    assert.match(r.text, /not being checked/i);
+    // The count is true and beside the point: saying "962 names" here is the lie the
+    // row was telling before.
+    assert.doesNotMatch(r.short, /962/);
+});
+
+test('the file type beats the name-count faults, being the reason nothing happens', () => {
+    const none = describeSpellChecking({
+        folder: 'wyldkynd', extensionInstalled: true, brief: true, names: 0,
+        fileTypeDisabled: true,
+    });
+    assert.equal(none.action, 'enable-file-type');
+    const missing = describeSpellChecking({
+        folder: 'wyldkynd', extensionInstalled: true, brief: true,
+        fileTypeDisabled: true,
+    });
+    assert.equal(missing.action, 'enable-file-type');
+});
+
+test('cSpell not installed outranks it, since enabling a file type would do nothing', () => {
+    const r = describeSpellChecking({
+        folder: 'wyldkynd', extensionInstalled: false, brief: true, names: 962,
+        fileTypeDisabled: true,
+    });
+    assert.equal(r.action, 'install-extension');
+});
+
+test('never set up here: a disabled file type is still nothing to warn about', () => {
+    const r = describeSpellChecking({
+        folder: 'wyldkynd', extensionInstalled: true, brief: false,
+        fileTypeDisabled: true,
+    });
+    assert.equal(r.attention, false);
+    assert.equal(r.action, 'setup');
+});
+
+
+/**
+ * WHICH SCOPE DECIDES -- and the merge question we are not going to guess at.
+ *
+ * `cSpell.enabledFileTypes` is `scope: resource`, so the same key can be set in user,
+ * workspace and folder settings at once. Whether VS Code deep-merges object settings
+ * across those levels or lets the nearest one replace the rest is not something we have
+ * verified, and building on the wrong answer would put this same bug in a new place.
+ *
+ * <p>So the nearest scope that sets the key AT ALL decides, and only an `alanif: false`
+ * in that one is disabled. Under the replace reading that is exactly right. Under the
+ * merge reading it can miss a `false` set further out, and the row then says what it
+ * said before, which is the failure we can afford.
+ */
+
+test('the folder decides when the folder sets it', () => {
+    assert.equal(fileTypeDisabledIn({ workspaceFolderValue: { alanif: false } }), true);
+    assert.equal(fileTypeDisabledIn({
+        workspaceFolderValue: { alanif: true },
+        workspaceValue: { alanif: false },
+    }), false);
+});
+
+test('a nearer scope that says nothing about Alan files silences a further one', () => {
+    assert.equal(fileTypeDisabledIn({
+        workspaceFolderValue: { '*': true },
+        workspaceValue: { alanif: false },
+    }), false);
+});
+
+test('a further scope decides when no nearer one sets the key', () => {
+    assert.equal(fileTypeDisabledIn({ workspaceValue: { alanif: false } }), true);
+    assert.equal(fileTypeDisabledIn({ globalValue: { alanif: false } }), true);
+    assert.equal(fileTypeDisabledIn({
+        workspaceValue: { '*': true },
+        globalValue: { alanif: false },
+    }), false);
+});
+
+test('nothing set anywhere is not a fault', () => {
+    assert.equal(fileTypeDisabledIn({}), false);
+    assert.equal(fileTypeDisabledIn(undefined), false);
+});
+
+
+/**
+ * AND THE PLACE IT ACTUALLY GETS WRITTEN -- the brief itself.
+ *
+ * Observed 2026-09-09, taking `Disable File Type: alanif` from cSpell's Actions Menu:
+ * it does not just write the setting, it ASKS where to put it, offering cspell.json,
+ * workspace and user. Choosing cspell.json wrote `"enabledFileTypes": {"alanif":
+ * false}` into the game's own brief, where no amount of reading VS Code settings will
+ * ever find it -- and the row went on saying "962 names" while nothing was checked.
+ *
+ * <p>For these authors the brief is the likely pick: it is the file our setup command
+ * puts in their folder, and it is the one offered first.
+ */
+
+test('the brief can hold the disable, and that counts', () => {
+    assert.equal(fileTypeDisabledInBrief(
+        '{"enabledFileTypes": {"alanif": false}}'), true);
+});
+
+test('an ordinary brief says nothing about it', () => {
+    assert.equal(fileTypeDisabledInBrief('{"words": ["wyldkynd"]}'), false);
+    assert.equal(fileTypeDisabledInBrief(
+        '{"enabledFileTypes": {"alanif": true}}'), false);
+    assert.equal(fileTypeDisabledInBrief('{}'), false);
+});
+
+test('an unreadable or missing brief is not a claim about anything', () => {
+    // Half-typed JSON, which is the state a hand-edited file spends time in.
+    assert.equal(fileTypeDisabledInBrief('{"enabledFileTypes": {'), false);
+    assert.equal(fileTypeDisabledInBrief(''), false);
+    assert.equal(fileTypeDisabledInBrief(undefined), false);
+});
+
+
+/**
+ * WHICH SOURCE WINS -- measured in the editor, not reasoned about.
+ *
+ * Observed 2026-09-09, second round trip: `Disable File Type` written to WORKSPACE
+ * settings while the brief already said `"alanif": true`. cSpell went on checking, and
+ * the row said "not checked". A false positive, which is the one failure this state
+ * was built to avoid: telling an author their setup is broken when it is not.
+ *
+ * <p>So the brief decides whenever it says anything about Alan files, and VS Code's
+ * settings decide only when it is silent. That is what the editor did, and the two
+ * places disagreeing is not hypothetical -- one round trip through cSpell's own menu
+ * put a `true` in one and a `false` in the other.
+ */
+
+test('the brief wins when the two disagree, in both directions', () => {
+    assert.equal(fileTypeDisabledFor(
+        '{"enabledFileTypes": {"alanif": true}}',
+        { workspaceValue: { alanif: false } }), false);
+    assert.equal(fileTypeDisabledFor(
+        '{"enabledFileTypes": {"alanif": false}}',
+        { workspaceValue: { alanif: true } }), true);
+});
+
+test('settings decide when the brief says nothing about Alan files', () => {
+    assert.equal(fileTypeDisabledFor(
+        '{"words": []}', { workspaceValue: { alanif: false } }), true);
+    assert.equal(fileTypeDisabledFor(
+        undefined, { globalValue: { alanif: false } }), true);
+    // And the nearest-scope rule still holds underneath.
+    assert.equal(fileTypeDisabledFor('{"words": []}', {
+        workspaceFolderValue: { '*': true },
+        workspaceValue: { alanif: false },
+    }), false);
+});
+
+test('silence everywhere is still not a fault', () => {
+    assert.equal(fileTypeDisabledFor('{"words": []}', {}), false);
+    assert.equal(fileTypeDisabledFor(undefined, undefined), false);
 });

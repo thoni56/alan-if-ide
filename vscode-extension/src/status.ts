@@ -1,12 +1,14 @@
 import {
     ExtensionContext, LanguageStatusItem, LanguageStatusSeverity, StatusBarAlignment,
-    ThemeColor, commands, languages, window, workspace
+    Disposable, ThemeColor, commands, languages, window, workspace
 } from 'vscode';
 import { Environment, getEnvironment, onEnvironmentChanged } from './environment';
 import { Alarm, StatusDescription, alarmFor, describeTool } from './toolchain';
 import { legacyFiles, onEncodingChanged } from './convert';
 import { describeJava } from './java';
-import { CSPELL_EXTENSION, describeSpellChecking } from './cspell';
+import {
+    BRIEF_FILE, CONCORDANCE_FILE, CSPELL_EXTENSION, describeSpellChecking,
+} from './cspell';
 import { spellCheckingFacts } from './spellcheck';
 import { rewrapKeyBindable, rewrapKeyContested } from './notices';
 
@@ -162,14 +164,25 @@ function createSpellCheckingItem(context: ExtensionContext): void {
                 title: 'Install\u2026',
                 arguments: [CSPELL_EXTENSION],
             }
-            : report.action === 'setup'
-                ? { command: 'alanif.setupSpellChecking', title: 'Set Up\u2026' }
-                : undefined;
+            : report.action === 'enable-file-type'
+                // Safe here and only here: our status items exist for Alan files, so
+                // the "current file type" the command acts on is always ours.
+                ? { command: 'cSpell.enableCurrentFileType', title: 'Enable\u2026' }
+                : report.action === 'setup'
+                    ? { command: 'alanif.setupSpellChecking', title: 'Set Up\u2026' }
+                    : undefined;
     };
     render();
     context.subscriptions.push(spell,
         window.onDidChangeActiveTextEditor(render),
-        workspace.onDidSaveTextDocument(render));
+        workspace.onDidSaveTextDocument(render),
+        // Someone turning the file type off does it from a menu, not from a file, so
+        // without this the row would go on saying what it said until the next save --
+        // which is exactly the stale answer this row exists to stop giving.
+        workspace.onDidChangeConfiguration(e => {
+            if (e.affectsConfiguration('cSpell.enabledFileTypes')) { render(); }
+        }),
+        watchTheAnswer(render));
 }
 
 export function createStatusItems(context: ExtensionContext): void {
@@ -279,6 +292,27 @@ export function createPlayStatusItem(context: ExtensionContext): void {
     const update = () => showIfAlanIsInFront(play);
     update();
     context.subscriptions.push(play, window.onDidChangeActiveTextEditor(update));
+}
+
+
+/**
+ * Re-read when either file this row's answer comes from changes on disk.
+ *
+ * <p>Observed 2026-09-09: cSpell's own Enable File Type wrote `"alanif": true` into
+ * the brief and the row went on warning, because nothing had been saved, no editor had
+ * changed and no setting had moved. The row was right about a folder it had read
+ * minutes earlier -- which is the stale answer this row exists to stop giving, arrived
+ * at from the other direction. Check Setup recomputes on open and would have said the
+ * opposite, and two surfaces disagreeing about a folder is the failure the single
+ * describer was built to prevent.
+ */
+function watchTheAnswer(render: () => void): Disposable {
+    const watcher = workspace.createFileSystemWatcher(
+        `**/{${BRIEF_FILE},${CONCORDANCE_FILE}}`);
+    watcher.onDidChange(render);
+    watcher.onDidCreate(render);
+    watcher.onDidDelete(render);
+    return watcher;
 }
 
 

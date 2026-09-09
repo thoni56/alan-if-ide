@@ -20,6 +20,8 @@ interface FakeItem {
 const items: FakeItem[] = [];
 let bar: FakeItem | undefined;
 let onEditorChanged: (() => void) | undefined;
+let onFileChanged: (() => void) | undefined;
+let watched: string | undefined;
 let alanInFront = true;
 
 function fakeItem(id?: string): FakeItem {
@@ -60,6 +62,17 @@ const vscode = {
         // The spell-checking row recounts the concordance on every save, since a save
         // is exactly when the touch-up rewrites it.
         onDidSaveTextDocument: () => ({ dispose() { /* nothing */ } }),
+        // The brief and the concordance are written by cSpell and by us, behind the
+        // editor's back, so the row watches the files themselves.
+        createFileSystemWatcher(pattern: string) {
+            watched = pattern;
+            return {
+                onDidChange(handler: () => void) { onFileChanged = handler; },
+                onDidCreate() { /* the same handler, not re-captured */ },
+                onDidDelete() { /* the same handler, not re-captured */ },
+                dispose() { /* nothing to release */ },
+            };
+        },
         workspaceFolders: undefined,
     },
     extensions: { getExtension: () => undefined },
@@ -85,10 +98,23 @@ const environment = {
     },
 };
 
+/**
+ * spellcheck.ts reads the author's folder, so the facts are stubbed and made to change
+ * between renders -- which is the only way to see whether the row re-read at all.
+ */
+let facts: unknown = { extensionInstalled: true, brief: false };
+const spellcheck = {
+    spellCheckingFacts: () => facts,
+    setupSpellChecking: () => { /* not under test */ },
+    keepConcordanceCurrent: () => { /* not under test */ },
+    targetFolder: () => undefined,
+};
+
 const load = (Module as any)._load;
 (Module as any)._load = function (request: string, ...rest: unknown[]) {
     if (request === 'vscode') { return vscode; }
     if (request.endsWith('/environment') || request === './environment') { return environment; }
+    if (request.endsWith('/spellcheck') || request === './spellcheck') { return spellcheck; }
     return load.call(this, request, ...rest);
 };
 
@@ -180,4 +206,38 @@ test('a folder that never opted in is Information, so the bubble is not marked',
     // No workspace folder in the stub, so this is the "no folder open" answer -- the
     // quietest of them, and the one that must never wear a warning.
     assert.strictEqual(spell?.severity, vscode.LanguageStatusSeverity.Information);
+});
+
+
+/**
+ * THE ROW MUST RE-READ WHEN THE FILES CHANGE, not only when the editor does.
+ *
+ * Observed 2026-09-09 with the dev build: cSpell's Enable File Type wrote `"alanif":
+ * true` into the brief, and the row went on saying "not checked" because nothing had
+ * been saved, no editor had changed and no setting had moved. Check Setup recomputes
+ * on open and would have said the opposite at the same moment -- two surfaces
+ * disagreeing about one folder, which is the thing the single describer exists to
+ * prevent.
+ */
+
+test('the row re-reads when the brief changes underneath it', () => {
+    facts = {
+        folder: 'wyldkynd', extensionInstalled: true, brief: true, names: 962,
+        fileTypeDisabled: true,
+    };
+    build(HEALTHY);
+    const spell = () => items.find(i => i.text.startsWith('Spell checking'));
+    assert.match(spell()!.text, /not checked/);
+
+    // cSpell writes the brief; no save, no editor change, no setting moved.
+    facts = { folder: 'wyldkynd', extensionInstalled: true, brief: true, names: 962 };
+    assert.ok(onFileChanged, 'nothing is watching the files the answer comes from');
+    onFileChanged!();
+    assert.match(spell()!.text, /962/);
+});
+
+test('it watches both files the answer is built from', () => {
+    build(HEALTHY);
+    assert.match(watched ?? '', /cspell\.json/);
+    assert.match(watched ?? '', /alan-concordance\.txt/);
 });

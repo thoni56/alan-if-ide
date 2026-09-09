@@ -31,6 +31,9 @@ export const CSPELL_EXTENSION = 'streetsidesoftware.code-spell-checker';
 /** The brief. */
 export const BRIEF_FILE = 'cspell.json';
 
+/** What cSpell calls Alan files, which is our language id. */
+export const ALAN_FILE_TYPE = 'alanif';
+
 /**
  * The concordance. "project" would be redundant in the name: a concordance is of a
  * work by definition, which is the whole reason the word earns its place here.
@@ -158,7 +161,7 @@ function alanKeys(languages: string[]): Record<string, unknown> {
             // Scoped to the language, never top-level. Top-level includeRegExpList
             // would restrict checking to Alan strings in EVERY file of the workspace,
             // so the author's own README would be checked only inside its quotes.
-            languageId: 'alanif',
+            languageId: ALAN_FILE_TYPE,
             includeRegExpList: ALAN_INCLUDE,
             ignoreRegExpList: ALAN_IGNORE,
             dictionaries: [CONCORDANCE_DICTIONARY, ...CODE_DICTIONARIES.map(d => `!${d}`)],
@@ -169,7 +172,7 @@ function alanKeys(languages: string[]): Record<string, unknown> {
 /** Whether a `patterns` or `languageSettings` entry is one of ours. */
 function ours(key: string, entry: unknown): boolean {
     const named = entry as { name?: unknown; languageId?: unknown };
-    if (key === 'languageSettings') { return named?.languageId === 'alanif'; }
+    if (key === 'languageSettings') { return named?.languageId === ALAN_FILE_TYPE; }
     const mine = key === 'dictionaryDefinitions'
         ? [CONCORDANCE_DICTIONARY]
         : ALAN_PATTERNS.map(p => p.name);
@@ -257,6 +260,108 @@ export interface SpellCheckingFacts {
     brief: boolean;
     /** Names in the concordance; absent when the file itself is missing. */
     names?: number;
+    /**
+     * cSpell has been told not to check Alan files. Only ever set from an explicit
+     * `alanif: false`; see {@link fileTypeDisabledBy}.
+     */
+    fileTypeDisabled?: boolean;
+}
+
+/**
+ * Whether the brief itself turns Alan files off.
+ *
+ * <p>cSpell's `Disable File Type` asks where to write, and cspell.json is one of the
+ * answers -- the one an author of ours is likeliest to pick, since it is the file the
+ * setup command left in their folder. Written there it is invisible to VS Code's
+ * settings API, so the brief has to be read as well.
+ *
+ * <p>Unparseable counts as nothing said. A brief mid-edit is not a statement.
+ */
+export function fileTypeDisabledInBrief(text: string | undefined): boolean {
+    return fileTypeStateInBrief(text) === false;
+}
+
+/** What the brief says about Alan files: on, off, or nothing. */
+export function fileTypeStateInBrief(text: string | undefined): boolean | undefined {
+    if (text === undefined || text.trim() === '') { return undefined; }
+    try {
+        return fileTypeStateBy(
+            (JSON.parse(text) as Record<string, unknown>)['enabledFileTypes']);
+    } catch {
+        return undefined;
+    }
+}
+
+/** The levels VS Code reports a setting at, nearest last in specificity. */
+export interface ConfigScopes {
+    globalValue?: unknown;
+    workspaceValue?: unknown;
+    workspaceFolderValue?: unknown;
+}
+
+/**
+ * Whether the scope that decides `cSpell.enabledFileTypes` turns Alan files off.
+ *
+ * <p>THE NEAREST SCOPE THAT SETS THE KEY AT ALL DECIDES. The setting is `scope:
+ * resource`, so user, workspace and folder can each hold one, and whether VS Code
+ * merges the objects or lets the nearest replace the rest is unverified. Reading only
+ * the nearest is right under the replace reading, and under the merge reading it can
+ * miss a `false` set further out -- which leaves the row saying what it said before.
+ */
+export function fileTypeDisabledIn(scopes: ConfigScopes | undefined): boolean {
+    return fileTypeStateIn(scopes) === false;
+}
+
+/** What VS Code's settings say about Alan files: on, off, or nothing. */
+export function fileTypeStateIn(scopes: ConfigScopes | undefined): boolean | undefined {
+    const nearest = [
+        scopes?.workspaceFolderValue,
+        scopes?.workspaceValue,
+        scopes?.globalValue,
+    ].find(value => value !== undefined);
+    return fileTypeStateBy(nearest);
+}
+
+/**
+ * Whether Alan files are turned off, reading both places that can say so.
+ *
+ * <p>THE BRIEF DECIDES WHENEVER IT SAYS ANYTHING. Measured 2026-09-09: with the brief
+ * saying `true` and workspace settings saying `false`, cSpell went on checking. One
+ * round trip through cSpell's own Disable/Enable menu is enough to leave a `true` in
+ * one place and a `false` in the other, so this is the ordinary case, not a corner.
+ */
+export function fileTypeDisabledFor(
+    brief: string | undefined, scopes: ConfigScopes | undefined,
+): boolean {
+    const said = fileTypeStateInBrief(brief);
+    return (said ?? fileTypeStateIn(scopes)) === false;
+}
+
+/**
+ * Whether `cSpell.enabledFileTypes` explicitly turns Alan files off.
+ *
+ * <p>ONE ENTRY, READ LITERALLY. cSpell decides what it checks from three settings and
+ * a default of `{"*": true}`, and this reproduces none of that. A blanket `"*": false`,
+ * the legacy `enableFiletypes` array, anything we cannot read: all stay quiet. The cost
+ * of a false negative is the row saying nothing new, which is where it was; the cost of
+ * a false positive is telling an author their setup is broken when it is not.
+ */
+export function fileTypeDisabledBy(enabledFileTypes: unknown): boolean {
+    return fileTypeStateBy(enabledFileTypes) === false;
+}
+
+/**
+ * What one `enabledFileTypes` object says about Alan files: on, off, or nothing.
+ *
+ * <p>THE THIRD ANSWER IS THE POINT. Two sources can hold this key, so "says nothing"
+ * has to be distinguishable from "says yes" -- otherwise a brief that is merely quiet
+ * cannot let the settings speak, and a brief that says yes cannot outrank them.
+ */
+export function fileTypeStateBy(enabledFileTypes: unknown): boolean | undefined {
+    if (typeof enabledFileTypes !== 'object' || enabledFileTypes === null) { return undefined; }
+    if (Array.isArray(enabledFileTypes)) { return undefined; }
+    const said = (enabledFileTypes as Record<string, unknown>)[ALAN_FILE_TYPE];
+    return typeof said === 'boolean' ? said : undefined;
 }
 
 /** A row for the setup check: what to say, whether to worry, and the way out. */
@@ -269,7 +374,7 @@ export interface SpellCheckingReport {
     short: string;
     detail: string;
     attention: boolean;
-    action: 'setup' | 'install-extension' | 'open-folder' | 'none';
+    action: 'setup' | 'install-extension' | 'open-folder' | 'enable-file-type' | 'none';
 }
 
 /**
@@ -290,7 +395,7 @@ export interface SpellCheckingReport {
  * a fault: they asked for it, and are not getting it.
  */
 export function describeSpellChecking(facts: SpellCheckingFacts): SpellCheckingReport {
-    const { folder, extensionInstalled, brief, names } = facts;
+    const { folder, extensionInstalled, brief, names, fileTypeDisabled } = facts;
 
     if (folder === undefined) {
         return {
@@ -324,6 +429,20 @@ export function describeSpellChecking(facts: SpellCheckingFacts): SpellCheckingR
                 + 'marked. Setting up is per folder, so each game asks separately.',
             attention: false,
             action: 'setup',
+        };
+    }
+
+    // Set up, and switched off underneath. This comes before the name-count faults
+    // because it is why nothing happens: a perfect list is checked against nothing.
+    if (fileTypeDisabled) {
+        return {
+            text: `set up in ${folder}, but Alan files are not being checked`,
+            short: 'Spell checking \u2014 not checked',
+            detail: 'Spell checking is set up in this folder, but cSpell has been told '
+                + 'not to check Alan files, so nothing in them is checked. Enable it '
+                + 'again to get what this folder is set up for.',
+            attention: true,
+            action: 'enable-file-type',
         };
     }
 

@@ -11,7 +11,7 @@ import {
 import {
     ALL_LANGUAGES, BUNDLED, CSPELL_EXTENSION, BRIEF_FILE, Language,
     LANGUAGES, CONCORDANCE_FILE, briefFor, languagesFor, gitignoreFor, languageNames,
-    SpellCheckingFacts,
+    SpellCheckingFacts, ConfigScopes, fileTypeDisabledFor,
 } from './cspell';
 
 /**
@@ -436,6 +436,14 @@ export function spellCheckingFacts(): SpellCheckingFacts {
             && fs.existsSync(path.join(root.uri.fsPath, BRIEF_FILE)),
         names: root === undefined ? undefined
             : namesInConcordance(path.join(root.uri.fsPath, CONCORDANCE_FILE)),
+        // TWO PLACES, because cSpell's Disable File Type asks which one to write to:
+        // the brief in the author's folder, or VS Code's own settings. They can
+        // disagree after a single round trip through that menu, and the brief is the
+        // one cSpell listens to.
+        fileTypeDisabled: root !== undefined && fileTypeDisabledFor(
+            read(path.join(root.uri.fsPath, BRIEF_FILE)),
+            workspace.getConfiguration('cSpell', root.uri)
+                .inspect('enabledFileTypes') as ConfigScopes | undefined),
     };
 }
 
