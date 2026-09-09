@@ -66,6 +66,23 @@ jobs:
           name: vsix-universal
           path: vscode-extension/*.vsix
 
+      # A release with no description of its own does not show nothing: GitHub shows
+      # the tagged COMMIT MESSAGE, so whatever we wrote to each other ends up on the
+      # download page. The notes are this version's changelog section instead, which is
+      # written for the person who came to download it.
+      - name: Release notes from the changelog
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          awk -v head="## $VERSION" '
+            index($0, head " ") == 1 || $0 == head { keep = 1; next }
+            /^## / { keep = 0 }
+            keep' vscode-extension/CHANGELOG.md | sed '/./,$!d' > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "::error::no CHANGELOG.md section for $VERSION"
+            exit 1
+          fi
+
       - name: Attach to release (on tag)
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v3
@@ -74,6 +91,7 @@ jobs:
           # VSIX: its whole purpose is to be handed to someone who has nothing yet,
           # and it now installs the extension itself, so shipping it inside the
           # extension would be circular.
+          body_path: release-notes.md
           files: |
             vscode-extension/*.vsix
             vscode-extension/alan-profile/alanif.code-profile
@@ -186,10 +204,30 @@ jobs:
           name: vsix-${{ matrix.target }}
           path: vscode-extension/*.vsix
 
+      # A release with no description of its own does not show nothing: GitHub shows
+      # the tagged COMMIT MESSAGE, so whatever we wrote to each other ends up on the
+      # download page. The notes are this version's changelog section instead, which is
+      # written for the person who came to download it.
+      - name: Release notes from the changelog
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          awk -v head="## $VERSION" '
+            index($0, head " ") == 1 || $0 == head { keep = 1; next }
+            /^## / { keep = 0 }
+            keep' vscode-extension/CHANGELOG.md | sed '/./,$!d' > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "::error::no CHANGELOG.md section for $VERSION"
+            exit 1
+          fi
+
       - name: Attach to release (on tag)
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v3
         with:
+          # Set here too: five of these run in parallel after the universal one, and a
+          # later attach with no body would leave the release blank again.
+          body_path: release-notes.md
           files: vscode-extension/*.vsix
 
   # Publish to Open VSX. TAGS ONLY -- a push to main must never reach the registry,

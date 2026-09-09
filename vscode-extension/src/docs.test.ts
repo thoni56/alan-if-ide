@@ -92,3 +92,31 @@ test('an exemption names a command that still exists', () => {
     assert.deepEqual(stale, [],
         `no longer contributed, so the exemption is dead: ${stale.join(', ')}`);
 });
+
+/**
+ * THE CHANGELOG MUST HAVE A SECTION FOR THE VERSION BEING SHIPPED.
+ *
+ * <p>Since 2026-09-09 the release workflow builds the GitHub release notes out of that
+ * section. There is a guard in CI too, but it fires after the tag is pushed, and a tag
+ * is the one thing in this process that is awkward to take back. This one fires on the
+ * release commit, which is where the mistake would be made.
+ *
+ * <p>WHY IT MATTERS BEYOND TIDINESS: a release with no description of its own does not
+ * show nothing, it shows the tagged COMMIT MESSAGE. So the alternative to a changelog
+ * section is not silence, it is whatever we happened to write to each other, published
+ * on the download page.
+ */
+test('the changelog has a section for the version in the manifest', () => {
+    const changelog = fs.readFileSync(path.join(extension, 'CHANGELOG.md'), 'utf8');
+    const heading = `## ${manifest.version}`;
+    const lines = changelog.split('\n');
+    const start = lines.findIndex(
+        line => line === heading || line.startsWith(`${heading} `));
+    assert.notEqual(start, -1,
+        `no "${heading}" in CHANGELOG.md; the release page would show the commit message`);
+
+    const rest = lines.slice(start + 1);
+    const end = rest.findIndex(line => line.startsWith('## '));
+    const body = (end === -1 ? rest : rest.slice(0, end)).join('\n').trim();
+    assert.notEqual(body, '', `"${heading}" has no text under it`);
+});
