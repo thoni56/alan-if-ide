@@ -169,12 +169,23 @@ function alanKeys(languages: string[]): Record<string, unknown> {
     };
 }
 
+/**
+ * Names the concordance dictionary has had, which are ours to replace.
+ *
+ * <p>NOTHING COMES OFF THIS LIST. A brief lives in an author's game folder and is
+ * rewritten only when they run the setup command again, which may be never -- so a
+ * name we wrote once can still be sitting in a file years later, pointing cSpell at a
+ * list nothing updates. `alan-project-names` was the concordance for one day, between
+ * 0.7.12 and f41e6a6.
+ */
+const LEGACY_DICTIONARIES = ['alan-project-names'];
+
 /** Whether a `patterns` or `languageSettings` entry is one of ours. */
 function ours(key: string, entry: unknown): boolean {
     const named = entry as { name?: unknown; languageId?: unknown };
     if (key === 'languageSettings') { return named?.languageId === ALAN_FILE_TYPE; }
     const mine = key === 'dictionaryDefinitions'
-        ? [CONCORDANCE_DICTIONARY]
+        ? [CONCORDANCE_DICTIONARY, ...LEGACY_DICTIONARIES]
         : ALAN_PATTERNS.map(p => p.name);
     return typeof named?.name === 'string' && mine.includes(named.name);
 }
@@ -265,6 +276,11 @@ export interface SpellCheckingFacts {
      * `alanif: false`; see {@link fileTypeDisabledBy}.
      */
     fileTypeDisabled?: boolean;
+    /**
+     * The brief names a dictionary we stopped writing, so cSpell is reading a list
+     * nothing updates; see {@link wordListIsStale}.
+     */
+    wordListStale?: boolean;
 }
 
 /**
@@ -290,6 +306,27 @@ export function fileTypeStateInBrief(text: string | undefined): boolean | undefi
     } catch {
         return undefined;
     }
+}
+
+/**
+ * Whether the brief points cSpell at a word list nothing writes any more.
+ *
+ * <p>NARROW ON PURPOSE: a legacy definition and no current one. A brief holding both
+ * was written by a version that knows the current name, so its languageSettings name
+ * that one and there is nothing wrong. Unparseable says nothing, as everywhere else.
+ */
+export function wordListIsStale(brief: string | undefined): boolean {
+    if (brief === undefined || brief.trim() === '') { return false; }
+    let defined: unknown;
+    try {
+        defined = (JSON.parse(brief) as Record<string, unknown>)['dictionaryDefinitions'];
+    } catch {
+        return false;
+    }
+    if (!Array.isArray(defined)) { return false; }
+    const names = defined.map(d => (d as { name?: unknown })?.name);
+    return names.some(n => typeof n === 'string' && LEGACY_DICTIONARIES.includes(n))
+        && !names.includes(CONCORDANCE_DICTIONARY);
 }
 
 /** The levels VS Code reports a setting at, nearest last in specificity. */
@@ -395,7 +432,9 @@ export interface SpellCheckingReport {
  * a fault: they asked for it, and are not getting it.
  */
 export function describeSpellChecking(facts: SpellCheckingFacts): SpellCheckingReport {
-    const { folder, extensionInstalled, brief, names, fileTypeDisabled } = facts;
+    const {
+        folder, extensionInstalled, brief, names, fileTypeDisabled, wordListStale,
+    } = facts;
 
     if (folder === undefined) {
         return {
@@ -443,6 +482,21 @@ export function describeSpellChecking(facts: SpellCheckingFacts): SpellCheckingR
                 + 'again to get what this folder is set up for.',
             attention: true,
             action: 'enable-file-type',
+        };
+    }
+
+    // Set up under a version that named the concordance differently. cSpell is
+    // reading a file nothing has written since, so the count below would be a count
+    // of the wrong file. Running Set Up again migrates the brief.
+    if (wordListStale) {
+        return {
+            text: `set up in ${folder}, but the word list is not being kept current`,
+            short: 'Alan spell checking \u2014 out of date',
+            detail: 'This folder was set up by an older version, and the word list it '
+                + 'names is no longer the one being rebuilt from your sources. Run Set '
+                + 'Up Spell Checking again to point it at the current one.',
+            attention: true,
+            action: 'setup',
         };
     }
 

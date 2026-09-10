@@ -11,7 +11,7 @@ import {
 import {
     ALL_LANGUAGES, BUNDLED, CSPELL_EXTENSION, BRIEF_FILE, Language,
     LANGUAGES, CONCORDANCE_FILE, briefFor, languagesFor, gitignoreFor, languageNames,
-    SpellCheckingFacts, ConfigScopes, fileTypeDisabledFor,
+    SpellCheckingFacts, ConfigScopes, fileTypeDisabledFor, wordListIsStale,
 } from './cspell';
 
 /**
@@ -429,6 +429,9 @@ function gitignorePath(root: string): string | undefined {
  */
 export function spellCheckingFacts(): SpellCheckingFacts {
     const root = targetFolder();
+    // Read once: three of the four answers below come out of this one file.
+    const brief = root === undefined ? undefined
+        : read(path.join(root.uri.fsPath, BRIEF_FILE));
     return {
         folder: root?.name,
         extensionInstalled: extensions.getExtension(CSPELL_EXTENSION) !== undefined,
@@ -441,9 +444,10 @@ export function spellCheckingFacts(): SpellCheckingFacts {
         // disagree after a single round trip through that menu, and the brief is the
         // one cSpell listens to.
         fileTypeDisabled: root !== undefined && fileTypeDisabledFor(
-            read(path.join(root.uri.fsPath, BRIEF_FILE)),
+            brief,
             workspace.getConfiguration('cSpell', root.uri)
                 .inspect('enabledFileTypes') as ConfigScopes | undefined),
+        wordListStale: wordListIsStale(brief),
     };
 }
 

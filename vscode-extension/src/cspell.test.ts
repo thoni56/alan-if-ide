@@ -5,7 +5,7 @@ import {
     ALL_LANGUAGES, BUNDLED, CSPELL_EXTENSION, LANGUAGES, CONCORDANCE_FILE,
     briefFor, languagesFor, gitignoreFor, languageNames,
     describeSpellChecking, SpellCheckingFacts, fileTypeDisabledBy, fileTypeDisabledIn,
-    fileTypeDisabledInBrief, fileTypeDisabledFor,
+    fileTypeDisabledInBrief, fileTypeDisabledFor, wordListIsStale,
 } from './cspell';
 import { ALAN_PATTERNS, CODE_DICTIONARIES } from './spelling';
 
@@ -259,6 +259,8 @@ test('the bubble text is short enough for a narrow popup', () => {
         { folder: 'wyldkynd', extensionInstalled: false, brief: true, names: 962 },
         { folder: 'wyldkynd', extensionInstalled: true, brief: true, names: 962,
             fileTypeDisabled: true },
+        { folder: 'wyldkynd', extensionInstalled: true, brief: true, names: 962,
+            wordListStale: true },
     ];
     for (const facts of states) {
         const { short } = describeSpellChecking(facts);
@@ -490,3 +492,120 @@ test('silence everywhere is still not a fault', () => {
     assert.equal(fileTypeDisabledFor('{"words": []}', {}), false);
     assert.equal(fileTypeDisabledFor(undefined, undefined), false);
 });
+
+
+/**
+ * RECOVERING A BRIEF WRITTEN BEFORE THE RENAME.
+ *
+ * 0.7.12 wrote the concordance as `alan-project-names` / `alan-project-names.txt`;
+ * f41e6a6 renamed both a day later. The commit said the old file would be left inert
+ * because the brief no longer references it -- which is true only of a brief that has
+ * been written since. One that has not still names the old dictionary, so cSpell goes
+ * on reading a file nothing updates while we keep the new one current beside it.
+ *
+ * <p>Found 2026-09-09 in Thomas's own wyldkynd folder: both files on disk, a week
+ * apart, the brief pointing at the older. The row said "962 names" the whole time,
+ * counting the file cSpell was not reading.
+ *
+ * <p>So a legacy definition is OURS and gets replaced, exactly like the current one.
+ * The author's own dictionaries are not ours and stay.
+ */
+
+const LEGACY_BRIEF = JSON.stringify({
+    version: '0.2',
+    words: ['Aerrowan'],
+    language: 'en',
+    dictionaryDefinitions: [
+        { name: 'alan-project-names', path: './alan-project-names.txt', addWords: false },
+        { name: 'their-own', path: './their-own.txt' },
+    ],
+    languageSettings: [{
+        languageId: 'alanif',
+        dictionaries: ['alan-project-names', '!java'],
+    }],
+});
+
+test('a brief from before the rename is migrated, not doubled', () => {
+    const merged = parse((briefFor(LEGACY_BRIEF, ['en']) as any).text);
+    const names = merged.dictionaryDefinitions.map((d: any) => d.name);
+
+    assert.ok(!names.includes('alan-project-names'), `legacy definition kept: ${names}`);
+    assert.ok(names.includes('alan-concordance'), `no current definition: ${names}`);
+    assert.ok(names.includes('their-own'), 'the author\'s own dictionary was dropped');
+    assert.equal(merged.dictionaryDefinitions.length, 2);
+});
+
+test('nothing anywhere in the brief still points at the old file', () => {
+    const text = (briefFor(LEGACY_BRIEF, ['en']) as any).text;
+    assert.doesNotMatch(text, /alan-project-names/,
+        'the old name survives somewhere, so cSpell may still read the stale file');
+});
+
+test('the glossary and the author\'s words survive the migration', () => {
+    const merged = parse((briefFor(LEGACY_BRIEF, ['en']) as any).text);
+    assert.deepEqual(merged.words, ['Aerrowan']);
+});
+
+
+/**
+ * A BRIEF THAT NEVER GOT MIGRATED, WHICH NOBODY WOULD EVER LOOK FOR.
+ *
+ * Running the setup command again now repairs a pre-rename brief, but an author with
+ * one has no reason to run it: from where they sit spell checking works, and the row
+ * says how many names it holds. It says that by counting the file WE keep current,
+ * while cSpell reads the one the brief names, which nothing has written since the
+ * rename. Both files sit in the folder, a week apart, and neither of us can see it.
+ *
+ * <p>THE READING IS DELIBERATELY NARROW: a legacy definition AND no current one. A
+ * brief holding both has been written by a version that knows the current name, so its
+ * languageSettings point at that, and saying "out of date" would be a false alarm.
+ */
+
+const legacy = (name: string) =>
+    JSON.stringify({ dictionaryDefinitions: [{ name, path: `./${name}.txt` }] });
+
+test('a brief that names only the old dictionary is out of date', () => {
+    assert.equal(wordListIsStale(legacy('alan-project-names')), true);
+});
+
+test('anything a current version could have written is not out of date', () => {
+    assert.equal(wordListIsStale(legacy('alan-concordance')), false);
+    assert.equal(wordListIsStale(JSON.stringify({
+        dictionaryDefinitions: [
+            { name: 'alan-project-names', path: './alan-project-names.txt' },
+            { name: 'alan-concordance', path: './alan-concordance.txt' },
+        ],
+    })), false);
+    assert.equal(wordListIsStale(JSON.stringify({ words: ['Aerrowan'] })), false);
+    assert.equal(wordListIsStale('{"dictionaryDefinitions": ['), false);
+    assert.equal(wordListIsStale(undefined), false);
+});
+
+test('out of date: the count is true and beside the point', () => {
+    const r = describeSpellChecking({
+        folder: 'wyldkynd', extensionInstalled: true, brief: true, names: 962,
+        wordListStale: true,
+    });
+    assert.equal(r.attention, true);
+    assert.equal(r.action, 'setup');
+    assert.match(r.text, /wyldkynd/);
+    assert.match(r.text, /not being kept current/i);
+    assert.doesNotMatch(r.short, /962/);
+});
+
+test('a file type switched off outranks an out of date list', () => {
+    const r = describeSpellChecking({
+        folder: 'wyldkynd', extensionInstalled: true, brief: true, names: 962,
+        fileTypeDisabled: true, wordListStale: true,
+    });
+    assert.equal(r.action, 'enable-file-type');
+});
+
+test('and cSpell missing outranks both, since neither would show', () => {
+    const r = describeSpellChecking({
+        folder: 'wyldkynd', extensionInstalled: false, brief: true, names: 962,
+        fileTypeDisabled: true, wordListStale: true,
+    });
+    assert.equal(r.action, 'install-extension');
+});
+
