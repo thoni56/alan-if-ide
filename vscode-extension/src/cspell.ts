@@ -321,12 +321,12 @@ export function describePlan(languages: string[], plan: Plan): string {
               + 'checker where your prose is.',
         plan.words === 0
             ? `• ${CONCORDANCE_FILE} will be created, but no Alan sources were found here `
-              + 'yet, so it is empty. Run this again once you have some.'
+              + 'yet, so it is empty for now. It fills as you save your sources.'
             : `• ${CONCORDANCE_FILE} will hold ${plan.words} names taken from your `
               + `${plan.files} source file${plan.files === 1 ? '' : 's'}, so nothing `
               + 'in your game\'s own vocabulary is marked as a misspelling. It is '
-              + 'generated — run this command again to rebuild it. Words of your own '
-              + 'go in cspell.json instead, and are never rebuilt over.',
+              + 'rebuilt whenever you save, so it keeps up as you write. Any word you '
+              + 'add yourself goes in cspell.json instead, and is never rebuilt over.',
     ];
     if (plan.gitignore !== undefined) {
         lines.push(`• ${CONCORDANCE_FILE} will be added to .gitignore, since it is rebuilt `

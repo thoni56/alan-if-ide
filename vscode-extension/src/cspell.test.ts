@@ -666,6 +666,14 @@ test('the plan names every file it will write', () => {
     }
 });
 
+test('the plan says how the list keeps up, since it is not by re-running this', () => {
+    // It said "run this command again to rebuild it" for a month after 0.8.0 wired the
+    // rebuild to saving. True, and it taught the author the wrong thing.
+    const text = describePlan(['en'], PLAN);
+    assert.match(text, /whenever you save/);
+    assert.doesNotMatch(text, /run this command again/i);
+});
+
 test('the plan still closes on the promise it can now keep', () => {
     const text = describePlan(['en'], PLAN);
     assert.match(text, /Nothing else in this folder is changed\.$/);
