@@ -1,8 +1,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import {
-    ExtensionContext, QuickPickItem, QuickPickItemKind, TextDocument, Uri,
-    WorkspaceFolder, commands, extensions, window, workspace,
+    ConfigurationTarget, ExtensionContext, QuickPickItem, QuickPickItemKind,
+    TextDocument, Uri, WorkspaceFolder, commands, extensions, window, workspace,
 } from 'vscode';
 import {
     Contributions, affects, concordance, couldContribute, readThrough, touchUp,
@@ -12,6 +12,7 @@ import {
     ALL_LANGUAGES, BUNDLED, CSPELL_EXTENSION, BRIEF_FILE, Language,
     LANGUAGES, CONCORDANCE_FILE, briefFor, languagesFor, gitignoreFor, languageNames,
     SpellCheckingFacts, ConfigScopes, fileTypeDisabledFor, wordListIsStale,
+    describePlan, EDITOR_SETTINGS,
 } from './cspell';
 
 /**
@@ -97,6 +98,19 @@ export async function setupSpellChecking(): Promise<void> {
             `Alan IF: could not write to ${folder.name}. Check the folder permissions. `
             + `(${e instanceof Error ? e.message : String(e)})`);
         return;
+    }
+    // Asked of the editor rather than written by us: VS Code owns this file, merges
+    // into it and keeps whatever else is there. Folder scope, because setting up is
+    // per folder and a game two directories away is not being set up.
+    for (const setting of EDITOR_SETTINGS) {
+        try {
+            await workspace.getConfiguration(setting.section, folder.uri)
+                .update(setting.key, setting.value, ConfigurationTarget.WorkspaceFolder);
+        } catch {
+            // The brief and the concordance are written and the feature works. This
+            // only removes a menu entry that can switch it off, and the status row
+            // says so if anyone ever does.
+        }
     }
     if (gitignore !== undefined) {
         const updated = gitignoreFor(read(gitignore));
@@ -290,48 +304,8 @@ function installed(extension: string): boolean {
     return extensions.getExtension(extension) !== undefined;
 }
 
-interface Plan {
-    merging: boolean;
-    gitignore: string | undefined;
-    words: number;
-    files: number;
-    unreadable: string[];
-}
 
 /** Everything that will be written, before any of it is. */
-function describePlan(languages: string[], plan: Plan): string {
-    const lines = [
-        `Language: ${languageNames(languages)}.`,
-        '',
-        plan.merging
-            ? `• Alan's settings will be merged into the ${BRIEF_FILE} already here. `
-              + 'Your own words and settings are kept, but comments and formatting in '
-              + 'that file are not preserved.'
-            : `• ${BRIEF_FILE} will be created, holding the rules that tell the `
-              + 'checker where your prose is.',
-        plan.words === 0
-            ? `• ${CONCORDANCE_FILE} will be created, but no Alan sources were found here `
-              + 'yet, so it is empty. Run this again once you have some.'
-            : `• ${CONCORDANCE_FILE} will hold ${plan.words} names taken from your `
-              + `${plan.files} source file${plan.files === 1 ? '' : 's'}, so nothing `
-              + 'in your game\'s own vocabulary is marked as a misspelling. It is '
-              + 'generated — run this command again to rebuild it. Words of your own '
-              + 'go in cspell.json instead, and are never rebuilt over.',
-    ];
-    if (plan.gitignore !== undefined) {
-        lines.push(`• ${CONCORDANCE_FILE} will be added to .gitignore, since it is rebuilt `
-            + 'from your sources rather than written by hand.');
-    }
-    if (plan.unreadable.length > 0) {
-        lines.push(`• ${plan.unreadable.length} file`
-            + `${plan.unreadable.length === 1 ? ' could' : 's could'} not be read and `
-            + 'will be left out, so names declared in '
-            + `${plan.unreadable.length === 1 ? 'it' : 'them'} may be marked as `
-            + 'misspellings.');
-    }
-    lines.push('', 'Nothing else in this folder is changed.');
-    return lines.join('\n');
-}
 
 /**
  * What was written, and what is still missing.

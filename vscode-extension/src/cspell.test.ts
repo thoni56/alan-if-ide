@@ -6,6 +6,7 @@ import {
     briefFor, languagesFor, gitignoreFor, languageNames,
     describeSpellChecking, SpellCheckingFacts, fileTypeDisabledBy, fileTypeDisabledIn,
     fileTypeDisabledInBrief, fileTypeDisabledFor, wordListIsStale,
+    describePlan, EDITOR_SETTINGS,
 } from './cspell';
 import { ALAN_PATTERNS, CODE_DICTIONARIES } from './spelling';
 
@@ -642,4 +643,44 @@ test('an existing brief gains it too, not only a fresh one', () => {
     assert.equal(merged.allowWordsToBeAddTo.user, false);
     assert.equal(merged.allowWordsToBeAddTo.cspell, true);
     assert.deepEqual(merged.words, ['Aerrowan']);
+});
+
+
+/**
+ * WHAT THE MODAL PROMISES, WHICH IS EVERY FILE THAT WILL BE TOUCHED.
+ *
+ * The plan ends "Nothing else in this folder is changed", and an author reads that as
+ * the whole list. Asking VS Code to store a setting for the folder writes
+ * .vscode/settings.json, which is a file in their folder like any other, so it belongs
+ * in the list. A promise that is quietly untrue is worse than no promise.
+ */
+
+const PLAN = {
+    merging: false, gitignore: undefined, words: 962, files: 83, unreadable: [],
+};
+
+test('the plan names every file it will write', () => {
+    const text = describePlan(['en'], PLAN);
+    for (const file of ['cspell.json', 'alan-concordance.txt', '.vscode/settings.json']) {
+        assert.ok(text.includes(file), `${file} is written but not promised:\n${text}`);
+    }
+});
+
+test('the plan still closes on the promise it can now keep', () => {
+    const text = describePlan(['en'], PLAN);
+    assert.match(text, /Nothing else in this folder is changed\.$/);
+});
+
+/**
+ * ONE SETTING, AND ONLY IN THE FOLDER BEING SET UP. The editor's own settings file
+ * belongs to the author, so what we put in it stays countable: an addition here is a
+ * deliberate act, not something that accumulated.
+ */
+test('exactly one editor setting is asked for, and it is the menu entry', () => {
+    assert.equal(EDITOR_SETTINGS.length, 1);
+    assert.deepEqual(EDITOR_SETTINGS[0], {
+        section: 'cSpell',
+        key: 'menuItemsOnSpellCheckerActionMenu',
+        value: { disableFileType: false },
+    });
 });

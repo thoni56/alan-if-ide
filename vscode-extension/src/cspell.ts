@@ -276,6 +276,74 @@ export function gitignoreFor(existing: string | undefined): string | undefined {
         + `/${CONCORDANCE_FILE}\n`;
 }
 
+/**
+ * The settings we ask the EDITOR to store for the folder, rather than writing
+ * ourselves.
+ *
+ * <p>`menuItemsOnSpellCheckerActionMenu` cannot work from the brief: the menu items are
+ * gated on VS Code's own configuration, which never sees cspell.json. Measured against
+ * 4.9.1, both ways round.
+ *
+ * <p>WHY IT IS WORTH A FILE. `Disable File Type: alanif` is the first entry of cSpell's
+ * Actions Menu and comes highlighted, so one stray Enter turns spell checking off for
+ * every Alan file the author has. The way back is the same menu, which they then have
+ * no reason to open. This one key removes the entry.
+ *
+ * <p>A PARTIAL OBJECT IS RIGHT HERE, unlike in the brief: VS Code applies the schema's
+ * own defaults per property, so the rest of the menu is untouched.
+ */
+export const EDITOR_SETTINGS = [{
+    section: 'cSpell',
+    key: 'menuItemsOnSpellCheckerActionMenu',
+    value: { disableFileType: false },
+}];
+
+/** The editor settings file the folder's own settings live in. */
+export const EDITOR_SETTINGS_FILE = '.vscode/settings.json';
+
+export interface Plan {
+    merging: boolean;
+    gitignore: string | undefined;
+    words: number;
+    files: number;
+    unreadable: string[];
+}
+
+export function describePlan(languages: string[], plan: Plan): string {
+    const lines = [
+        `Language: ${languageNames(languages)}.`,
+        '',
+        plan.merging
+            ? `• Alan's settings will be merged into the ${BRIEF_FILE} already here. `
+              + 'Your own words and settings are kept, but comments and formatting in '
+              + 'that file are not preserved.'
+            : `• ${BRIEF_FILE} will be created, holding the rules that tell the `
+              + 'checker where your prose is.',
+        plan.words === 0
+            ? `• ${CONCORDANCE_FILE} will be created, but no Alan sources were found here `
+              + 'yet, so it is empty. Run this again once you have some.'
+            : `• ${CONCORDANCE_FILE} will hold ${plan.words} names taken from your `
+              + `${plan.files} source file${plan.files === 1 ? '' : 's'}, so nothing `
+              + 'in your game\'s own vocabulary is marked as a misspelling. It is '
+              + 'generated — run this command again to rebuild it. Words of your own '
+              + 'go in cspell.json instead, and are never rebuilt over.',
+    ];
+    if (plan.gitignore !== undefined) {
+        lines.push(`• ${CONCORDANCE_FILE} will be added to .gitignore, since it is rebuilt `
+            + 'from your sources rather than written by hand.');
+    }
+    if (plan.unreadable.length > 0) {
+        lines.push(`• ${plan.unreadable.length} file`
+            + `${plan.unreadable.length === 1 ? ' could' : 's could'} not be read and `
+            + 'will be left out, so names declared in '
+            + `${plan.unreadable.length === 1 ? 'it' : 'them'} may be marked as `
+            + 'misspellings.');
+    }
+    lines.push(`• A setting will be added to ${EDITOR_SETTINGS_FILE}, so that spell `
+        + 'checking of your Alan files cannot be switched off by accident.');
+    lines.push('', 'Nothing else in this folder is changed.');
+    return lines.join('\n');
+}
 /** What Check Setup can see about spell checking in one folder. */
 export interface SpellCheckingFacts {
     /** The folder being reported on; absent when no folder is open. */
