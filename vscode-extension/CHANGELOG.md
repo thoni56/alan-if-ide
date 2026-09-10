@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.8.4 — 2026-09-10
+
+- **Adding a word now keeps it with the game.** The Code Spell Checker offered three
+  places to put a word you had marked as correct, and only one of them belongs to the
+  game you are writing. Choosing one of the others made your invented names correct in
+  every other project on the machine, with nothing later to explain why the spelling of
+  a different game had gone quiet. There is one choice now, `cspell.json` in the game's
+  own folder, which is also the file that travels with the game if you share it.
+
+- **A folder set up by an earlier version is repaired.** Between 0.7.12 and 0.7.13 the
+  word list changed its name. A folder set up in that window kept pointing at the old
+  list, so the words collected from your sources were being written to one file while
+  the spell checker read another, and nothing said so. The Alan entry now says *the word
+  list is not being kept current* when it finds that, and **Alan IF: Set Up Spell
+  Checking** puts it right.
+
 ## 0.8.3 — 2026-09-09
 
 - **The Alan entry now says when your Alan files are not being checked at all.** The
