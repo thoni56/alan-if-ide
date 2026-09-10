@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.8.5 — 2026-09-10
+
+- **Spell checking can no longer be switched off by accident.** The Code Spell Checker's
+  own actions menu opened with *Disable File Type*, already highlighted, so one press of
+  Enter stopped it checking any Alan file at all. Nothing said so afterwards, and the way
+  back was that same menu, which you then had no reason to open. **Alan IF: Set Up Spell
+  Checking** now asks VS Code to take that entry away for the folder, so it is not there
+  to be pressed. A folder set up earlier gets the same when you run the command again.
+
 ## 0.8.4 — 2026-09-10
 
 - **Adding a word now keeps it with the game.** The Code Spell Checker offered three
