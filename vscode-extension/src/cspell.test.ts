@@ -609,3 +609,37 @@ test('and cSpell missing outranks both, since neither would show', () => {
     assert.equal(r.action, 'install-extension');
 });
 
+
+/**
+ * ONE ADD TARGET, WHICH IS THE ONE THE AUTHOR CAN KEEP.
+ *
+ * cSpell offers "Add to dictionary" three ways: the project's cspell.json, workspace
+ * settings, and user settings. Only the first is right here. User settings would make
+ * one game's invented vocabulary correct in every other project on the machine, and an
+ * author who picked it would never work out why spell checking had gone wrong in their
+ * other games. Measured 2026-09-09 against 4.9.1: this works from the brief, but only
+ * with EVERY key spelled out -- a partial object removed all five targets, including
+ * the two left at their defaults.
+ *
+ * <p>The concordance stays out of it either way: `addWords: false`, since a word added
+ * there dies at the next rebuild.
+ */
+
+test('the brief leaves one place for the author to add a word', () => {
+    const c = fresh();
+    assert.deepEqual(c.allowWordsToBeAddTo, {
+        cspell: true,
+        dictionaries: true,
+        user: false,
+        workspace: false,
+        folder: false,
+    });
+});
+
+test('an existing brief gains it too, not only a fresh one', () => {
+    const theirs = JSON.stringify({ version: '0.2', words: ['Aerrowan'] });
+    const merged = parse((briefFor(theirs, ['en']) as any).text);
+    assert.equal(merged.allowWordsToBeAddTo.user, false);
+    assert.equal(merged.allowWordsToBeAddTo.cspell, true);
+    assert.deepEqual(merged.words, ['Aerrowan']);
+});

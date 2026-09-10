@@ -146,6 +146,19 @@ export function languageNames(codes: string[]): string {
 function alanKeys(languages: string[]): Record<string, unknown> {
     return {
         language: (languages.length > 0 ? languages : [BUNDLED.code]).join(','),
+        // WHERE "Add to dictionary" MAY WRITE. Only the brief, which travels with the
+        // game: user settings would make one game's invented words correct in every
+        // other project, and an author who chose it would never connect the two.
+        // EVERY KEY, spelled out: measured against cSpell 4.9.1, a partial object
+        // leaves the rest unset here rather than at their defaults, which removes the
+        // targets we mean to keep. In VS Code's own settings the defaults do apply.
+        allowWordsToBeAddTo: {
+            cspell: true,
+            dictionaries: true,
+            user: false,
+            workspace: false,
+            folder: false,
+        },
         patterns: ALAN_PATTERNS,
         dictionaryDefinitions: [{
             name: CONCORDANCE_DICTIONARY,
@@ -233,6 +246,7 @@ export function briefFor(existing: string | undefined, languages: string[]): Bri
 
     const merged: Record<string, unknown> = { version: '0.2', words: [], ...config };
     merged.language = keys.language;
+    merged.allowWordsToBeAddTo = keys.allowWordsToBeAddTo;
     for (const key of lists) {
         const kept = ((config[key] as unknown[]) ?? []).filter(e => !ours(key, e));
         merged[key] = [...kept, ...(keys[key] as unknown[])];
