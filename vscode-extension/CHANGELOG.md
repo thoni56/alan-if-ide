@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.6 — 2026-09-13
+
+- **Toggle Block Comment in the Edit menu now works in Alan files.** Before, it did
+  nothing at all there. Now it does the same as `Shift+Alt+A`, and so does *Toggle Block
+  Comment* in the Command Palette. In other kinds of files they work as before.
+
 ## 0.8.5 — 2026-09-10
 
 - **Spell checking can no longer be switched off by accident.** The Code Spell Checker's
