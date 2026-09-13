@@ -25,10 +25,26 @@ const vscode = {
     window: {
         activeTextEditor: undefined as unknown,
         showInformationMessage(message: string) { said.push(message); },
+        onDidChangeActiveTextEditor(listener: (editor: unknown) => void) {
+            following.push(listener);
+            return { dispose: () => following.splice(following.indexOf(listener), 1) };
+        },
+    },
+    commands: {
+        // The extension host's rule: an id this extension already holds is an error.
+        registerCommand(id: string, handler: () => unknown) {
+            if (registered.has(id)) {
+                throw new Error(`command '${id}' already exists`);
+            }
+            registered.set(id, handler);
+            return { dispose: () => registered.delete(id) };
+        },
     },
 };
 
 const said: string[] = [];
+const registered = new Map<string, () => unknown>();
+const following: ((editor: unknown) => void)[] = [];
 
 const load = (Module as unknown as { _load: (...args: unknown[]) => unknown })._load;
 (Module as unknown as { _load: unknown })._load = function (request: string, ...rest: unknown[]) {
@@ -36,7 +52,7 @@ const load = (Module as unknown as { _load: (...args: unknown[]) => unknown })._
 };
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { toggleBlockCommentCommand } = require('./blockcomment');
+const { toggleBlockCommentCommand, takeOverBuiltInBlockComment } = require('./blockcomment');
 
 /** An editor over `text`, with the cursor or selection at each of `at`. */
 function editorOn(text: string, at: FakeRange[], languageId = 'alanif') {
@@ -122,4 +138,69 @@ test('it says so rather than editing a file that is not Alan', async () => {
     await toggleBlockCommentCommand();
     assert.equal(editor.edited.length, 0);
     assert.match(said[0], /Alan source file/);
+});
+
+/**
+ * The route in. VS Code's own Toggle Block Comment -- the Edit menu, the palette's
+ * un-prefixed entry, the default key -- runs `editor.action.blockComment`, and with no
+ * declaration to read it does nothing at all in an Alan file.
+ */
+const BUILT_IN = 'editor.action.blockComment';
+
+/** The author moves to `editor`, as VS Code reports it. */
+function switchTo(editor: unknown) {
+    vscode.window.activeTextEditor = editor;
+    for (const listener of [...following]) {
+        listener(editor);
+    }
+}
+
+test("VS Code's own Toggle Block Comment is ours in an Alan file", async () => {
+    const editor = editorOn('Some text\non\n',
+        [{ startLine: 0, startCharacter: 0, endLine: 1, endCharacter: 2 }]);
+    const takeover = takeOverBuiltInBlockComment();
+    try {
+        assert.ok(registered.has(BUILT_IN), `${BUILT_IN} is taken over`);
+        await registered.get(BUILT_IN)!();
+        assert.equal(editor.result(), '////\nSome text\non\n////\n');
+    } finally {
+        takeover.dispose();
+    }
+});
+
+test('any other kind of file gets the built-in back', () => {
+    editorOn('Some text\n', []);
+    const takeover = takeOverBuiltInBlockComment();
+    try {
+        switchTo(editorOn('some prose\n', [], 'markdown'));
+        assert.ok(!registered.has(BUILT_IN), 'not in Markdown');
+        // Focusing an output panel counts as leaving too, and must: ours would
+        // otherwise run against whatever editor is active.
+        switchTo(undefined);
+        assert.ok(!registered.has(BUILT_IN), 'not with no editor');
+    } finally {
+        takeover.dispose();
+    }
+});
+
+test('moving between Alan files keeps it, and coming back takes it again', () => {
+    editorOn('Some text\n', []);
+    const takeover = takeOverBuiltInBlockComment();
+    try {
+        switchTo(editorOn('More text\n', []));
+        assert.ok(registered.has(BUILT_IN), 'still ours in a second Alan file');
+        switchTo(editorOn('some prose\n', [], 'markdown'));
+        switchTo(editorOn('Some text\n', []));
+        assert.ok(registered.has(BUILT_IN), 'ours again after Markdown');
+    } finally {
+        takeover.dispose();
+    }
+});
+
+test('it lets go when the extension does', () => {
+    editorOn('Some text\n', []);
+    takeOverBuiltInBlockComment().dispose();
+    assert.ok(!registered.has(BUILT_IN), 'given back');
+    switchTo(editorOn('More text\n', []));
+    assert.ok(!registered.has(BUILT_IN), 'and no longer following the editor');
 });

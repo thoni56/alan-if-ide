@@ -9,7 +9,7 @@ import { createStatusItems, createPlayStatusItem, createRewrapKeyStatusItem } fr
 import { locateCompiler, locateInterpreter, checkToolchain } from './locate';
 import { ensureUtf8Sources } from './convert';
 import { rewrapStringCommand, bindRewrapKeyCommand, registerRewrapAction } from './rewrap';
-import { toggleBlockCommentCommand } from './blockcomment';
+import { toggleBlockCommentCommand, takeOverBuiltInBlockComment } from './blockcomment';
 import { registerEncodingFixes } from './quickfix';
 import { setupSpellChecking, keepConcordanceCurrent } from './spellcheck';
 import { startLanguageClient, stopLanguageClient, restartWhenServerSettingsChange,
@@ -76,6 +76,7 @@ function registerCommands(context: ExtensionContext): void {
         commands.registerCommand('alanif.convertSources', () => ensureUtf8Sources()),
         commands.registerCommand('alanif.rewrapString', () => rewrapStringCommand()),
         commands.registerCommand('alanif.toggleBlockComment', () => toggleBlockCommentCommand()),
+        takeOverBuiltInBlockComment(),
         commands.registerCommand('alanif.bindRewrapKey', () => bindRewrapKeyCommand()),
         commands.registerCommand('alanif.setupSpellChecking', () => setupSpellChecking()),
     );

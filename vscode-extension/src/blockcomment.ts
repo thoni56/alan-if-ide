@@ -1,4 +1,4 @@
-import { EndOfLine, Range, window } from 'vscode';
+import { EndOfLine, Range, TextEditor, commands, window } from 'vscode';
 import { toggleBlockComment } from './comments';
 
 /**
@@ -8,7 +8,8 @@ import { toggleBlockComment } from './comments';
  * inserts the two delimiters at the ends of the selection, inline. Alan's delimiters
  * are LINES -- see comments.ts for the rule and where it comes from -- so the built-in
  * could not produce a comment the compiler accepts in any case at all, and the
- * declaration that fed it has been withdrawn. Shift+Alt+A now arrives here.
+ * declaration that fed it has been withdrawn. Shift+Alt+A now arrives here, and so
+ * does the Edit menu -- see takeOverBuiltInBlockComment.
  *
  * <p>The command carries no rule of its own: it turns selections into line numbers,
  * asks comments.ts what the text should become, and writes one edit per selection.
@@ -49,4 +50,38 @@ export async function toggleBlockCommentCommand(): Promise<void> {
                 edit.lines.join(eol));
         }
     });
+}
+
+/** VS Code's own Toggle Block Comment: the Edit menu, the palette, the default key. */
+const BUILT_IN = 'editor.action.blockComment';
+
+/**
+ * Run ours wherever an author reaches for VS Code's own Toggle Block Comment.
+ *
+ * <p>Withdrawing the declaration left the built-in with nothing to read, so in an Alan
+ * file the Edit menu entry did nothing at all. VS Code has no hook for a language to
+ * supply its own, and an extension cannot add to the Edit menu. It can register the
+ * built-in's id, though, and the newest registration wins. So the id is ours while an
+ * Alan file is the active editor, and given back the moment it is not.
+ */
+export function takeOverBuiltInBlockComment(): { dispose(): void } {
+    let taken: { dispose(): void } | undefined;
+    const follow = (editor: TextEditor | undefined) => {
+        const alan = editor?.document.languageId === 'alanif';
+        if (alan && !taken) {
+            taken = commands.registerCommand(BUILT_IN, () => toggleBlockCommentCommand());
+        } else if (!alan && taken) {
+            taken.dispose();
+            taken = undefined;
+        }
+    };
+
+    follow(window.activeTextEditor);
+    const following = window.onDidChangeActiveTextEditor(follow);
+    return {
+        dispose() {
+            following.dispose();
+            follow(undefined);
+        },
+    };
 }
