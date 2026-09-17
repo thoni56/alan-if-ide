@@ -84,6 +84,9 @@ Palette in VS Code. Press Ctrl+Shift+P and type "alan if".
   it offers you three (ignore the others, these belong to the spell checker itself, not
   the IDE's use of it).
 
+  **If nothing is underlined** but the Spell Checker panel lists misspellings, click the
+  open eye in that panel's title bar.
+
 **If `Alt+Q` (Re-wrap String) does nothing**: the
 [Rewrap](https://marketplace.visualstudio.com/items?itemName=stkb.rewrap) extension has
 probably already bound the same key for every type of file, rather than it being bound

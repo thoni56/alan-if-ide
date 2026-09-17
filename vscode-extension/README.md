@@ -101,6 +101,9 @@ Ctrl+Shift+P and type "alan if".
   options put your game's private vocabulary into your editor's settings, where *user
   settings* would make it correct in every project you have.
 
+  **If nothing is underlined** but the Spell Checker panel lists misspellings, click the
+  open eye in that panel's title bar.
+
 ## Requirements
 
 **Java is included.** Part of the extension runs on Java, but the build for your
