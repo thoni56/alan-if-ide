@@ -41,14 +41,16 @@ letter-casing rules for Alan code shown in prose.
 
 | Section | State |
 | --- | --- |
-| Finding and fixing compiler errors | first draft — content verified, **voice not yet Thomas's** |
+| Finding and fixing compiler errors | first draft — content verified, voice pass done |
 
 Everything else is outline.
 
-The draft section was written on a machine without the writing-style conventions
-available, so it is a spike for *what* the section covers, not *how* it reads. The
-structure and every factual claim in it were checked against the source and against
-a real compiler; the prose is expected to be rewritten.
+The draft was written on a machine without the writing-style conventions available
+and has since had one voice pass. The structure and every factual claim in it were
+checked against the source and against a real compiler. The voice pass also
+changed the worked example to `Start At kitchen.` from `Start At l.`, verified
+against `alan -ide -encoding utf8` 3.0beta9: `310 E : Identifier 'kitchen' not
+defined.`
 
 ## Facts established while drafting
 
@@ -135,4 +137,9 @@ Raised against the first draft, deferred while it is still a spike.
   where each is described.
 - Decide whether the per-directory main-file rule is described as current
   behaviour or waits for the project descriptor that the code comment anticipates.
-- Voice pass: the draft was written without the writing conventions to hand.
+- **What the guide and the two READMEs should each say.** Deferred until the guide
+  is near its final form, when it will be easier to see what is worth saying twice.
+  Until then neither README changes. `vscode-extension/README.md` is the
+  Marketplace listing and has to sell the extension, so it keeps its own full
+  descriptions; the root README is the repo index; the two are kept in sync by
+  hand.
