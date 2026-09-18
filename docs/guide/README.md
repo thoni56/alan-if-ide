@@ -68,6 +68,38 @@ Checked against the code and against `alan` 3.0beta9, and worth not re-deriving:
 - `-encoding` defaults to `iso` in the compiler itself, so an ISO-8859-1 source
   compiles cleanly from the command line. The UTF-8 problem arises from the editor
   being in the loop, not from the compiler refusing the file.
+- Diagnostics are routed to files **by basename, case-insensitively** — no path is
+  involved. Two files of the same name in different folders therefore receive each
+  other's errors.
+- Xtext's own "couldn't resolve reference" errors are dropped deliberately, because
+  a `.i` fragment cannot resolve its siblings. So with no compiler installed, an
+  undefined name produces no diagnostic from either source.
+
+## Where this lives in the code
+
+Line numbers are as of commit `65d5635`; the surrounding comments are the reliable
+anchor if they drift.
+
+| Behaviour | Location |
+| --- | --- |
+| Validation entry, contributors added | `AlanResourceValidator.java:56-75` |
+| Runs on every keystroke, no debounce | `AlanLog.java:20-22`, `ValidationGuardTest.java:87` |
+| Main compiled from the editor buffer | `AlanResourceValidator.java:359-367`, `:196-197` |
+| Dirty `.i` withheld until saved | `AlanResourceValidator.java:199-206` |
+| Main-file choice (`.alan` is its own) | `AlanResourceValidator.java:173-180`, `firstAlanIn` `:382-393` |
+| Routing by basename | `AlanResourceValidator.java:210-213`, `:395-398` |
+| Xtext linking errors dropped | `AlanResourceValidator.java:64-66` |
+| Known limitations, stated by the class | `AlanResourceValidator.java:39-48` |
+| Invocation `alan -ide -encoding utf8` | `AlanCompilerRunner.java:94-110` |
+| Output parse regex | `AlanCompilerRunner.java:49-52` |
+| Severity mapping | `AlanCompilerRunner.java:235-241`, `AlanResourceValidator.java:409-415` |
+| `alanif.mainFile`, Play only | `vscode-extension/src/play.ts:103-128` |
+| What the server is actually told | `vscode-extension/src/client.ts:236-239`, `AlanServerExtension.java:27-29` |
+| Missing-compiler surfaces | `vscode-extension/src/extension.ts:111-125`, `src/status.ts:209-224`, `src/toolchain.ts:396-415` |
+
+The per-directory main-file heuristic is knowingly provisional — the comment at
+`AlanResourceValidator.java:173-175` says an explicit main "comes with the project
+descriptor later". Worth knowing before the guide describes it as settled.
 
 ## Discrepancies found in the READMEs
 
