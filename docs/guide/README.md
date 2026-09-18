@@ -65,9 +65,12 @@ Checked against the code and against `alan` 3.0beta9, and worth not re-deriving:
   saved.
 - The "main file" for diagnostics is the alphabetically first `.alan` file in the
   same directory as the file being validated, chosen per file and non-recursively.
-- `-encoding` defaults to `iso` in the compiler itself, so an ISO-8859-1 source
-  compiles cleanly from the command line. The UTF-8 problem arises from the editor
-  being in the loop, not from the compiler refusing the file.
+- The IDE passes `-encoding utf8` deliberately, because VS Code's editor convention
+  is UTF-8 and the Alan compiler is moving that way too. The bare compiler still
+  defaults to `-encoding iso`, so an ISO-8859-1 source compiles cleanly from a
+  terminal — but that default is legacy, and nothing in the guide should lean on
+  it. Under the IDE such a file genuinely cannot be read, which is what the UTF-8
+  conversion command exists to fix.
 - Diagnostics are routed to files **by basename, case-insensitively** — no path is
   involved. Two files of the same name in different folders therefore receive each
   other's errors.
@@ -111,8 +114,25 @@ Not yet fixed — listed here so the guide does not inherit them.
 2. **"it compiles the *main* `.alan` file"** suggests a project-wide main. It is
    per-directory and non-recursive, so a `.i` file in a subfolder with no `.alan`
    beside it gets no compiler diagnostics at all, silently.
-3. **"the compiler cannot read them at all"** (UTF-8 bullet) overstates it — see the
-   `-encoding iso` default above.
-4. **"diagnostics are simply skipped"** without a compiler — syntax errors and the
+3. **"diagnostics are simply skipped"** without a compiler — syntax errors and the
    ISO-8859-1 check still report; it is only compiler diagnostics that stop.
-5. Robert's guide quotes error `301 E` where the current compiler emits `310 E`.
+4. Robert's guide quotes error `301 E` where the current compiler emits `310 E`.
+
+An earlier version of this list claimed the READMEs overstated the UTF-8 problem,
+on the strength of the bare compiler's `-encoding iso` default. That was wrong: the
+IDE forces `-encoding utf8` on purpose, so the READMEs describe the situation an
+author is actually in. Struck rather than left to be acted on.
+
+## To do
+
+Raised against the first draft, deferred while it is still a spike.
+
+- **The section reads as though compiler errors are the only errors there are.**
+  The Problems panel carries three sources: syntax errors from Xtext's incremental
+  parser, the compiler's own errors, and spell checking. An author does not see
+  them as three systems, so the guide needs a frame that covers all three — either
+  a broader section than this one, or an opening that says which is which and
+  where each is described.
+- Decide whether the per-directory main-file rule is described as current
+  behaviour or waits for the project descriptor that the code comment anticipates.
+- Voice pass: the draft was written without the writing conventions to hand.
