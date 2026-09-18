@@ -1,0 +1,193 @@
+= Finding and fixing compiler errors
+
+Compiler errors are the errors you will meet most often, and the ones the IDE is
+most useful for.
+This section is about reading them, getting to them, and knowing when the absence
+of one means something.
+
+== You do not run the compiler
+
+There is no build command and no button to press.
+The real Alan compiler runs while you type, and what you see in the editor is its
+opinion of the adventure as it stands at that keystroke.
+
+This has one consequence worth stating plainly, because it differs from the file
+you are editing to the files it imports.
+
+The `.alan` file you are working in is compiled *from the editor*, unsaved text and
+all.
+You do not have to save to see whether what you have just written compiles.
+
+An imported `.i` file is compiled *from the disk*, because that is where the
+compiler reads it from.
+While such a file has unsaved changes, the IDE shows no compiler errors for it at
+all, rather than showing you errors from the version on disk that no longer matches
+what you are looking at.
+Save the file and its errors appear.
+
+[NOTE]
+====
+If a `.i` file has stopped reporting errors, look at its tab for the unsaved dot
+before looking for anything else.
+This is the single most likely reason.
+====
+
+== Where the errors appear
+
+An error shows up in three places at once, and you can work from whichever suits
+what you are doing.
+
+*In the text*, as a red underline on the part of the line the compiler objected to.
+Hover over it to read the message.
+
+*In the Problems panel* (menu:View[Problems], or kbd:[Ctrl+Shift+M]), as a list
+grouped by file.
+Click an entry and the editor opens that file and puts the cursor on the error.
+This is the one to use when the adventure spans several files, because it collects
+errors from all of them.
+
+*In the status bar*, as a count of errors and warnings.
+Clicking it opens the Problems panel.
+
+== Reading an Alan error
+
+Take the smallest broken adventure there is, a main file containing nothing but a
+start clause pointing at a location that was never written:
+
+[source,alan]
+----
+Start At l.
+----
+
+The compiler reports:
+
+----
+310 E : Identifier 'l' not defined.
+----
+
+There are three parts.
+
+`310` is the compiler's own error number.
+It is stable across versions and is the thing to quote when asking another author
+what an error means.
+In the Problems panel it appears as the diagnostic code `alan.compiler.310`.
+
+`E` is the severity.
+`E` is an error and stops an adventure being generated.
+`W` is a warning: the adventure is still built, but the compiler thinks you probably
+did not mean this.
+`F` and `S`, which you are unlikely to ever see, are a fatal error and an internal
+compiler error; the IDE shows both as errors.
+
+The rest is the message, written from the compiler's point of view.
+Here it is telling you that something referred to a name, `l`, that nothing
+declares.
+The fix is to write the location, or to correct the start clause to name one that
+exists.
+
+[NOTE]
+====
+The compiler also has a class of purely informational messages, marked `I`.
+The IDE does not ask for them, so they do not reach the Problems panel.
+====
+
+== Errors in a file you are not looking at
+
+This is where an IDE earns its place, and where the Alan IF IDE behaves differently
+from what you might expect, so it is worth understanding rather than discovering.
+
+An Alan adventure is compiled as a whole, from its main file.
+An error in an imported `.i` file is therefore *found* while compiling the main
+file, but it *belongs* to the `.i` file, and that is where the IDE puts it.
+You get a red underline on the offending line of `lib/rooms.i` even though the
+compiler was invoked on `game.alan`, and the Problems panel lists it under
+`lib/rooms.i`.
+
+So a single mistyped name in a file you have not opened for a week still finds you.
+
+=== Which file counts as the main file
+
+The rule is mechanical, and it is not the setting you might expect.
+
+When you are editing a `.alan` file, *that file is the main file*.
+It is compiled as itself.
+
+When you are editing a `.i` file, the IDE compiles *the first `.alan` file in the
+same directory*, in alphabetical order.
+It does not search subdirectories, and it does not look at the folder above.
+
+[IMPORTANT]
+====
+The `alanif.mainFile` setting does *not* affect this.
+That setting tells *Play* which adventure to run, and nothing else.
+Diagnostics do not read it.
+====
+
+Two consequences follow, and both are worth knowing before they puzzle you.
+
+If a directory holds more than one `.alan` file, the alphabetically first one is
+used, silently.
+If that is not the one that imports the `.i` you are editing, the errors you see
+will be that other adventure's.
+
+If a `.i` file sits in a directory with no `.alan` file beside it — a `lib/`
+subfolder, say — then there is no main file to compile, and *that file gets no
+compiler errors at all*.
+Nothing is reported to say so.
+The file simply stays quiet, however wrong it is.
+Open a `.alan` file that imports it, and the errors appear there against the
+imported file as described above.
+
+=== Two files with the same name
+
+Errors are matched to files by filename alone, ignoring the directory.
+If your adventure has a `chapter.i` in two different folders, both will show the
+same errors, and one set of them will be wrong.
+Give such files distinct names.
+
+== When you see no errors at all
+
+An empty Problems panel is good news only if the compiler is actually running.
+There are a few ways for it to be quiet for the wrong reason.
+
+*No compiler is installed or configured.*
+Without the Alan compiler the IDE cannot produce compiler errors, and it does not
+invent them.
+Syntax errors from the editor's own parser still appear, but undefined names,
+type errors and everything else the compiler checks will go unreported.
+Run menu:Command Palette[Alan IF: Check Setup] to see whether a compiler was found
+and where.
+The language status bubble beside "Alan" in the status bar says the same thing while
+an Alan file is open, and a `⚠ Alan setup` item appears in the status bar whenever
+something is missing.
+
+*The file you are editing has unsaved changes and is a `.i` file.*
+See above; save it.
+
+*The `.i` file has no `.alan` file beside it.*
+See above; there is nothing to compile it as part of.
+
+*Something went wrong running the compiler.*
+The IDE does not interrupt you with a dialogue for this.
+It writes to its output channel instead: menu:View[Output], then choose *Alan IF
+Language Server* from the dropdown.
+A compiler that could not be started, one that took longer than a minute, or one too
+old to understand the options the IDE passes it, all report themselves there.
+
+== A practical loop
+
+Nothing here needs a ritual, but the shape that works is small steps.
+
+Write a little.
+Watch the underline appear and go away as you type.
+When you have finished a passage, save, which is also what lets any imported file
+you touched report itself.
+Glance at the Problems panel before moving on, so that an error in a file you are
+not looking at does not accumulate a week of company.
+
+[TIP]
+====
+Because the main file you are editing is compiled on every keystroke, a very large
+adventure can make typing feel heavy.
+If that happens, it is the compile you are feeling, not the editor.
+====
