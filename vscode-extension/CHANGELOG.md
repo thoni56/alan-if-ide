@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.8.7 — 2026-10-09
+
+- **Spell checking no longer goes quiet for a whole file because of a quote in a
+  comment.** One `"` inside a `--` comment — in a commented-out line of prose, say —
+  stopped every string below it in that file from being checked. Worse than stopping:
+  the prose was skipped and the code between the strings was checked in its place, so
+  there were no underlines anywhere and nothing to suggest why. One file simply stopped
+  being spell checked while the rest of the game was fine, and there is nothing visibly
+  wrong with such a file to go on. The checker now knows that a quote inside a comment
+  does not start a string. In the game this was found in, that file went from no
+  underlines at all to thirteen, every one of them a real typo; five false underlines
+  elsewhere in the same game, read out of commented-out prose, are gone as well.
+
+  A quote left unbalanced in a comment is perfectly good Alan, and a `--` written as a
+  dash inside your prose stays prose — `------Exits------` is checked as it always was.
+
+- **A folder set up by an earlier version needs setting up once more.** The rule above
+  lives in the `cspell.json` in your game folder, so **Alan IF: Set Up Spell Checking**
+  has to be run again there before the fix reaches that game. Running it keeps the words
+  you have added and any settings of your own in that file, and replaces only what Alan
+  put there.
+
 ## 0.8.6 — 2026-09-13
 
 - **Toggle Block Comment in the Edit menu now works in Alan files.** Before, it did
