@@ -28,9 +28,28 @@ import { stringSpans } from './strings';
  * touching `$$` is a FRAGMENT, not a word, and no dictionary in any language can
  * hold it. Same for the `$+1` form. This is the rule nobody predicted, including
  * the person who designed the markers.
+ *
+ * <p>A QUOTE IN A COMMENT IS NOT A QUOTE, and it is the lookbehind that says so.
+ * cSpell takes a regex, not a lexer, so it pairs quotes from the top of the file: one
+ * unbalanced `"` inside a `--` comment shifts the parity of every quote below it and
+ * INVERTS the file -- the code is checked and the prose is skipped. There is no
+ * squiggle anywhere, in a file with nothing visibly wrong with it, and the author can
+ * only report that spell checking stopped working here. Reported from the field, by
+ * the first author to use it, on a comment holding a commented-out line of prose.
+ * Measured with the real cSpell: 0 unknown words in that file before, 13 after.
+ *
+ * <p>Refusing to OPEN a string at a quote with a `--` earlier on its line restores the
+ * parity of everything below. Checked against stringSpans in strings.ts, which is a
+ * real lexer, over 104 files and 9936 literals from 18 games: exact agreement, where
+ * the bare pattern misses 13 literals and invents 401 across 27 files. It is still not
+ * a lexer, and the two cases it cannot see are worth knowing: `"a -- b" "c"` loses the
+ * second string, which the bare pattern kept, and a quote inside a `////` block
+ * comment or a quoted id still shifts parity, which the bare pattern broke too.
+ * Neither appears in any game to hand, and the costs are not comparable -- a lost
+ * string leaves one line unchecked, where a parity shift silently inverts a whole file.
  */
 export const ALAN_PATTERNS = [
-    { name: 'alan-string', pattern: '/"(?:[^"]|"")*"/g' },
+    { name: 'alan-string', pattern: '/(?<!--[^\\n]*)"(?:[^"]|"")*"/g' },
     { name: 'alan-marker', pattern: '/\\$[a-zA-Z$]/g' },
     {
         name: 'alan-glued',

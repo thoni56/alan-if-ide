@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import * as assert from 'node:assert';
 import { contribution, concordanceText, ALAN_PATTERNS, ALAN_INCLUDE, ALAN_IGNORE } from './spelling';
+import { stringSpans } from './strings';
 
 test('the words an author types are collected, and the programmer\'s are not', () => {
     const words = contribution(`
@@ -76,6 +77,43 @@ test('the patterns keep a marker from swallowing the word after it', () => {
     assert.deepStrictEqual(ALAN_INCLUDE, ['alan-string']);
     assert.deepStrictEqual(ALAN_IGNORE, ['alan-marker', 'alan-glued']);
 });
+
+test('a quote inside a comment does not invert the rest of the file', () => {
+    // THE FIELD REPORT: spell checking "stopped working" in one file, and the cause was
+    // this line of it. cSpell pairs quotes with a regex, so the unbalanced quote in the
+    // comment used to swallow the real string after it and shift every quote below --
+    // checking the code and skipping the prose, with no squiggle anywhere to say so.
+    const source = '\t-- "$t$t$t\n\t"Prologue"\n\t"It is late at night."\n';
+    assert.deepStrictEqual(
+        stringsMatched(source), ['"Prologue"', '"It is late at night."']);
+
+    // The lexer in strings.ts is the specification, so the pattern is held to it.
+    assert.deepStrictEqual(
+        stringsMatched(source),
+        stringSpans(source).map(s => source.slice(s.start, s.end)));
+});
+
+test('a dash inside prose is prose, not the start of a comment', () => {
+    // Alan authors use -- as an em dash and as a rule across the screen, so a pattern
+    // that treated every -- as a comment would stop checking the prose that follows it.
+    for (const source of [
+        '"$p$t------Exits------"\n',
+        '"Redicia flowers -- Attraction\n more -- Repulsion"\n',
+        '"$nNORTH --> open doorway"\n',
+    ]) {
+        assert.deepStrictEqual(
+            stringsMatched(source),
+            stringSpans(source).map(s => source.slice(s.start, s.end)),
+            source);
+    }
+});
+
+/** What cSpell would check: the `alan-string` pattern applied as cSpell applies it. */
+function stringsMatched(source: string): string[] {
+    const string = ALAN_PATTERNS.find(p => p.name === 'alan-string')!;
+    const body = string.pattern.replace(/^\//, '').replace(/\/g$/, '');
+    return source.match(new RegExp(body, 'g')) ?? [];
+}
 
 test('a word glued to $$ is a fragment, and is not checked', () => {
     const glued = ALAN_PATTERNS.find(p => p.name === 'alan-glued')!;
