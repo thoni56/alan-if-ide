@@ -193,7 +193,24 @@ function alanKeys(languages: string[]): Record<string, unknown> {
  */
 const LEGACY_DICTIONARIES = ['alan-project-names'];
 
-/** Whether a `patterns` or `languageSettings` entry is one of ours. */
+/**
+ * Whether a `patterns` or `languageSettings` entry is one of ours.
+ *
+ * <p>BY NAME, which is what makes the merge able to correct itself: an entry called
+ * `alan-string` is ours whatever regex it holds, so CHANGING A PATTERN NEEDS NOTHING
+ * DONE HERE. The author's stale copy is dropped and the current one re-appended the
+ * next time they run the setup command. That is how the 0.8.7 fix reaches a folder
+ * set up by an earlier version.
+ *
+ * <p>RETIRING A PATTERN NAME IS THE CASE THAT NEEDS WORK, and it is not symmetrical
+ * with the above. `patterns` is matched against the names we write TODAY, so a name we
+ * stop writing stops being recognised as ours and sits in the author's file for good.
+ * `dictionaryDefinitions` has {@link LEGACY_DICTIONARIES} for exactly this, and a
+ * retired pattern name would need the same list beside it -- there is none yet only
+ * because no pattern has ever been renamed. It leaves clutter rather than a fault: we
+ * replace the whole `alanif` languageSettings, so an orphaned definition is referenced
+ * by no include or ignore list and suppresses nothing.
+ */
 function ours(key: string, entry: unknown): boolean {
     const named = entry as { name?: unknown; languageId?: unknown };
     if (key === 'languageSettings') { return named?.languageId === ALAN_FILE_TYPE; }
