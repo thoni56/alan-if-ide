@@ -29,12 +29,13 @@ letter-casing rules for Alan code shown in prose.
 | --- | --- |
 | About this guide | who it is for, which version, Robert's guide as ancestor |
 | Getting set up | what you need · installing the extension (marketplace / author profile / VSIX) · pointing it at the compiler · **Check Setup** as the "is it working" page |
-| Starting a new game | a folder, not a project — the one real shift from Eclipse · the main `.alan` file, `Start At`, `.i` imports · watching it compile as you type |
+| Starting a new game | a folder, not a project — the one real shift from Eclipse · the main `.alan` file and `Start At` · watching it compile as you type |
 | **Finding and fixing compiler errors** | reading an error · the Problems panel · which file is compiled · when silence is the wrong kind |
 | Finding your way around | outline · Go to Definition · the verb case (syntax plus the override chain) · Find All References and its scoping |
 | Keeping the source tidy | Format Document · Re-wrap String and why strings are special · Toggle Block Comment and Alan's whole-line `////` |
 | Spelling your prose | brief / concordance / glossary |
 | Playing and testing | Play (▶) · terminal vs WinArun · the test loop |
+| Advanced use | the standard library · your own `.i` files and imports · which file is the main file · two files with the same name |
 | Housekeeping | UTF-8 conversion · settings · key bindings, including Alt+Q when Rewrap has taken it |
 
 ## Status
@@ -43,6 +44,8 @@ letter-casing rules for Alan code shown in prose.
 | --- | --- |
 | Getting set up | first draft — content verified |
 | Finding and fixing compiler errors | first draft — content verified, voice pass done |
+| Starting a new game | notes only — content verified |
+| Advanced use | notes only, imports — content verified |
 
 Everything else is outline.
 
@@ -119,6 +122,12 @@ Checked against the extension sources at `1981ba5` and `package.json` 0.8.6:
 - The `⚠ Alan setup` status bar item is shown only while an Alan file is the active
   editor.
 
+### Starting a new game
+
+Kept as notes in `starting-a-new-game.adoc` itself, until the prose replaces them.
+The library and import facts are in `advanced-use.adoc`. The guide is written for a
+beginner's first game, which needs neither, so they wait for that part.
+
 ## Where this lives in the code
 
 Line numbers are as of commit `65d5635`; the surrounding comments are the reliable
@@ -146,6 +155,10 @@ anchor if they drift.
 | Check Setup rows and their actions | `locate.ts:96-256` |
 | Check Setup restores the startup notice | `locate.ts:98-102`, `extension.ts:105-125` |
 | The alarm, and when it is visible | `toolchain.ts:419-447`, `status.ts:108-135`, `:319-325` |
+| Imports resolve against the main's folder (`-include` and working directory) | `AlanCompilerRunner.java:89-110` (at `34b03b5`) |
+| The compiler's outputs deleted after each compile | `AlanCompilerRunner.java:157-185` |
+| `.i` mapped to Alan | `vscode-extension/package.json:237-240` |
+| Play's choice of file, in order | `vscode-extension/src/play.ts:95-128` |
 
 The per-directory main-file heuristic is knowingly provisional — the comment at
 `AlanResourceValidator.java:173-175` says an explicit main "comes with the project
@@ -185,6 +198,11 @@ Raised against the first draft, deferred while it is still a spike.
   where each is described.
 - Decide whether the per-directory main-file rule is described as current
   behaviour or waits for the project descriptor that the code comment anticipates.
+- Move *Errors in a file you are not looking at*, with *Which file counts as the main
+  file* and *Two files with the same name*, from *Finding and fixing compiler errors*
+  to *Advanced use*. A first game in one folder never meets them.
+- Check in the editor what Restricted Mode does to the extension on a folder the
+  author has not trusted.
 - Two screenshots are marked with `// TODO:` in *Getting set up* — the Extensions view,
   and Check Setup with one row wanting attention.
 - **What the guide and the two READMEs should each say.** Deferred until the guide

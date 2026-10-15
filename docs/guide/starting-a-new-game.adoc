@@ -1,0 +1,46 @@
+= Starting a new game
+:experimental:
+
+// NOTES, NOT PROSE YET.
+// Verified against the extension sources at 34b03b5 and alan 3.0beta9, by compiling
+// the way the IDE does: a temp copy of the main file, with the working directory and
+// -include both set to the main file's folder.
+// Where each fact lives in the code is in README.md.
+
+== A folder, not a project
+
+* There is no project and no New Project command.
+A game is a folder, opened with menu:File[Open Folder...].
+Nothing has to be created besides the source files.
+* `.alan` is the language's own extension.
+`.i` is mapped to Alan through a `files.associations` default, so an author's own association for `*.i` wins over it.
+* There is no command for creating a `.i` file.
+Use the Explorer's New File.
+* Without a folder open, diagnostics still work, since the compile only needs the file's own folder.
+A relative `alanif.mainFile` and Play's last fallback need a folder.
+* `package.json` declares no `untrustedWorkspaces` capability.
+What an author gets after answering *No* to VS Code's "Do you trust the authors" question on a new folder is not checked in the editor yet.
+* Each compile writes `alan-lsp-<n>.a3c` and `alan-lsp-<n>.ifid` into the game folder, named after the temp copy, and the IDE deletes them straight afterwards.
+Whether they flicker in the Explorer is not checked.
+
+== The main file and Start At
+
+// Written for a beginner's first game, which is small.
+// No imports and no library: a game does not need either. Both are in advanced-use.adoc.
+
+* The smallest game that compiles is a location and a start clause:
++
+[source,alan]
+----
+The kitchen Isa location.
+End The kitchen.
+
+Start At kitchen.
+----
+* Play picks its file as: `alanif.mainFile`; else the active `.alan` file; else the first `.alan` beside the active `.i`; else the first `.alan` anywhere in the folder.
+
+== Watching it compile as you type
+
+* The `.alan` file is compiled on every keystroke, from the editor, unsaved text and all.
+There is no build command and nothing to save first.
+Details are in finding-and-fixing-compiler-errors.adoc, under "You do not run the compiler".

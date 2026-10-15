@@ -1,0 +1,36 @@
+= Advanced use
+:experimental:
+
+// NOTES, NOT PROSE YET.
+// Verified against the extension sources at 34b03b5 and alan 3.0beta9, by compiling
+// the way the IDE does: a temp copy of the main file, with the working directory and
+// -include both set to the main file's folder.
+// The compiler's import lookup may change, so check these again before writing.
+
+== The standard library
+
+* With the standard library (StdLib v2.2.0-WIP) the game also needs a `my_game`:
++
+[source,alan]
+----
+Import 'library.i'.
+
+The my_game Isa definition_block.
+End The my_game.
+----
++
+Without it the library itself reports `310 E : Identifier 'my_game' not defined.` many times over, ending in `7 W : Maximum number of messages exceeded.`
+* The library files have to lie loose in the game folder, see below.
+
+== Your own imported files
+
+* Imports resolve against the main file's folder, not the importing file's.
+`Import 'lib/rooms.i'.` finds `lib/rooms.i`.
+`Import 'rooms.i'.` does not, and gives `199 F : Adventure source file (rooms.i) not found.`
+* So the standard library does not work from a subfolder.
+`library.i` imports its siblings by bare name, and every one of them is `199 F` not found.
+There is no include-path setting to change that.
+* A backslash in an Import path is not found on Linux.
+Windows is untested.
+* An imported `.i` is compiled from disk, and shows no compiler errors while it has unsaved changes.
+* The author profile auto-saves after 800 ms, so with it the "unsaved `.i` shows no errors" case lasts under a second.
