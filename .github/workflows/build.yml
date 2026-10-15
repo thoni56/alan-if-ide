@@ -341,3 +341,15 @@ jobs:
             echo "!! not published: ${failed[*]}"
             exit 1
           fi
+
+  # The author's guide. On its own so a failure here does not hold up a release.
+  guide:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Asciidoctor
+        run: sudo apt-get update -q && sudo apt-get install -y -q asciidoctor
+
+      - name: Render the guide
+        run: docs/guide/check.sh

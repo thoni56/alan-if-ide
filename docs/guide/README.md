@@ -57,7 +57,7 @@ Neither section has its screenshots yet.
 Both files set `:experimental:` in their header. Without it Asciidoctor renders
 `kbd:[Ctrl+Shift+P]` and `menu:File[...]` as literal source text, silently — found
 by rendering the two drafts, where every keystroke and menu path in both of them was
-coming out raw.
+coming out raw. `check.sh` renders every section and fails if that happens again.
 
 ## Facts established while drafting
 
@@ -185,9 +185,6 @@ Raised against the first draft, deferred while it is still a spike.
   where each is described.
 - Decide whether the per-directory main-file rule is described as current
   behaviour or waits for the project descriptor that the code comment anticipates.
-- A render check, when the guide gets a build: render each section and fail if a
-  `kbd:` or `menu:` macro survives into the HTML. That is what caught the missing
-  `:experimental:`, and nothing else would have.
 - Two screenshots are marked with `// TODO:` in *Getting set up* — the Extensions view,
   and Check Setup with one row wanting attention.
 - **What the guide and the two READMEs should each say.** Deferred until the guide
