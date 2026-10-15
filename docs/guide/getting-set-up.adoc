@@ -102,7 +102,7 @@ You can have spell checking on in one game and not in another.
 A `⚠ Alan setup` item appears in the status bar while an Alan file is open, and stays until the setup is sound.
 Hover over it to see what is missing, click it to open Check Setup.
 
-If `alanif.compiler.path`, or `alanif.interpreter.path`, points at something that does not run as the Alan compiler, the extension will say so and try the other locations.
+If `alanif.compiler.path`, or `alanif.arun.path`, points at something that does not run as the Alan compiler, the extension will say so and try the other locations.
 
 [TIP]
 ====
