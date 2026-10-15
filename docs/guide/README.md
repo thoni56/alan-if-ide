@@ -50,7 +50,7 @@ Everything else is outline.
 writing-style conventions available and has since had one voice pass, which also
 changed the worked example to `Start At kitchen.` from `Start At l.`, verified
 against `alan -ide -encoding utf8` 3.0beta9: `310 E : Identifier 'kitchen' not
-defined.` *Getting set up* was written in the intended voice from the start.
+defined.` *Getting set up* is Thomas's own rewrite.
 
 Neither section has its screenshots yet.
 

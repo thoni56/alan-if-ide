@@ -1,7 +1,7 @@
 = Getting set up
 :experimental:
 
-Getting setup to use the Alan IF IDE is a one-time task, and it is not hard.
+Getting set up to use the Alan IF IDE is a one-time task, and it is not hard.
 Basically you install the extension, point it at the Alan compiler, and check that it worked.
 You will probably only need to do this once.
 
@@ -23,7 +23,7 @@ Download the package for your platform and unpack it. Make sure that the `alan` 
 Then you need to install the Alan IF IDE extension in it.
 That is enough to write and read Alan: the highlighting, the outline, navigation and formatting are all part of the extension.
 
-Part of the extension runs on Java and the build for your platform brings its own, so for the most common platforms you do not need to install Java yourself. If you are on an exotic platform where the Alan IF IDE don't package a Java runtime or would rather it used yours, there is a setting for that: the `alanif.java.home` setting.
+Part of the extension runs on Java and the build for your platform brings its own, so for the most common platforms you do not need to install Java yourself. If you are on an exotic platform where the Alan IF IDE doesn't package a Java runtime or would rather it used yours, there is a setting for that: the `alanif.java.home` setting.
 
 == Setting up the IDE
 
@@ -40,7 +40,7 @@ This works in VS Code and in its open source variants VSCodium, Gitpod or Cursor
 // TODO: point to where the profile is, and what it does.
 
 The profile installs the extension and a calmer editor setting with it, set up for writing rather than for code, which is the common use for Visual Studio Code.
-The profile hides some distracting elements like the minimap, breadcrumbs, word wrap on, and the configured so that the enclosing `every X` or `verb Y` kept in view while you scroll.
+The profile hides some distracting elements like the minimap and breadcrumbs, turns word wrap on, and is configured so that the enclosing `every X` or `verb Y` is kept in view while you scroll.
 Download the `alanif.code-profile` from the releases page and import it with menu:File[Preferences > Profiles > Import Profile...].
 
 === Or install a file
@@ -94,7 +94,7 @@ So the page where you can find out if something is wrong is also the place where
 [NOTE]
 ====
 Spell checking is set up, and shows status, per folder, but the other rows are per machine.
-You can have spellchecking on in one game and not in another.
+You can have spell checking on in one game and not in another.
 ====
 
 == When something is missing
@@ -102,7 +102,7 @@ You can have spellchecking on in one game and not in another.
 A `⚠ Alan setup` item appears in the status bar while an Alan file is open, and stays until the setup is sound.
 Hover over it to see what is missing, click it to open Check Setup.
 
-If `alanif.compiler.path`, or `alanif.interpreter.path`, points at something that does not run as the Alan compiler, the extension will say so and tries the other locations.
+If `alanif.compiler.path`, or `alanif.interpreter.path`, points at something that does not run as the Alan compiler, the extension will say so and try the other locations.
 
 [TIP]
 ====
