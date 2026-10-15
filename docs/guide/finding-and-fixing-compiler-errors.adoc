@@ -1,4 +1,5 @@
 = Finding and fixing compiler errors
+:experimental:
 
 The compiler tells you what is wrong with your adventure, and the IDE shows you where.
 This section is about reading what it says, and getting to it.
