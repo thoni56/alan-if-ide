@@ -209,8 +209,8 @@ Raised against the first draft, deferred while it is still a spike.
 - Move *Errors in a file you are not looking at*, with *Which file counts as the main
   file* and *Two files with the same name*, from *Finding and fixing compiler errors*
   to *Advanced use*. A first game in one folder never meets them.
-- Check in the editor what Restricted Mode does to the extension on a folder the
-  author has not trusted.
+- The guide says nothing about Workspace Trust. It assumes #4 is fixed, so the
+  extension works in a new folder before the author has trusted it.
 - Two screenshots are marked with `// TODO:` in *Getting set up* — the Extensions view,
   and Check Setup with one row wanting attention.
 - **What the guide and the two READMEs should each say.** Deferred until the guide

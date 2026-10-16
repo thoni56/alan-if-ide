@@ -34,3 +34,7 @@ There is no include-path setting to change that.
 Windows is untested.
 * An imported `.i` is compiled from disk, and shows no compiler errors while it has unsaved changes.
 * The author profile auto-saves after 800 ms, so with it the "unsaved `.i` shows no errors" case lasts under a second.
+
+== More than one main file
+
+* Play picks its file as: `alanif.mainFile`; else the active `.alan` file; else the first `.alan` beside the active `.i`; else the first `.alan` anywhere in the folder.
