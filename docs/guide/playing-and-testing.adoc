@@ -1,0 +1,4 @@
+= Playing and testing
+:experimental:
+
+// NOT WRITTEN YET. Planned: Play (▶) · terminal vs WinArun · the test loop.

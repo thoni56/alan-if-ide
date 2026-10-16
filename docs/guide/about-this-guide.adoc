@@ -1,0 +1,4 @@
+= About this guide
+:experimental:
+
+// NOT WRITTEN YET. Planned: who it is for, which version, Robert's guide as ancestor.

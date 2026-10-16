@@ -30,13 +30,18 @@ letter-casing rules for Alan code shown in prose.
 | About this guide | who it is for, which version, Robert's guide as ancestor |
 | Getting set up | what you need · installing the extension (marketplace / author profile / VSIX) · pointing it at the compiler · **Check Setup** as the "is it working" page |
 | Starting a new game | a folder, not a project — the one real shift from Eclipse · the main `.alan` file and `Start At` · watching it compile as you type |
+| Playing and testing | Play (▶) · terminal vs WinArun · the test loop |
 | **Finding and fixing compiler errors** | reading an error · the Problems panel · which file is compiled · when silence is the wrong kind |
 | Finding your way around | outline · Go to Definition · the verb case (syntax plus the override chain) · Find All References and its scoping |
 | Keeping the source tidy | Format Document · Re-wrap String and why strings are special · Toggle Block Comment and Alan's whole-line `////` |
 | Spelling your prose | brief / concordance / glossary |
-| Playing and testing | Play (▶) · terminal vs WinArun · the test loop |
 | Advanced use | the standard library · your own `.i` files and imports · which file is the main file · two files with the same name |
 | Housekeeping | UTF-8 conversion · settings · key bindings, including Alt+Q when Rewrap has taken it |
+
+Each part is a chapter file of its own, and `guide.adoc` includes them in this order
+as one book. A chapter file is still a complete document, so GitHub shows it alone.
+GitHub does not follow `include::`, so `guide.adoc` only makes sense rendered.
+`check.sh` fails if a chapter file is left out of `guide.adoc`.
 
 ## Status
 

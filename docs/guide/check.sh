@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Render every section of the guide and fail if a kbd: or menu: macro comes out as
 # literal text. Asciidoctor does that silently when a file lacks :experimental:.
-# Also fail on any `alanif.*` name that is not a setting or command in package.json.
+# Also fail on any `alanif.*` name that is not a setting or command in package.json,
+# and unless guide.adoc includes every chapter, and only chapters that exist.
 # Usage: check.sh [file.adoc ...], default all sections beside this script.
 set -e
 cd "$(dirname "$0")"
@@ -24,4 +25,18 @@ for f in "$@"; do
         failed=1
     done
 done
+master=guide.adoc
+if [ ! -f $master ]; then
+    echo "$master: missing"
+    failed=1
+else
+    included=$(sed -n -E 's/^include::([^[]+)\[.*/\1/p' $master)
+    for f in $included; do
+        [ -f "$f" ] || { echo "$master: includes $f, which does not exist"; failed=1; }
+    done
+    for f in *.adoc; do
+        [ "$f" = $master ] && continue
+        grep -qx "$f" <<<"$included" || { echo "$master: does not include $f"; failed=1; }
+    done
+fi
 exit $failed

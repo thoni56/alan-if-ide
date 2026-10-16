@@ -1,0 +1,4 @@
+= Spelling your prose
+:experimental:
+
+// NOT WRITTEN YET. Planned: brief / concordance / glossary.

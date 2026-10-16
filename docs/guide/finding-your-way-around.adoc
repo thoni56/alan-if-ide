@@ -1,0 +1,4 @@
+= Finding your way around
+:experimental:
+
+// NOT WRITTEN YET. Planned: outline · Go to Definition · the verb case (syntax plus the override chain) · Find All References and its scoping.

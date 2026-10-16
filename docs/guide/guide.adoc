@@ -1,0 +1,15 @@
+= Alan IF IDE Author's Guide
+:doctype: book
+:toc: left
+:experimental:
+
+include::about-this-guide.adoc[leveloffset=+1]
+include::getting-set-up.adoc[leveloffset=+1]
+include::starting-a-new-game.adoc[leveloffset=+1]
+include::playing-and-testing.adoc[leveloffset=+1]
+include::finding-and-fixing-compiler-errors.adoc[leveloffset=+1]
+include::finding-your-way-around.adoc[leveloffset=+1]
+include::keeping-the-source-tidy.adoc[leveloffset=+1]
+include::spelling-your-prose.adoc[leveloffset=+1]
+include::advanced-use.adoc[leveloffset=+1]
+include::housekeeping.adoc[leveloffset=+1]
