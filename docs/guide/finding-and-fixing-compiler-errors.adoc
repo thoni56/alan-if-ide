@@ -37,6 +37,15 @@ Use this one when the adventure spans several files, since it collects the error
 *In the status bar*, as a count of errors and warnings.
 Click it to open the Problems panel.
 
+[.fold-in]
+.To fold in
+****
+On a fresh VS Code the panel is closed, and killing the Play terminal with the dustbin closes it again.
+menu:View[Problems] always opens it.
+Check that clicking the status bar count, and kbd:[Ctrl+Shift+M], really do too.
+Source: Thomas in a fresh VS Code.
+****
+
 == Reading an Alan error
 
 Here is the smallest broken adventure there is, a main file with nothing but a start clause pointing at a location that was never written:

@@ -2,3 +2,15 @@
 :experimental:
 
 // NOT WRITTEN YET. Planned: Play (▶) · terminal vs WinArun · the test loop.
+
+[.fold-in]
+.To fold in
+****
+Facts for this chapter, from `play.ts`, `shell.ts` and a fresh VS Code:
+Play saves all unsaved files, then runs `alan -encoding utf8 game.alan && arun game.a3c` in a new terminal called *Alan IF Play*, in the game's folder.
+The game only starts if the compile succeeds, and `game.a3c` and `game.ifid` are left in the folder.
+Each Play closes the previous *Alan IF Play* terminal, which ends a game still running there.
+The terminal opens in the panel together with Problems, Output, Ports and Debug Console.
+The keyboard stays in the editor, so click in the terminal to play.
+kbd:[Ctrl+C] ends the game, the panel's X only hides the panel, the dustbin kills the terminal and closes the panel.
+****

@@ -20,16 +20,34 @@ Download the package for your platform and unpack it. Make sure that the `alan` 
 
 === Visual Studio Code - the Microsoft IDE-platform.
 
-Then you need to install the Alan IF IDE extension in it.
-That is enough to write and read Alan: the highlighting, the outline, navigation and formatting are all part of the extension.
+Install Visual Studio Code (VS Code), or one of its open source variants VSCodium, Gitpod or Cursor.
+VS Code is available for Windows, Mac and Linux, and the open source variants are available for many more platforms.
+You can find the downloads at https://code.visualstudio.com[code.visualstudio.com] and https://vscodium.com[VSCodium].
 
-Part of the extension runs on Java and the build for your platform brings its own, so for the most common platforms you do not need to install Java yourself. If you are on an exotic platform where the Alan IF IDE doesn't package a Java runtime or would rather it used yours, there is a setting for that: the `alanif.java.home` setting.
+Then you need to install the Alan IF IDE extension in it.
+That is all you need to write and read Alan: the highlighting, the outline, navigation and formatting are all part of the Alan IF IDE extension.
+
+=== Java
+
+Part of the extension runs on Java and the Alan IF IDE extension built for your platform most probably brings its own, so for the most common platforms you do not need to install Java yourself.
+If you are on an exotic platform where the Alan IF IDE doesn't package a Java runtime or you would rather it used yours, there is a setting for that: the `alanif.java.home` setting.
 
 == Setting up the IDE
 
 === Installing the extension
 
 In Visual Studio Code, open the Extensions view, search for "Alan IF IDE", and click *Install*.
+
+[.fold-in]
+.To fold in
+****
+VS Code asks whether you trust the publisher of the extension before it installs.
+Say what to answer.
+The publisher is not verified yet, although the DNS record for alanif.se is in place.
+The Marketplace only verifies a publisher that has had an extension there for six months, so not before 2027-02-25.
+Until then the question shows an unverified publisher.
+Source: Thomas, in a fresh VS Code; the Marketplace API (`isDomainVerified: false`), 2026-10-16.
+****
 The build matching your platform is automatically chosen for you.
 This works in VS Code and in its open source variants VSCodium, Gitpod or Cursor, since the extension is published to the extension repository they use, Open VSX, as well.
 
@@ -39,9 +57,11 @@ This works in VS Code and in its open source variants VSCodium, Gitpod or Cursor
 
 // TODO: point to where the profile is, and what it does.
 
-The profile installs the extension and a calmer editor setting with it, set up for writing rather than for code, which is the common use for Visual Studio Code.
+The profile installs the extension and a calmer editor setting with it, set up for writing rather than for code, which is otherwise the common use for Visual Studio Code.
 The profile hides some distracting elements like the minimap and breadcrumbs, turns word wrap on, and is configured so that the enclosing `every X` or `verb Y` is kept in view while you scroll.
 Download the `alanif.code-profile` from the releases page and import it with menu:File[Preferences > Profiles > Import Profile...].
+
+NOTE: The profile is just a quick way to configure the looks and visible functions of the underlying VS Code, and it is not a requirement for using the IDE. You can change the settings to your liking, and you can use the IDE without the profile.
 
 === Or install a file
 

@@ -43,7 +43,12 @@ guide.pdf: guide.adoc $(CHAPTERS)
 check:
 	./check.sh
 
+# Every "To fold in" note still waiting in a chapter, with its first line.
+todo:
+	@awk '/^\[\.fold-in\]/ { want = 1; next } \
+	      want && !/^(\.To fold in|\*\*\*\*)$$/ { print FILENAME ":" FNR ": " $$0; want = 0 }' $(CHAPTERS)
+
 clean:
 	rm -f guide.html guide.pdf
 
-.PHONY: all html pdf check clean
+.PHONY: all html pdf check todo clean

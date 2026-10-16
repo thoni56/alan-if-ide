@@ -23,6 +23,19 @@ The guide follows
 in the `alan-docs` repository: UK English, one sentence per line, and the
 letter-casing rules for Alan code shown in prose.
 
+A fact that still has to be worked into the prose goes in where it belongs, as a
+visible note:
+
+```asciidoc
+[.fold-in]
+.To fold in
+****
+What needs saying, in plain words. Source: where the fact comes from.
+****
+```
+
+`make todo` lists them. None should be left when the guide is released.
+
 ## Planned shape
 
 | Part | Sections |
@@ -135,6 +148,17 @@ Checked against the extension sources at `1981ba5` and `package.json` 0.8.6:
 Kept as notes in `starting-a-new-game.adoc` itself, until the prose replaces them.
 The library and import facts are in `advanced-use.adoc`. The guide is written for a
 beginner's first game, which needs neither, so they wait for that part.
+
+### Seeing what a new author sees
+
+Run VS Code with nothing of your own in it, from a Windows terminal:
+
+```
+code --user-data-dir %TEMP%\fresh --extensions-dir %TEMP%\fresh-ext
+```
+
+Delete the two folders to start over. A new empty profile is not the same, since
+layout state such as an open panel is not part of a profile's settings.
 
 ## Where this lives in the code
 
