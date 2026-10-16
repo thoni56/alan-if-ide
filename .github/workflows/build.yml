@@ -348,8 +348,29 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Install Asciidoctor
-        run: sudo apt-get update -q && sudo apt-get install -y -q asciidoctor
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
 
-      - name: Render the guide
+      # The versions alan-docs pins for the manual; the Alan lexer is written for this Rouge.
+      - name: Install the Asciidoctor toolchain
+        run: |
+          gem install asciidoctor     -v 2.0.17
+          gem install rouge           -v 3.26.0
+          gem install asciidoctor-pdf -v 2.3.24
+
+      - name: Check the guide
         run: docs/guide/check.sh
+
+      - name: Build the guide
+        working-directory: docs/guide
+        run: make
+
+      - name: Upload the guide
+        uses: actions/upload-artifact@v7
+        with:
+          name: guide
+          path: |
+            docs/guide/guide.html
+            docs/guide/guide.pdf
