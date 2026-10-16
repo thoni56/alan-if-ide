@@ -42,6 +42,9 @@ Each part is a chapter file of its own, and `guide.adoc` includes them in this o
 as one book. A chapter file is still a complete document, so GitHub shows it alone.
 GitHub does not follow `include::`, so `guide.adoc` only makes sense rendered.
 `check.sh` fails if a chapter file is left out of `guide.adoc`.
+`make` builds it as `guide.html` and `guide.pdf`. The HTML is set up like the manual in
+`alan-docs`, with copies of its Alan lexer and CSS in `_assets/`, so nothing else has
+to be checked out. The PDF uses asciidoctor-pdf's default theme for now.
 
 ## Status
 
