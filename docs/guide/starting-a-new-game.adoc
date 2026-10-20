@@ -1,20 +1,12 @@
 = Starting a new game
 :experimental:
 
-// NOTES, NOT PROSE YET.
-// Verified against the extension sources at 34b03b5 and alan 3.0beta9, by compiling
-// the way the IDE does: a temp copy of the main file, with the working directory and
-// -include both set to the main file's folder.
-// Where each fact lives in the code is in README.md.
-
 == A folder, not a project
 
 Starting a new game is easy, you only need a folder and the IDE. There is no project, no wizard, and no template. These are all things that might change in the future, but for now they are not needed.
 
 Since a game is contained in a folder, you open it with menu:File[Open Folder...].
 The folder can be empty, or it can already hold some files.
-
-The thing that makes a folder a game is the presence of a `.alan` file. The IDE looks for one in the folder, and if it finds one it treats the folder as a game.
 
 A game needs at least one `.alan` file.
 You might also create one or more "Alan import" files which have an `.i` extension.
@@ -23,14 +15,8 @@ The IDE does not care about any other files, and it does not, yet, handle sub-fo
 
 To create files you use the Explorer's New File command, or the menu:File[New File] command.
 This will create an empty file in the folder you have open, and you can give it any name you like.
-
-[.fold-in]
-.To fold in
-****
-Creating `game.alan` is what activates the extension.
-Without a compiler, that is also when the warning with *Locate Compiler...* appears.
-Source: Thomas, in a fresh VS Code, 2026-10-16.
-****
+Make sure you give it the `.alan` extension, because that is what activates the features of the Alan IF IDE.
+If you haven't configured a working Alan compiler yet, you will now get a reminder and a chance to *Locate Compiler...*.
 
 == The main file and Start At
 
@@ -46,75 +32,39 @@ Start At kitchen.
 
 Create a file with a `.alan` extension, and put the above text in it.
 
-If you have set up the IDE completely, especially the Alan compiler and interpreter, you can run the game with menu:Run[Run Game] or the F5 key.
+If you have set up the IDE completely, especially the Alan compiler and interpreter, you can run the game using the Play (▶) button in the upper right corner.
 
-[.fold-in]
-.To fold in
-****
-There is no menu:Run[Run Game] and nothing on F5.
-Play is the ▶ button at the top right of the editor, *Play* on the right-click menu, or *Alan IF: Play* in the Command Palette.
-Play saves all unsaved files first.
-Source: `package.json` and `play.ts`.
-****
+It might be nice to know that Play saves all your files first, then compile it and then run the game.
+This means that you always run the latest version of your work.
+But also that it will not run if errors are found.
 
-[TIP]
-====
-You can check if the setup is correct by looking at the status bar. Hover over the curly braces beside the "Alan" indicator where you can see the most important settings and their values. The braces will also have a little dot on them if there is something requiring your attention. You can also use the menu:Alan[Check Settings] command.
+Press the Play button and you should see a terminal "window" in the IDE.
+If you don't, run Check Setup (see Getting set up).
 
-If that does not work, check the IDE's Output panel for errors, and see the troubleshooting section in section{troubleshooting}.
-====
+The Terminal will show up in the Panel, the area below the Editor.
+The Panel can show a few different views, the Terminal being one.
+In that terminal you will first see the Alan compiler compiling your game source and possibly output some messages.
+If there are no errors it will have produced a runnable version of your game and started it.
 
-[.fold-in]
-.To fold in
-****
-There is no Alan menu yet (#2), and the command is *Alan IF: Check Setup*.
-`section{troubleshooting}` wants an `xref:`, and there is no troubleshooting section to point at yet.
-Source: `package.json`.
-****
+Your game is now running in that Terminal, named *Alan IF Play*, and will show the text "Kitchen" and a prompt.
+That's the game running, and after clicking in the terminal, you can type commands at the prompt.
 
-You should now see a terminal window in the IDE, usually at the bottom, with the text "The kitchen" and a prompt.
-That's the game running, and you can type commands at the prompt.
+The game currently has no other locations, no objects, and no verbs, so you cannot interact with it until you expand your game.
 
-[.fold-in]
-.To fold in
-****
-The game prints `Kitchen`, not "The kitchen".
-The terminal is called *Alan IF Play*, and it opens in the panel below the editor together with the Problems, Output, Ports and Debug Console tabs.
-The keyboard stays in the editor, so click in the terminal before typing, or what you type goes into the source.
-Source: `arun` 3.0beta9, `play.ts` (`show(true)` keeps the focus), Thomas in a fresh VS Code.
-****
-
-The game currently has no other locations, no objects, and no verbs, so the only way to quit is to close the that terminal window.
-
-[.fold-in]
-.To fold in
-****
-How to close it, since the obvious way does not work.
-kbd:[Ctrl+C] ends the game and leaves a shell prompt (PowerShell, on Windows).
-The panel's X only hides the panel; the game keeps running.
-The dustbin kills the terminal, and closes the panel too.
-Typing `quit` does not work in this game: without the library there are no verbs at all.
-Source: Thomas in a fresh VS Code, and `arun` 3.0beta9.
-****
+// TODO: screenshot of the whole window, the game in the Editor, Play (▶) at the top right, and the Alan IF Play terminal in the Panel showing "Kitchen" and the prompt.
 
 == Watching it compile as you type
 
-There is no "compile" button, so you cannot run the compiler yourself.
+There is no "compile" button, so you cannot, and need not, run the compiler yourself.
 Instead the game is automatically analysed and compiled on every keystroke, from the editor, unsaved text and all.
 
-To try this out, type a few random characters in the editor.
+To try this out, type a few random characters in the Editor.
 
-If you type something that is not valid Alan code, you will get some markers in the editor area. You can hover it to see its description, or use menu:View[Problems] to show the "Problems" tab. 
+If you type something that is not valid Alan code, you will get curly markers under the text in the editor area.
+You can hover the marked text to see a description of the error, or use menu:View[Problems] to show the detailed "Problems" view.
+It will open in the Panel, like the Terminal did.
+The "Problems" view does not automatically open when there are errors, so you have to open it yourself.
 
-[.fold-in]
-.To fold in
-****
-The Problems tab does not appear by itself.
-On a fresh VS Code the panel is closed, so what you see is the red squiggle under the error, and the error count in the status bar.
-Hover over the squiggle to read the message.
-menu:View[Problems] is the reliable way to open the Problems tab.
-The line below wants to be an `xref:` to that chapter.
-Source: Thomas in a fresh VS Code.
-****
+// TODO: screenshot of a curly marker with its hover, the Problems view open in the Panel, and the counts in the Status Bar.
 
-Details are in finding-and-fixing-compiler-errors.adoc, under "You do not run the compiler".
+There is also a part of the Status Bar that shows the number of errors, warnings and informational messages.
