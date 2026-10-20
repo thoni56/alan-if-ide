@@ -2,3 +2,25 @@
 :experimental:
 
 // NOT WRITTEN YET. Planned: outline · Go to Definition · the verb case (syntax plus the override chain) · Find All References and its scoping.
+
+[.fold-in]
+.To fold in
+****
+The parts of the VS Code window, by the names VS Code's own documentation uses.
+
+* *Activity Bar*: the column of icons on the far left.
+* *Primary Side Bar*: next to it, showing one view at a time, e.g. the *Explorer*. kbd:[Ctrl+B] shows and hides it.
+* *Secondary Side Bar*: on the opposite side. By default it holds the Chat view.
+* *Editor*: the main area, where the files are. Open files show as *tabs* above it. A split gives a second *editor group*.
+* *Breadcrumbs*: the path-like navigation bar at the top of the editor.
+* *Minimap*: the small overview of the whole file, at the editor's right edge.
+* *Panel*: the area below the editor. By default it holds the *Problems*, *Output*, *Debug Console*, *Terminal* and *Ports* views. kbd:[Ctrl+J] shows and hides it, and kbd:[Ctrl+Shift+M] opens it on Problems.
+* *Status Bar*: the line along the bottom. The `⚠ Alan setup` item appears there.
+* *Command Palette*: kbd:[Ctrl+Shift+P].
+
+"Tab" is only used for the editor's open files.
+Problems, Terminal and the rest are *views* in the Panel, even though they look like tabs.
+
+Source: https://code.visualstudio.com/docs/getstarted/userinterface, 2026-10-20.
+The Panel's list of views and the two Panel shortcuts are VS Code's defaults rather than taken from that page.
+****
