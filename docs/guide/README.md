@@ -65,7 +65,7 @@ to be checked out. The PDF uses asciidoctor-pdf's default theme for now.
 | --- | --- |
 | Getting set up | first draft — content verified |
 | Finding and fixing compiler errors | first draft — content verified, voice pass done |
-| Starting a new game | notes only — content verified |
+| Starting a new game | first draft — content verified, Thomas's own prose |
 | Advanced use | notes only, imports — content verified |
 
 Everything else is outline.
@@ -145,7 +145,7 @@ Checked against the extension sources at `1981ba5` and `package.json` 0.8.6:
 
 ### Starting a new game
 
-Kept as notes in `starting-a-new-game.adoc` itself, until the prose replaces them.
+The notes have been folded into the prose of `starting-a-new-game.adoc`.
 The library and import facts are in `advanced-use.adoc`. The guide is written for a
 beginner's first game, which needs neither, so they wait for that part.
 
