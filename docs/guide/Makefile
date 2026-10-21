@@ -56,7 +56,8 @@ clean:
 # kept between runs; fresh-reset deletes them to start over.
 CMD := /mnt/c/Windows/System32/cmd.exe
 WINTEMP = $(shell cd /mnt/c && $(CMD) /c 'echo %TEMP%' | tr -d '\r')
-CODEBIN = $(shell dirname "$$(command -v code)")
+# Not `code` on PATH: in VS Code's own terminal that is the remote CLI.
+CODEBIN = $(shell wslpath "$$(cd /mnt/c && $(CMD) /c 'echo %LOCALAPPDATA%' | tr -d '\r')")/Programs/Microsoft VS Code/bin
 
 # Run from code.cmd's own folder, since WSL mangles quotes around a path with spaces.
 fresh:
