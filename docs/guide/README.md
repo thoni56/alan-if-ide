@@ -153,14 +153,10 @@ beginner's first game, which needs neither, so they wait for that part.
 
 ### Seeing what a new author sees
 
-Run VS Code with nothing of your own in it, from a Windows terminal:
-
-```
-code --user-data-dir %TEMP%\fresh --extensions-dir %TEMP%\fresh-ext
-```
-
-Delete the two folders to start over. A new empty profile is not the same, since
-layout state such as an open panel is not part of a profile's settings.
+`make fresh` runs VS Code with nothing of your own in it, from WSL. It is the
+Windows VS Code, with its own folders in the Windows `%TEMP%`, kept between runs.
+`make fresh-reset` deletes them to start over. A new empty profile is not the same,
+since layout state such as an open panel is not part of a profile's settings.
 
 ## Where this lives in the code
 

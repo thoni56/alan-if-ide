@@ -51,4 +51,18 @@ todo:
 clean:
 	rm -f guide.html guide.pdf
 
-.PHONY: all html pdf check todo clean
+# A VS Code with nothing of yours in it, to see what a new author sees. From WSL
+# this is the Windows VS Code, so its folders are in the Windows %TEMP%. They are
+# kept between runs; fresh-reset deletes them to start over.
+CMD := /mnt/c/Windows/System32/cmd.exe
+WINTEMP = $(shell cd /mnt/c && $(CMD) /c 'echo %TEMP%' | tr -d '\r')
+CODEBIN = $(shell dirname "$$(command -v code)")
+
+# Run from code.cmd's own folder, since WSL mangles quotes around a path with spaces.
+fresh:
+	cd '$(CODEBIN)' && $(CMD) /c code.cmd --user-data-dir '$(WINTEMP)\fresh' --extensions-dir '$(WINTEMP)\fresh-ext'
+
+fresh-reset:
+	rm -rf "$$(wslpath '$(WINTEMP)')/fresh" "$$(wslpath '$(WINTEMP)')/fresh-ext"
+
+.PHONY: all html pdf check todo clean fresh fresh-reset
