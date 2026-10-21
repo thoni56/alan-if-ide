@@ -41,7 +41,7 @@ What needs saying, in plain words. Source: where the fact comes from.
 | Part | Sections |
 | --- | --- |
 | About this guide | who it is for, which version, Robert's guide as ancestor |
-| Getting set up | what you need · installing the extension (marketplace / author profile / VSIX) · pointing it at the compiler · **Check Setup** as the "is it working" page |
+| Getting set up | the simplest path only: the SDK · VS Code · the extension from the marketplace · **Check Setup** as the "is it working" page |
 | Starting a new game | a folder, not a project — the one real shift from Eclipse · the main `.alan` file and `Start At` · watching it compile as you type |
 | Playing and testing | Play (▶) · terminal vs WinArun · the test loop |
 | **Finding and fixing compiler errors** | reading an error · the Problems panel · which file is compiled · when silence is the wrong kind |
@@ -50,6 +50,7 @@ What needs saying, in plain words. Source: where the fact comes from.
 | Spelling your prose | brief / concordance / glossary |
 | Advanced use | the standard library · your own `.i` files and imports · which file is the main file · two files with the same name |
 | Housekeeping | UTF-8 conversion · settings · key bindings, including Alt+Q when Rewrap has taken it |
+| Appendix: Setup in detail | other editors · the author profile · installing a VSIX · Java · where the tools are found · the startup warning and `⚠ Alan setup` · Check Setup row by row |
 
 Each part is a chapter file of its own, and `guide.adoc` includes them in this order
 as one book. A chapter file is still a complete document, so GitHub shows it alone.
@@ -67,6 +68,7 @@ to be checked out. The PDF uses asciidoctor-pdf's default theme for now.
 | Finding and fixing compiler errors | first draft — content verified, voice pass done |
 | Starting a new game | first draft — content verified, Thomas's own prose |
 | Advanced use | notes only, imports — content verified |
+| Setup in detail | moved out of Getting set up, not yet reread as a section of its own |
 
 Everything else is outline.
 

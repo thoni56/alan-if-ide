@@ -13,3 +13,7 @@ include::keeping-the-source-tidy.adoc[leveloffset=+1]
 include::spelling-your-prose.adoc[leveloffset=+1]
 include::advanced-use.adoc[leveloffset=+1]
 include::housekeeping.adoc[leveloffset=+1]
+
+[appendix]
+[#setup-in-detail]
+include::setup-in-detail.adoc[leveloffset=+1]

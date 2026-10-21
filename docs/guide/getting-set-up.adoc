@@ -2,10 +2,10 @@
 :experimental:
 
 Getting set up to use the Alan IF IDE is a one-time task, and it is not hard.
-Basically you install the extension, point it at the Alan compiler, and check that it worked.
+Basically you install the extension, let it know where the Alan compiler is, and check that it worked.
 You will probably only need to do this once.
 
-Below are instructions in detail, and there is a section on what to do if something goes wrong.
+If the following doesn't work in your environment, or you want to see what other options you have, see <<setup-in-detail>>.
 
 == What you need
 
@@ -20,21 +20,13 @@ Download the package for your platform and unpack it. Make sure that the `alan` 
 
 === Visual Studio Code - the Microsoft IDE-platform.
 
-Install Visual Studio Code (VS Code), or one of its open source variants VSCodium, Gitpod or Cursor.
-VS Code is available for Windows, Mac and Linux, and the open source variants are available for many more platforms.
-You can find the downloads at https://code.visualstudio.com[code.visualstudio.com] and https://vscodium.com[VSCodium].
+Install Visual Studio Code (VS Code).
+It is available for Windows, Mac and Linux, from https://code.visualstudio.com[code.visualstudio.com].
 
 Then you need to install the Alan IF IDE extension in it.
 That is all you need to write and read Alan: the highlighting, the outline, navigation and formatting are all part of the Alan IF IDE extension.
 
-=== Java
-
-Part of the extension runs on Java and the Alan IF IDE extension built for your platform most probably brings its own, so for the most common platforms you do not need to install Java yourself.
-If you are on an exotic platform where the Alan IF IDE doesn't package a Java runtime or you would rather it used yours, there is a setting for that: the `alanif.java.home` setting.
-
-== Setting up the IDE
-
-=== Installing the extension
+== Installing the extension
 
 In Visual Studio Code, open the Extensions view, search for "Alan IF IDE", and click *Install*.
 
@@ -49,83 +41,16 @@ Until then the question shows an unverified publisher.
 Source: Thomas, in a fresh VS Code; the Marketplace API (`isDomainVerified: false`), 2026-10-16.
 ****
 The build matching your platform is automatically chosen for you.
-This works in VS Code and in its open source variants VSCodium, Gitpod or Cursor, since the extension is published to the extension repository they use, Open VSX, as well.
 
 // TODO: screenshot of the Extensions view with the listing found.
 
-=== Or import the author profile
-
-// TODO: point to where the profile is, and what it does.
-
-The profile installs the extension and a calmer editor setting with it, set up for writing rather than for code, which is otherwise the common use for Visual Studio Code.
-The profile hides some distracting elements like the minimap and breadcrumbs, turns word wrap on, and is configured so that the enclosing `every X` or `verb Y` is kept in view while you scroll.
-Download the `alanif.code-profile` from the releases page and import it with menu:File[Preferences > Profiles > Import Profile...].
-
-NOTE: The profile is just a quick way to configure the looks and visible functions of the underlying VS Code, and it is not a requirement for using the IDE. You can change the settings to your liking, and you can use the IDE without the profile.
-
-=== Or install a file
-
-Every release also carries the packaged extension, so you can install an older version or for a machine without marketplace access.
-
-. Download the `.vsix` for your platform from the releases page, `alan-if-ide-win32-x64-<version>.vsix` for example.
-. Press kbd:[Ctrl+Shift+P] (kbd:[Cmd+Shift+P] on a Mac), type `vsix`, and choose *Extensions: Install from VSIX...*.
-. Reload the window when you are asked to.
-
-The unsuffixed `alan-if-ide-<version>.vsix` is the platform-neutral build, and that one carries no Java runtime, so you need to have Java installed yourself and set the `alanif.java.home` setting to point at it.
-
-== Pointing it at the Alan compiler
-
-The extension automatically looks in three places for the Alan compiler, in this order: the `alanif.compiler.path` setting, `alan` on your `PATH`, then the usual install locations for your system.
-`arun` is looked for next to the compiler first, and then the same way.
-
-If no compiler could be found, run *Alan IF: Locate Alan Compiler...* from the Command Palette (kbd:[Ctrl+Shift+P], then type "alan if").
-That opens a file dialogue, so you can browse to the compiler rather than type a path.
-*Alan IF: Locate Alan Interpreter...* does the same for the interpreter `arun`.
-Note that you can use any of the available Alan interpreters to run your game, like `WinArun`.
-
-The first window you open without a compiler offers this too, as a warning with a *Locate Compiler...* button.
-Beside it is *Don't Show Again*, and clicking that will stop the warning from appearing again, until you ask for *Check Setup*. The status bar will keep indicating that you haven't finished all parts of the setup.
-
-[NOTE]
-====
-Clearing a path setting always returns to finding the tool automatically.
-An empty setting is a working setting, so you cannot get stuck by emptying one.
-====
-
 == Is it working?
 
-*Alan IF: Check Setup*, from the Command Palette, is the page that answers that.
+*Alan IF: Check Setup*, from the Command Palette (kbd:[Ctrl+Shift+P], then type "alan if"), is the page that answers that.
 It opens a list with a row for each part, and the line at the top says either that everything is in place or how many rows need attention.
-
-Java:: the version, and where it came from.
-Compiler:: the version, and where it was found.
-If it was not found the row says so, and lists everywhere that was searched.
-Interpreter:: the same for `arun`.
-Spell checking:: whether it is set up in the folder you are working in.
-// TODO link to the spell checking section.
-Language server:: only when something is wrong with it, and then with the reload that puts it right.
 
 // TODO: screenshot of Check Setup, one row wanting attention.
 
 Every row is also a control.
-Select the compiler row and you will get the file dialogue, select the Java row and you will get the setting.
+If the compiler was not found, select its row and you will get a file dialogue, so you can browse to where you put it.
 So the page where you can find out if something is wrong is also the place where you can fix it.
-
-[NOTE]
-====
-Spell checking is set up, and shows status, per folder, but the other rows are per machine.
-You can have spell checking on in one game and not in another.
-====
-
-== When something is missing
-
-A `⚠ Alan setup` item appears in the status bar while an Alan file is open, and stays until the setup is sound.
-Hover over it to see what is missing, click it to open Check Setup.
-
-If `alanif.compiler.path`, or `alanif.arun.path`, points at something that does not run as the Alan compiler, the extension will say so and try the other locations.
-
-[TIP]
-====
-Running the Check Setup again switches the startup warning about a missing compiler back on, if you had told it not to show again.
-It says so when it does that.
-====
