@@ -37,13 +37,13 @@ export function playCommand(shell: Shell, compiler: string, main: string,
             // an expression. And `&&` exists only in PowerShell 7 while Windows still
             // ships 5.1, so "only if it worked" goes through $LASTEXITCODE instead.
             return `& ${ps(compiler)} -encoding utf8 ${ps(main)}; `
-                + `if ($LASTEXITCODE -eq 0) { & ${ps(interpreter)} ${ps(a3c)} }`;
+                + `if ($LASTEXITCODE -eq 0) { & ${ps(interpreter)} -u ${ps(a3c)} }`;
         case 'cmd':
             return `${dq(compiler)} -encoding utf8 ${dq(main)} `
-                + `&& ${dq(interpreter)} ${dq(a3c)}`;
+                + `&& ${dq(interpreter)} -u ${dq(a3c)}`;
         default:
             return `${sq(compiler)} -encoding utf8 ${sq(main)} `
-                + `&& ${sq(interpreter)} ${sq(a3c)}`;
+                + `&& ${sq(interpreter)} -u ${sq(a3c)}`;
     }
 }
 

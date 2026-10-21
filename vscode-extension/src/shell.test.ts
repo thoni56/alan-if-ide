@@ -40,13 +40,21 @@ test('PowerShell invokes the path and chains on the exit code', () => {
 test('cmd.exe keeps && and uses double quotes', () => {
     const line = playCommand('cmd', 'c:\\Alan\\alan.exe', 'game.alan', 'c:\\Alan\\arun.exe', 'game.a3c');
     assert.equal(line,
-        '"c:\\Alan\\alan.exe" -encoding utf8 "game.alan" && "c:\\Alan\\arun.exe" "game.a3c"');
+        '"c:\\Alan\\alan.exe" -encoding utf8 "game.alan" && "c:\\Alan\\arun.exe" -u "game.a3c"');
 });
 
 test('POSIX keeps the shape it always had', () => {
     const line = playCommand('posix', '/usr/local/bin/alan', 'game.alan', '/usr/local/bin/arun', 'game.a3c');
     assert.equal(line,
-        "'/usr/local/bin/alan' -encoding utf8 'game.alan' && '/usr/local/bin/arun' 'game.a3c'");
+        "'/usr/local/bin/alan' -encoding utf8 'game.alan' && '/usr/local/bin/arun' -u 'game.a3c'");
+});
+
+test('the game runs as UTF-8, like the compile', () => {
+    // Without -u arun prints ISO-8859-1, so "Köket" came out as "K\366ket".
+    for (const shell of ['posix', 'powershell', 'cmd'] as const) {
+        const line = playCommand(shell, 'alan', 'game.alan', 'arun', 'game.a3c');
+        assert.match(line, /arun\S* -u \S*game\.a3c/, shell);
+    }
 });
 
 test('a quote in a path is escaped the way each shell wants', () => {
