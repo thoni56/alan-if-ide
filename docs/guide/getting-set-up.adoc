@@ -29,18 +29,11 @@ That is all you need to write and read Alan: the highlighting, the outline, navi
 == Installing the extension
 
 In Visual Studio Code, open the Extensions view, search for "Alan IF IDE", and click *Install*.
-
-[.fold-in]
-.To fold in
-****
-VS Code asks whether you trust the publisher of the extension before it installs.
-Say what to answer.
-The publisher is not verified yet, although the DNS record for alanif.se is in place.
-The Marketplace only verifies a publisher that has had an extension there for six months, so not before 2027-02-25.
-Until then the question shows an unverified publisher.
-Source: Thomas, in a fresh VS Code; the Marketplace API (`isDomainVerified: false`), 2026-10-16.
-****
 The build matching your platform is automatically chosen for you.
+
+// TODO: Remove the following after 2027-02-25 and the publisher shows as verified.
+
+NOTE: You might be asked to trust the publisher of the extension. Press *Trust Publisher & Install*, otherwise it will not be installed.
 
 // TODO: screenshot of the Extensions view with the listing found.
 
