@@ -55,6 +55,14 @@ test('no tooltip is left in the picture', () => {
     assert.equal(shots[0].hovers, 0);
 });
 
+test('the pictures are in a light theme, for the printed guide', () => {
+    assert.equal(shots[0].theme, 'vs');
+});
+
+test('the empty Secondary Side Bar is hidden, to leave room for the rest', () => {
+    assert.equal(shots[0].secondarySideBar, false);
+});
+
 test('a run leaves no work folder behind', () => {
     assert.deepEqual(workFolders().filter(n => !leftBefore.includes(n)), []);
 });

@@ -73,6 +73,8 @@ function profileIn(work, tools) {
         'chat.disableAIFeatures': true,
         'security.workspace.trust.enabled': false,
         'window.titleBarStyle': 'custom',
+        'workbench.colorTheme': 'Default Light Modern',
+        'workbench.secondarySideBar.defaultVisibility': 'hidden',
         // Drawn as text rather than on a canvas, so the runner can read what it shows.
         'terminal.integrated.gpuAcceleration': 'off',
     }, null, 2));
@@ -148,6 +150,8 @@ async function perform(page, step, game, png) {
             terminal: await terminalText(page),
             breadcrumbs: await page.locator('.breadcrumbs-control .monaco-breadcrumb-item').allInnerTexts(),
             hovers: await page.locator('.workbench-hover').count(),
+            secondarySideBar: await page.locator('.part.auxiliarybar').isVisible(),
+            theme: (await page.locator('.monaco-workbench').getAttribute('class')).split(' ').find(c => c.startsWith('vs')),
         };
     } else {
         throw new Error('Unknown step ' + JSON.stringify(step));
