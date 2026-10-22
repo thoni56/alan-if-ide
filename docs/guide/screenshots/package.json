@@ -1,0 +1,10 @@
+{
+  "private": true,
+  "description": "Takes the guide's screenshots by driving the Windows VS Code. Run with Windows node.",
+  "scripts": {
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "playwright-core": "1.47.2"
+  }
+}
