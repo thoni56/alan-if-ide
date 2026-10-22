@@ -51,6 +51,10 @@ test('the picture is taken when the language server is up', () => {
     assert.deepEqual(shots[0].breadcrumbs, ['game.alan', 'kitchen']);
 });
 
+test('no tooltip is left in the picture', () => {
+    assert.equal(shots[0].hovers, 0);
+});
+
 test('a run leaves no work folder behind', () => {
     assert.deepEqual(workFolders().filter(n => !leftBefore.includes(n)), []);
 });

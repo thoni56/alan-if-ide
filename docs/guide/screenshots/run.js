@@ -142,14 +142,22 @@ async function perform(page, step, game, png) {
         await page.waitForSelector('.terminal-wrapper', { timeout: 30000 });
         await until(async () => lastLine(await terminalText(page)) === '>', 'the game\'s prompt');
     } else if (step.snap) {
+        await parkMouse(page);
         await page.screenshot({ path: png });
         return {
             terminal: await terminalText(page),
             breadcrumbs: await page.locator('.breadcrumbs-control .monaco-breadcrumb-item').allInnerTexts(),
+            hovers: await page.locator('.workbench-hover').count(),
         };
     } else {
         throw new Error('Unknown step ' + JSON.stringify(step));
     }
+}
+
+/** On an empty stretch of the Status Bar, so no tooltip or hover icons are left showing. */
+async function parkMouse(page) {
+    await page.mouse.move(SIZE.width / 2, SIZE.height - 5);
+    await until(async () => await page.locator('.workbench-hover').count() === 0, 'the tooltips to go');
 }
 
 /** Polled from here: VS Code's content security policy refuses waitForFunction's eval. */
