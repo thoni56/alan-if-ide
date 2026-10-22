@@ -41,6 +41,16 @@ test('the extension is the one built from this tree', () => {
     assert.match(shots[0].terminal.replace(/\n/g, ''), /arun\.exe' -u 'game\.a3c'/);
 });
 
+test('the picture is taken when the game waits for the player', () => {
+    const lines = shots[0].terminal.split('\n').map(l => l.trim()).filter(Boolean);
+    assert.deepEqual(lines.slice(-2), ['Kitchen', '>']);
+});
+
+test('the picture is taken when the language server is up', () => {
+    // The breadcrumbs only show a symbol once the server has read the file.
+    assert.deepEqual(shots[0].breadcrumbs, ['game.alan', 'kitchen']);
+});
+
 test('a run leaves no work folder behind', () => {
     assert.deepEqual(workFolders().filter(n => !leftBefore.includes(n)), []);
 });

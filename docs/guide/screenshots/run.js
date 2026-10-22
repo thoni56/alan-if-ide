@@ -135,17 +135,34 @@ async function perform(page, step, game, png) {
     if (step.open) {
         await page.locator('.explorer-folders-view .monaco-list-row', { hasText: step.open }).click();
         await page.waitForSelector(`.tab:has-text("${step.open}")`, { timeout: 60000 });
-        await sleep(15000);   // the language server
+        // The breadcrumbs gain a symbol once the language server has read the file.
+        await page.locator('.breadcrumbs-control .monaco-breadcrumb-item').nth(1).waitFor({ timeout: 60000 });
     } else if (step.play) {
         await page.click('.editor-actions a[aria-label*="Play"]', { timeout: 30000 });
         await page.waitForSelector('.terminal-wrapper', { timeout: 30000 });
-        await sleep(6000);    // the compile and the game
+        await until(async () => lastLine(await terminalText(page)) === '>', 'the game\'s prompt');
     } else if (step.snap) {
         await page.screenshot({ path: png });
-        return { terminal: await terminalText(page) };
+        return {
+            terminal: await terminalText(page),
+            breadcrumbs: await page.locator('.breadcrumbs-control .monaco-breadcrumb-item').allInnerTexts(),
+        };
     } else {
         throw new Error('Unknown step ' + JSON.stringify(step));
     }
+}
+
+/** Polled from here: VS Code's content security policy refuses waitForFunction's eval. */
+async function until(condition, what, timeoutMs = 60000) {
+    for (const end = Date.now() + timeoutMs; Date.now() < end; await sleep(250)) {
+        if (await condition()) return;
+    }
+    throw new Error('Gave up waiting for ' + what);
+}
+
+function lastLine(text) {
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    return lines[lines.length - 1];
 }
 
 /** What the active terminal shows, one line per screen row. */
