@@ -35,6 +35,8 @@ async function take(shot, out, alanBin) {
         throw e;
     } finally {
         code.kill();
+        // Its processes hold on to their files for a moment after the kill (EPERM).
+        fs.rmSync(work, { recursive: true, force: true, maxRetries: 10, retryDelay: 500 });
     }
 }
 
