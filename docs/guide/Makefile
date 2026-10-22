@@ -66,4 +66,22 @@ fresh:
 fresh-reset:
 	rm -rf "$$(wslpath '$(WINTEMP)')/fresh" "$$(wslpath '$(WINTEMP)')/fresh-ext"
 
-.PHONY: all html pdf check todo clean fresh fresh-reset
+# The guide's screenshots, taken by driving the Windows VS Code (screenshots/). The
+# extension is built from this tree first, since the runner copies in whatever is built.
+# The Alan tools are the .exe files beside `alan` on PATH, unless ALAN_BIN says otherwise.
+WINNODE := /mnt/c/Program Files/nodejs/node.exe
+ALAN_BIN ?= $(dir $(shell command -v alan))
+SHOTS = cd screenshots && ALAN_BIN='$(ALAN_BIN)' WSLENV=ALAN_BIN/p '$(WINNODE)'
+
+screenshots: screenshots/node_modules
+	../../build.sh
+	$(SHOTS) take.js
+
+screenshots-test: screenshots/node_modules
+	$(SHOTS) --test
+
+screenshots/node_modules: screenshots/package.json
+	cd screenshots && '$(WINNODE)' 'C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js' install --no-audit --no-fund
+	touch $@
+
+.PHONY: all html pdf check todo clean fresh fresh-reset screenshots screenshots-test

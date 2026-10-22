@@ -59,6 +59,10 @@ test('the pictures are in a light theme, for the printed guide', () => {
     assert.equal(shots[0].theme, 'vs');
 });
 
+test('the Explorer shows the files Play made', () => {
+    assert.deepEqual(shots[0].explorer, ['game.a3c', 'game.alan', 'game.ifid']);
+});
+
 test('the empty Secondary Side Bar is hidden, to leave room for the rest', () => {
     assert.equal(shots[0].secondarySideBar, false);
 });

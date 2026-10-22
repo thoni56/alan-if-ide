@@ -1,5 +1,6 @@
 = Starting a new game
 :experimental:
+:imagesdir: images
 
 == A folder, not a project
 
@@ -51,7 +52,7 @@ That's the game running, and after clicking in the terminal, you can type comman
 
 The game currently has no other locations, no objects, and no verbs, so you cannot interact with it until you expand your game.
 
-// TODO: screenshot of the whole window, the game in the Editor, Play (▶) at the top right, and the Alan IF Play terminal in the Panel showing "Kitchen" and the prompt.
+image::after-play.png[The whole window after Play, with the game in the Editor and the Alan IF Play terminal in the Panel showing Kitchen and the prompt]
 
 == Watching it compile as you type
 

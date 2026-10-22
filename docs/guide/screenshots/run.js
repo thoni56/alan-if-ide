@@ -143,12 +143,15 @@ async function perform(page, step, game, png) {
         await page.click('.editor-actions a[aria-label*="Play"]', { timeout: 30000 });
         await page.waitForSelector('.terminal-wrapper', { timeout: 30000 });
         await until(async () => lastLine(await terminalText(page)) === '>', 'the game\'s prompt');
+        // The Explorer's file watcher can lag behind the compile.
+        await page.locator('.explorer-folders-view .monaco-list-row', { hasText: '.a3c' }).waitFor({ timeout: 60000 });
     } else if (step.snap) {
         await parkMouse(page);
         await page.screenshot({ path: png });
         return {
             terminal: await terminalText(page),
             breadcrumbs: await page.locator('.breadcrumbs-control .monaco-breadcrumb-item').allInnerTexts(),
+            explorer: await page.locator('.explorer-folders-view .monaco-list-row').allInnerTexts(),
             hovers: await page.locator('.workbench-hover').count(),
             secondarySideBar: await page.locator('.part.auxiliarybar').isVisible(),
             theme: (await page.locator('.monaco-workbench').getAttribute('class')).split(' ').find(c => c.startsWith('vs')),
