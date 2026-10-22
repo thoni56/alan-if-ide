@@ -38,3 +38,12 @@ Windows is untested.
 == More than one main file
 
 * Play picks its file as: `alanif.mainFile`; else the active `.alan` file; else the first `.alan` beside the active `.i`; else the first `.alan` anywhere in the folder.
+
+== Re-Playing
+
+  Replaying a walkthrough is the easiest testing there is. I checked this:
+  - Type @walk.a3s at the game's prompt, and arun reads the commands from that file one by
+    one. It works in the Play terminal, with no setup.
+  - The reader writes the file in the editor, as a plain list of commands.
+  - arun -c would write such a file from a session that's actually played, but Play doesn't
+    pass switches, so that one is for later or for Advanced use.

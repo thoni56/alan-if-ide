@@ -1,16 +1,77 @@
 = Playing and testing
 :experimental:
 
-// NOT WRITTEN YET. Planned: Play (▶) · terminal vs WinArun · the test loop.
+== The loop
+
+Developing an Alan adventure is an incremental process.
+Typically you write a little, run the game to see the result, then write a little more.
+
+The *Alan IF IDE* is designed to make this loop as comfortable as possible.
+In the previous chapter you have already encountered the *Problems* view and the *Play* button.
+
+There you probably found that whatever you typed at the game prompt for the game in the previous chapter, the game answered with "I don't know the word 'x'" or something to that effect.
+
+This is not a tutorial in the Alan language as such, but to have this guide take you through a few loops we will add a few features to that small game.
+
+== Your first verb
+
+You might already know that "Verbs" are what the player types at the prompt to get it to react.
+The simplest verb is probably `quit`, so we will add that but for simplicity we will call it just `q`.
+Just above `Start At` type the following (or copy and paste):
+
+[source,alan]
+----
+Verb q
+    Does
+        Quit.
+End Verb q.
+----
+
+This construct connects a player input, "q", with the built-in Alan statement `Quit`.
+Which of course does the obvious, it exits the game.
+
+Now press *Play (▶)*.
+
+If there were no errors you will see your previous Terminal replaced by a new one, which looks exactly the same.
+The difference is what happens when you type "q" at the prompt.
+Remember to click in the Terminal before typing, then type "q" and kbd:[Enter].
+The game will then ask "Do you want to UNDO, RESTART, RESTORE or QUIT?"
+If you answer "quit" the game ends.
+Not much of a game still, but this is your first verb at work.
+
+== Some new files
+
+You might notice that two new files shows up in your folder.
+
+The one with the `.a3c` extension is the actual, compiled, game file.
+This is the one you would distribute if you wanted to give your game to someone else to play.
+
+The other has an `.ifid` extension.
+It contains the special identity of the game and should be kept around with the sources to keep that identity the same.
+
+== Description
+
+To expand your game a little bit more, change the declaration of the kitchen by adding the text between the lines starting with "The kitchen" and "End The kitchen." so you get this:
+
+[source,alan]
+----
+The kitchen Isa location
+    Description
+        "Your kitchen is in the half-disorderly state that it usually is."
+End The kitchen.
+----
+
+Now run the game (*Play (▶)*).
+
+
 
 [.fold-in]
 .To fold in
 ****
 Facts for this chapter, from `play.ts`, `shell.ts` and a fresh VS Code:
-Play saves all unsaved files, then runs `alan -encoding utf8 game.alan && arun game.a3c` in a new terminal called *Alan IF Play*, in the game's folder.
-The game only starts if the compile succeeds, and `game.a3c` and `game.ifid` are left in the folder.
-Each Play closes the previous *Alan IF Play* terminal, which ends a game still running there.
-The terminal opens in the panel together with Problems, Output, Ports and Debug Console.
-The keyboard stays in the editor, so click in the terminal to play.
-kbd:[Ctrl+C] ends the game, the panel's X only hides the panel, the dustbin kills the terminal and closes the panel.
+
+  WinArun and other interpreters are how a player will actually meet the game. The .a3c is
+  the file you give them. That fits under testing ("see it as your player will") better than
+  under setup, where it is now, in the appendix.
+
 ****
