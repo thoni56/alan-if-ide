@@ -8,6 +8,7 @@ const path = require('node:path');
 
 const VSCODE = path.join(process.env.LOCALAPPDATA, 'Programs', 'Microsoft VS Code');
 const PORT = 9333;
+const SIZE = { width: 1280, height: 800 };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 async function run(shots, { out, alanBin = process.env.ALAN_BIN }) {
@@ -106,6 +107,7 @@ async function workbench() {
         const page = browser.contexts().flatMap(c => c.pages()).find(p => p.url().includes('workbench'));
         if (page) {
             await page.waitForSelector('.monaco-workbench', { timeout: 60000 });
+            await page.setViewportSize(SIZE);
             return page;
         }
         await sleep(1000);

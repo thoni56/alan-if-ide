@@ -27,6 +27,11 @@ test('a shot ends up as a PNG named after it', () => {
     assert.equal(png.subarray(1, 4).toString(), 'PNG');
 });
 
+test('every picture is taken at the same window size', () => {
+    const png = fs.readFileSync(path.join(out, 'after-play.png'));
+    assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [1280, 800]);
+});
+
 test('a run leaves no work folder behind', () => {
     assert.deepEqual(workFolders().filter(n => !leftBefore.includes(n)), []);
 });
