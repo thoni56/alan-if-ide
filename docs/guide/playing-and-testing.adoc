@@ -63,15 +63,15 @@ End The kitchen.
 
 Now run the game (*Play (▶)*).
 
+// You don't have to quit the previous, Play will kill it and start new. You see the description.
 
+== Another room
 
-[.fold-in]
-.To fold in
-****
-Facts for this chapter, from `play.ts`, `shell.ts` and a fresh VS Code:
+// Add another room and the exits. Misspell one of the exit targets.
+// Run will show the errors but the better view is the Problems.
 
-  WinArun and other interpreters are how a player will actually meet the game. The .a3c is
-  the file you give them. That fits under testing ("see it as your player will") better than
-  under setup, where it is now, in the appendix.
+// Fix and run.
 
-****
+// TODO screenshot of "moved to Hallway"
+
+// End: the .a3c from Some new files is what you give a player.

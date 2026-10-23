@@ -45,7 +45,7 @@ The extension automatically looks in three places for the Alan compiler, in this
 If no compiler could be found, run *Alan IF: Locate Alan Compiler...* from the Command Palette (kbd:[Ctrl+Shift+P], then type "alan if").
 That opens a file dialogue, so you can browse to the compiler rather than type a path.
 *Alan IF: Locate Alan Interpreter...* does the same for the interpreter `arun`.
-Note that you can use any of the available Alan interpreters to run your game, like `WinArun`.
+You can also point it at `WinArun`, see <<another-interpreter>>.
 
 If `alanif.compiler.path`, or `alanif.arun.path`, points at something that does not run as the Alan compiler, the extension will say so and try the other locations.
 

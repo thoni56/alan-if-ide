@@ -47,3 +47,33 @@ Windows is untested.
   - The reader writes the file in the editor, as a plain list of commands.
   - arun -c would write such a file from a session that's actually played, but Play doesn't
     pass switches, so that one is for later or for Advanced use.
+
+[#another-interpreter]
+== Seeing it as the player will
+
+Although your player _can_ run the game in a terminal like you have been doing, it is far more likely that they will run it in WinArun or Gargoyle.
+
+In fact, so can you, at least in WinArun.
+By pointing the IDE at a different interpreter, Play runs the game there instead of in the terminal.
+This is something to do now and again, e.g. to see how your game looks with its media, rather than every time you Play.
+
+The easiest way to change which interpreter the *Alan IF IDE* uses is to hover above the {} in the status line (at bottom of the VS Code window) beside the text "Alan".
+
+// TODO Screenshot of the Language settings hover
+
+There you will find a line which starts with "Interpreter".
+It indicates where the *Alan IF IDE* has found the interpreter.
+Usually "next to the compiler".
+
+To the right on that line you see "Settings..." which will take you to the settings page for the interpreter setting.
+Put the path to `winarun.exe` there.
+
+// TODO Image of the settings page
+
+WinArun runs the game in a window of its own, outside the terminal.
+So each Play opens a new window, and you have to close them yourself.
+
+To go back to playing in the terminal, clear the setting.
+The IDE will then find `arun` again.
+
+Gargoyle can not be used this way, but you can always open your `.a3c` in it.

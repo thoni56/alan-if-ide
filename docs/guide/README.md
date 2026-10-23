@@ -43,12 +43,12 @@ What needs saying, in plain words. Source: where the fact comes from.
 | About this guide | who it is for, which version, Robert's guide as ancestor |
 | Getting set up | the simplest path only: the SDK · VS Code · the extension from the marketplace · **Check Setup** as the "is it working" page |
 | Starting a new game | a folder, not a project — the one real shift from Eclipse · the main `.alan` file and `Start At` · watching it compile as you type |
-| Playing and testing | Play (▶) · terminal vs WinArun · the test loop |
+| Playing and testing | Play (▶) · the test loop · a first verb, a description, a second room |
 | **Finding and fixing compiler errors** | reading an error · the Problems panel · which file is compiled · when silence is the wrong kind |
 | Finding your way around | outline · Go to Definition · the verb case (syntax plus the override chain) · Find All References and its scoping |
 | Keeping the source tidy | Format Document · Re-wrap String and why strings are special · Toggle Block Comment and Alan's whole-line `////` |
 | Spelling your prose | brief / concordance / glossary |
-| Advanced use | the standard library · your own `.i` files and imports · which file is the main file · two files with the same name |
+| Advanced use | the standard library · your own `.i` files and imports · which file is the main file · two files with the same name · replaying a walkthrough · playing in WinArun |
 | Housekeeping | UTF-8 conversion · settings · key bindings, including Alt+Q when Rewrap has taken it |
 | Appendix: Setup in detail | other editors · the author profile · installing a VSIX · Java · where the tools are found · the startup warning and `⚠ Alan setup` · Check Setup row by row |
 
