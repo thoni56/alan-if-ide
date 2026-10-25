@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.8.8 — 2026-10-25
+
+- **Play in External Interpreter.** Right-click in an Alan file, or find it in the
+  Command Palette. It compiles the game like Play does, and then opens it in whatever
+  your computer opens `.a3c` files with, like WinArun or Gargoyle. That is probably how
+  your players will see your game. Each run opens a new window, and you close them
+  yourself.
+
+- **Non-English letters show correctly in the Play terminal on Linux, and should on
+  macOS.** A game with "Köket" in it printed `K\366ket`. On Windows nothing changes.
+
 ## 0.8.7 — 2026-10-09
 
 - **Spell checking no longer goes quiet for a whole file because of a quote in a
