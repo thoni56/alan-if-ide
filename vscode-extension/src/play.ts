@@ -21,35 +21,11 @@ let playTerminal: Terminal | undefined;
  * it), but only the client can host an interactive terminal, so Play splits there.
  */
 export async function play(): Promise<void> {
-    const main = await resolveMain();
-    if (!main) {
-        window.showErrorMessage(
-            'Alan: no .alan main file found to play. Open the main .alan file, ' +
-            'or set "alanif.mainFile" in your settings.');
+    const build = await prepareBuild();
+    if (!build) {
         return;
     }
-
-    // Build what the author sees: flush unsaved edits first (imports are read from
-    // disk by the compiler, so they must be saved too).
-    await workspace.saveAll(false);
-
-    // Play is the loudest failure if the toolchain is missing, so resolve properly
-    // and say what is wrong here rather than letting the terminal print
-    // "alan: command not found" and leaving the author to interpret it.
-    //
-    // Re-resolve rather than trusting the cache: an author who has just been told
-    // the compiler is missing may well have installed one, and Play is exactly when
-    // they would try again. This also republishes the state to the status items.
-    const setup = refreshTools();
-    if (!setup.compiler.ok) {
-        const choice = await window.showErrorMessage(
-            missingCompilerMessage(setup.compiler), 'Locate Compiler…');
-        if (choice === 'Locate Compiler…') {
-            await commands.executeCommand('alanif.locateCompiler');
-        }
-        return;
-    }
-    const compiler = setup.compiler.command;
+    const { main, compiler, setup } = build;
 
     if (!setup.arun.ok) {
         const choice = await window.showErrorMessage(
@@ -76,6 +52,42 @@ export async function play(): Promise<void> {
     playTerminal = window.createTerminal({ name: 'Alan IF Play', cwd: dir });
     playTerminal.show(true);
     playTerminal.sendText(command);
+}
+
+/**
+ * What every way of playing starts with: the main file, everything saved, and a
+ * compiler -- or the author has been told what is missing and there is nothing to do.
+ */
+async function prepareBuild() {
+    const main = await resolveMain();
+    if (!main) {
+        window.showErrorMessage(
+            'Alan: no .alan main file found to play. Open the main .alan file, ' +
+            'or set "alanif.mainFile" in your settings.');
+        return undefined;
+    }
+
+    // Build what the author sees: flush unsaved edits first (imports are read from
+    // disk by the compiler, so they must be saved too).
+    await workspace.saveAll(false);
+
+    // Play is the loudest failure if the toolchain is missing, so resolve properly
+    // and say what is wrong here rather than letting the terminal print
+    // "alan: command not found" and leaving the author to interpret it.
+    //
+    // Re-resolve rather than trusting the cache: an author who has just been told
+    // the compiler is missing may well have installed one, and Play is exactly when
+    // they would try again. This also republishes the state to the status items.
+    const setup = refreshTools();
+    if (!setup.compiler.ok) {
+        const choice = await window.showErrorMessage(
+            missingCompilerMessage(setup.compiler), 'Locate Compiler…');
+        if (choice === 'Locate Compiler…') {
+            await commands.executeCommand('alanif.locateCompiler');
+        }
+        return undefined;
+    }
+    return { main, compiler: setup.compiler.command, setup };
 }
 
 /**
