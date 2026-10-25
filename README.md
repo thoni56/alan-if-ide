@@ -35,8 +35,9 @@ Palette in VS Code. Press Ctrl+Shift+P and type "alan if".
   shows any errors and warnings. They will be marked on the error location in the editor
   view, and on a separate *Problems* tab for any, even multi-file, adventure (it
   compiles the *main* `.alan` file and shows each error in the correct file).
-- **Play** (▶) compiles the project and launches the game in an integrated terminal, or
-  with the interpreter you have configured, like WinArun.
+- **Play** (▶) compiles the project and launches the game in an integrated terminal.
+  **Play in External Interpreter** opens it in whatever your system opens `.a3c` files
+  with instead, like WinArun or Gargoyle.
 - **Format Document** indents from the real block nesting, and will also normalise
   keyword case if you configure it to. It never reflows the interior of a string as this
   is the authors preference.

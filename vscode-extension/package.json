@@ -49,6 +49,11 @@
         "icon": "$(play)"
       },
       {
+        "command": "alanif.playExternal",
+        "title": "Play in External Interpreter",
+        "category": "Alan IF"
+      },
+      {
         "command": "alanif.locateCompiler",
         "title": "Locate Alan Compiler…",
         "category": "Alan IF"
@@ -104,6 +109,11 @@
           "group": "navigation"
         },
         {
+          "command": "alanif.playExternal",
+          "when": "resourceLangId == alanif",
+          "group": "navigation"
+        },
+        {
           "command": "alanif.rewrapString",
           "when": "resourceLangId == alanif",
           "group": "1_modification"
@@ -117,6 +127,10 @@
       "commandPalette": [
         {
           "command": "alanif.play",
+          "when": "resourceLangId == alanif"
+        },
+        {
+          "command": "alanif.playExternal",
           "when": "resourceLangId == alanif"
         },
         {

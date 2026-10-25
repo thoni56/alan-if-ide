@@ -37,6 +37,8 @@ Ctrl+Shift+P and type "alan if".
   ![Compiler message on hover, and the Problems panel routing the same warning to six different .i files](https://raw.githubusercontent.com/thoni56/alan-if-ide/main/docs/images/alan-if-ide-error-location.png)
 - **Play** (▶) compiles the adventure and launches it in an integrated terminal. It is
   in the editor title bar, in the status bar and in the context menu.
+  **Play in External Interpreter**, in the context menu, opens it in whatever your
+  system opens `.a3c` files with instead, like WinArun or Gargoyle.
 
   ![The adventure compiled and running in the integrated terminal](https://raw.githubusercontent.com/thoni56/alan-if-ide/main/docs/images/alan-if-ide-run-in-terminal.png)
 - **Format Document** indents from the real block nesting, and will normalise keyword

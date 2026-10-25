@@ -1,9 +1,11 @@
 import * as path from 'path';
 import * as fs from 'fs';
+import { execFile } from 'child_process';
 import { workspace, window, env, Uri, ExtensionContext, Terminal, commands } from 'vscode';
 import { shellFrom, playCommand } from './shell';
 import { missingCompilerMessage, missingArunMessage } from './toolchain';
 import { refreshTools } from './environment';
+import { playExternally } from './external';
 
 let playTerminal: Terminal | undefined;
 
@@ -52,6 +54,31 @@ export async function play(): Promise<void> {
     playTerminal = window.createTerminal({ name: 'Alan IF Play', cwd: dir });
     playTerminal.show(true);
     playTerminal.sendText(command);
+}
+
+/**
+ * Compile, then hand the game to whatever the system opens an .a3c with. Only the
+ * compiler is needed, since the interpreter is the system's choice.
+ */
+export async function playInExternalInterpreter(): Promise<void> {
+    const build = await prepareBuild();
+    if (!build) {
+        return;
+    }
+    await playExternally(build.main.fsPath, {
+        compile: (dir, main) => new Promise(resolve =>
+            execFile(build.compiler, ['-encoding', 'utf8', main], { cwd: dir },
+                error => resolve(!error))),
+        open: file => Promise.resolve(env.openExternal(Uri.file(file))),
+        notCompiled: async main => {
+            const choice = await window.showErrorMessage(
+                `Alan: ${main} did not compile, so there is no game to play. ` +
+                'The errors are in the Problems view.', 'Show Problems');
+            if (choice === 'Show Problems') {
+                await commands.executeCommand('workbench.actions.view.problems');
+            }
+        },
+    });
 }
 
 /**

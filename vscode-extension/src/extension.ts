@@ -1,7 +1,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import { ExtensionContext, commands, window } from 'vscode';
-import { play, watchPlayTerminals } from './play';
+import { play, playInExternalInterpreter, watchPlayTerminals } from './play';
 import { JavaMissing, missingJavaMessage } from './java';
 import { Environment, initEnvironment, onEnvironmentChanged } from './environment';
 import { overriddenPathWarnings } from './toolchain';
@@ -70,6 +70,7 @@ export function deactivate(): Thenable<void> | undefined {
 function registerCommands(context: ExtensionContext): void {
     context.subscriptions.push(
         commands.registerCommand('alanif.play', () => play()),
+        commands.registerCommand('alanif.playExternal', () => playInExternalInterpreter()),
         commands.registerCommand('alanif.locateCompiler', () => locateCompiler()),
         commands.registerCommand('alanif.locateInterpreter', () => locateInterpreter()),
         commands.registerCommand('alanif.checkToolchain', () => checkToolchain()),
