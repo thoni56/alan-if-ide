@@ -7,7 +7,7 @@ Developing an Alan adventure is an incremental process.
 Typically you write a little, run the game to see the result, then write a little more.
 
 The *Alan IF IDE* is designed to make this loop as comfortable as possible.
-In the previous chapter you have already encountered the *Problems* view and the *Play* button.
+In the previous chapter you already encountered the *Problems* view and the *Play* button.
 
 There you probably found that whatever you typed at the game prompt for the game in the previous chapter, the game answered with "I don't know the word 'x'" or something to that effect.
 
@@ -41,7 +41,7 @@ Not much of a game still, but this is your first verb at work.
 
 == Some new files
 
-You might notice that two new files shows up in your folder.
+You might already have noticed that two new files show up in your folder.
 
 The one with the `.a3c` extension is the actual, compiled, game file.
 This is the one you would distribute if you wanted to give your game to someone else to play.
@@ -63,15 +63,54 @@ End The kitchen.
 
 Now run the game (*Play (▶)*).
 
-// You don't have to quit the previous, Play will kill it and start new. You see the description.
+You don't have to quit the previous running game, if you have one.
+Play will always kill a terminal and the game running in it and then start the new, fresh, game.
+
+You should now see the description of the kitchen.
 
 == Another room
 
-// Add another room and the exits. Misspell one of the exit targets.
-// Run will show the errors but the better view is the Problems.
+In addition to the verbs, or actions, a game almost always also has a map.
+The map is a network of interconnected locations.
+So let's add another room and ways to move between them.
 
-// Fix and run.
+Just before "The kitchen" put this in:
 
-// TODO screenshot of "moved to Hallway"
+[source,alan]
+----
+The hallway Isa location
+    Description
+        "This hallway is longer than you would have imagined. In the east end is the kitchen."
+    Exit east To kitchen.
+End The hallway.
+----
 
-// End: the .a3c from Some new files is what you give a player.
+And just before "End The kitchen" put this:
+
+[source,alan]
+----
+    Exit west To halway.
+----
+
+Note the intentional misspelling of 'hallway' in the Exit-line.
+That is indeed intentional, so be sure to enter it exactly like that.
+
+You will see there is a red squiggly line below 'halway'.
+Hovering over it will give you an explanation, "Identifier 'halway' not defined."
+And it is not, since it is a misspelling of 'hallway'.
+
+Open the *Problems* view, *menu:View[Problems]*.
+There the problem, all problems in fact, is also listed.
+
+Try running the game.
+You will see that the compiler finds the error and refuses to start the game.
+So it is better to fix errors as you see them show up in the *Editor* and/or the *Problems* view.
+
+The fix is simple, just fix the spelling error, see the squiggly line disappear along with the line in the *Problems* view.
+
+*Play (▶)*, type 'west' and you find yourself in the hallway.
+
+// TODO: screenshot of entering the hallway
+
+Your player will probably not play your game in a terminal, but open the `.a3c` file in an interpreter like WinArun or Gargoyle.
+To see it like that, right-click in the *Editor* and select *Play in External Interpreter*, which opens the game in whatever your computer opens `.a3c` files with.
