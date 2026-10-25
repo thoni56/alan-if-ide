@@ -23,5 +23,10 @@ export async function playExternally(main: string, io: ExternalPlay): Promise<vo
         io.notCompiled(mainName);
         return;
     }
-    await io.open(path.join(dir, path.basename(main, path.extname(main)) + '.a3c'));
+    await io.open(gameOf(main));
+}
+
+/** The compiled game, which the compiler writes beside the main file. */
+export function gameOf(main: string): string {
+    return path.join(path.dirname(main), path.basename(main, path.extname(main)) + '.a3c');
 }

@@ -13,6 +13,9 @@
  */
 export type Shell = 'posix' | 'powershell' | 'cmd';
 
+/** How Play compiles: the sources are UTF-8, as for the diagnostics. */
+export const compileFlags = ['-encoding', 'utf8'];
+
 /** Classify a shell from its executable path, as reported by the editor. */
 export function shellFrom(shellPath: string | undefined, platform: string): Shell {
     const shell = (shellPath || '').toLowerCase();
@@ -36,13 +39,13 @@ export function playCommand(shell: Shell, compiler: string, main: string,
             // `&` is what runs a quoted path; without it PowerShell reads the line as
             // an expression. And `&&` exists only in PowerShell 7 while Windows still
             // ships 5.1, so "only if it worked" goes through $LASTEXITCODE instead.
-            return `& ${ps(compiler)} -encoding utf8 ${ps(main)}; `
+            return `& ${ps(compiler)} ${compileFlags.join(' ')} ${ps(main)}; `
                 + `if ($LASTEXITCODE -eq 0) { & ${ps(interpreter)} -u ${ps(a3c)} }`;
         case 'cmd':
-            return `${dq(compiler)} -encoding utf8 ${dq(main)} `
+            return `${dq(compiler)} ${compileFlags.join(' ')} ${dq(main)} `
                 + `&& ${dq(interpreter)} -u ${dq(a3c)}`;
         default:
-            return `${sq(compiler)} -encoding utf8 ${sq(main)} `
+            return `${sq(compiler)} ${compileFlags.join(' ')} ${sq(main)} `
                 + `&& ${sq(interpreter)} -u ${sq(a3c)}`;
     }
 }

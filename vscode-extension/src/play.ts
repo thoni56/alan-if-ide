@@ -2,10 +2,10 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { execFile } from 'child_process';
 import { workspace, window, env, Uri, ExtensionContext, Terminal, commands } from 'vscode';
-import { shellFrom, playCommand } from './shell';
+import { shellFrom, playCommand, compileFlags } from './shell';
 import { missingCompilerMessage, missingArunMessage } from './toolchain';
 import { refreshTools } from './environment';
-import { playExternally } from './external';
+import { playExternally, gameOf } from './external';
 
 let playTerminal: Terminal | undefined;
 
@@ -41,7 +41,7 @@ export async function play(): Promise<void> {
 
     const dir = path.dirname(main.fsPath);
     const mainName = path.basename(main.fsPath);
-    const a3c = path.basename(main.fsPath, path.extname(main.fsPath)) + '.a3c';
+    const a3c = path.basename(gameOf(main.fsPath));
 
     // Mirror the diagnostics compile flags, minus -ide (we want human-readable
     // build output in the terminal, not the machine format).
@@ -67,7 +67,7 @@ export async function playInExternalInterpreter(): Promise<void> {
     }
     await playExternally(build.main.fsPath, {
         compile: (dir, main) => new Promise(resolve =>
-            execFile(build.compiler, ['-encoding', 'utf8', main], { cwd: dir },
+            execFile(build.compiler, [...compileFlags, main], { cwd: dir },
                 error => resolve(!error))),
         open: file => Promise.resolve(env.openExternal(Uri.file(file))),
         notCompiled: async main => {
