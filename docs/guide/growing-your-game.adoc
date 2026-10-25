@@ -1,4 +1,4 @@
-= Playing and testing
+= Growing your game
 :experimental:
 
 == The loop
@@ -7,11 +7,11 @@ Developing an Alan adventure is an incremental process.
 Typically you write a little, run the game to see the result, then write a little more.
 
 The *Alan IF IDE* is designed to make this loop as comfortable as possible.
-In the previous chapter you already encountered the *Problems* view and the *Play* button.
+In the previous chapter you already encountered the *Play* button.
 
 There you probably found that whatever you typed at the game prompt for the game in the previous chapter, the game answered with "I don't know the word 'x'" or something to that effect.
 
-This is not a tutorial in the Alan language as such, but to have this guide take you through a few loops we will add a few features to that small game.
+This is not a tutorial in the Alan language as such, but to take you through a few loops we will add a few features to that small game.
 
 == Your first verb
 
@@ -95,15 +95,54 @@ And just before "End The kitchen" put this:
 Note the intentional misspelling of 'hallway' in the Exit-line.
 That is indeed intentional, so be sure to enter it exactly like that.
 
+== Your first error
+
+There is no "compile" button, so you cannot, and need not, run the compiler yourself.
+Instead the game is automatically analysed and compiled on every keystroke, from the editor, unsaved text and all.
+
 You will see there is a red squiggly line below 'halway'.
 Hovering over it will give you an explanation, "Identifier 'halway' not defined."
 And it is not, since it is a misspelling of 'hallway'.
 
 Open the *Problems* view, *menu:View[Problems]*.
+It will open in the Panel, like the Terminal did.
 There the problem, all problems in fact, is also listed.
+The *Problems* view does not automatically open when there are errors, so you have to open it yourself.
+
+There is also a part of the Status Bar that shows the number of errors, warnings and informational messages.
+
+// TODO: screenshot of the squiggly line with its hover, the Problems view open in the Panel, and the counts in the Status Bar.
 
 Try running the game.
 You will see that the compiler finds the error and refuses to start the game.
+In the Terminal it tells you why:
+
+----
+   10.      Exit west To halway.
+=====>                   1
+
+  *1*   310 E : Identifier 'halway' not defined.
+----
+
+The last line has three parts.
+
+`310` is the compiler's own error number.
+It is stable between versions, so it is the thing to quote when you ask another author what an error means.
+The *Problems* view shows it as the code `alan.compiler.310`.
+
+`E` is the severity.
+`E` is an error, and no game is generated.
+`W` is a warning: you still get a game, but the compiler thinks you probably didn't mean this.
+`F` and `S` are a fatal error and an internal compiler error, which you are unlikely to ever see; the IDE shows both as errors.
+
+The rest is the message, written from the compiler's point of view.
+
+[NOTE]
+====
+The compiler also has purely informational messages, marked `I`.
+The Terminal counts them, but the IDE doesn't ask for them, so they never reach the *Problems* view.
+====
+
 So it is better to fix errors as you see them show up in the *Editor* and/or the *Problems* view.
 
 The fix is simple, just fix the spelling error, see the squiggly line disappear along with the line in the *Problems* view.
@@ -112,5 +151,10 @@ The fix is simple, just fix the spelling error, see the squiggly line disappear 
 
 // TODO: screenshot of entering the hallway
 
-Your player will probably not play your game in a terminal, but open the `.a3c` file in an interpreter like WinArun or Gargoyle.
+== Playing it like your users do
+
+Your players will probably not play your game in a terminal.
+Instead they will open the `.a3c` file in an interpreter like WinArun or Gargoyle.
 To see it like that, right-click in the *Editor* and select *Play in External Interpreter*, which opens the game in whatever your computer opens `.a3c` files with.
+
+NOTE: To make this work you have to ensure your system knows how to open an `.a3c` file. This is different on different system.

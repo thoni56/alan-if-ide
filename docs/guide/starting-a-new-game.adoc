@@ -6,7 +6,7 @@
 
 Starting a new game is easy, you only need a folder and the IDE. There is no project, no wizard, and no template. These are all things that might change in the future, but for now they are not needed.
 
-Since a game is contained in a folder, you open it with menu:File[Open Folder...].
+Since a game is contained in a folder, you open it with *menu:File[Open Folder...]*.
 The folder can be empty, or it can already hold some files.
 
 A game needs at least one `.alan` file.
@@ -14,7 +14,7 @@ You might also create one or more "Alan import" files which have an `.i` extensi
 To start you won't need any, but you can add some later.
 The IDE does not care about any other files, and it does not, yet, handle sub-folders.
 
-To create files you use the Explorer's New File command, or the menu:File[New File] command.
+To create files you use the Explorer's New File command, or the *menu:File[New File]* command.
 This will create an empty file in the folder you have open, and you can give it any name you like.
 Make sure you give it the `.alan` extension, because that is what activates the features of the Alan IF IDE.
 If you haven't configured a working Alan compiler yet, you will now get a reminder and a chance to *Locate Compiler...*.
@@ -33,13 +33,13 @@ Start At kitchen.
 
 Create a file with a `.alan` extension, and put the above text in it.
 
-If you have set up the IDE completely, especially the Alan compiler and interpreter, you can run the game using the Play (▶) button in the upper right corner.
+If you have set up the IDE completely, especially the Alan compiler and interpreter, you can run the game using the *Play (▶)* button in the upper right corner.
 
-It might be nice to know that Play saves all your files first, then compile it and then run the game.
+It might be nice to know that Play saves all your files first, compiles it and then runs the game.
 This means that you always run the latest version of your work.
 But also that it will not run if errors are found.
 
-Press the Play button and you should see a terminal "window" in the IDE.
+Press the *Play (▶)* button and you should see a terminal "window" in the IDE.
 If you don't, run Check Setup (see Getting set up).
 
 The Terminal will show up in the Panel, the area below the Editor.
@@ -53,19 +53,3 @@ That's the game running, and after clicking in the terminal, you can type comman
 The game currently has no other locations, no objects, and no verbs, so you cannot interact with it until you expand your game.
 
 image::after-play.png[The whole window after Play, with the game in the Editor and the Alan IF Play terminal in the Panel showing Kitchen and the prompt]
-
-== Watching it compile as you type
-
-There is no "compile" button, so you cannot, and need not, run the compiler yourself.
-Instead the game is automatically analysed and compiled on every keystroke, from the editor, unsaved text and all.
-
-To try this out, type a few random characters in the Editor.
-
-If you type something that is not valid Alan code, you will get red squiggly markers under the text in the editor area.
-You can hover the marked text to see a description of the error, or use menu:View[Problems] to show the detailed "Problems" view.
-It will open in the Panel, like the Terminal did.
-The "Problems" view does not automatically open when there are errors, so you have to open it yourself.
-
-// TODO: screenshot of a curly marker with its hover, the Problems view open in the Panel, and the counts in the Status Bar.
-
-There is also a part of the Status Bar that shows the number of errors, warnings and informational messages.

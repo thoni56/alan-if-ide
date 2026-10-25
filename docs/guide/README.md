@@ -42,13 +42,13 @@ What needs saying, in plain words. Source: where the fact comes from.
 | --- | --- |
 | About this guide | who it is for, which version, Robert's guide as ancestor |
 | Getting set up | the simplest path only: the SDK · VS Code · the extension from the marketplace · **Check Setup** as the "is it working" page |
-| Starting a new game | a folder, not a project — the one real shift from Eclipse · the main `.alan` file and `Start At` · watching it compile as you type |
-| Playing and testing | Play (▶) · the test loop · a first verb, a description, a second room |
-| **Finding and fixing compiler errors** | reading an error · the Problems panel · which file is compiled · when silence is the wrong kind |
+| Starting a new game | a folder, not a project — the one real shift from Eclipse · the main `.alan` file and `Start At` · the first Play |
+| Growing your game | the write-and-play loop · a first verb, a description, a second room · the first error: squiggles, the Problems view, reading the message · Play in External Interpreter |
+| More than one file | the standard library · your own `.i` files and imports · errors in a file you are not looking at · which file is compiled · two files with the same name · when silence is the wrong kind |
 | Finding your way around | outline · Go to Definition · the verb case (syntax plus the override chain) · Find All References and its scoping |
 | Keeping the source tidy | Format Document · Re-wrap String and why strings are special · Toggle Block Comment and Alan's whole-line `////` |
 | Spelling your prose | brief / concordance / glossary |
-| Advanced use | the standard library · your own `.i` files and imports · which file is the main file · two files with the same name · replaying a walkthrough · playing in WinArun |
+| Advanced use | more than one main file · replaying a walkthrough |
 | Housekeeping | UTF-8 conversion · settings · key bindings, including Alt+Q when Rewrap has taken it |
 | Appendix: Setup in detail | other editors · the author profile · installing a VSIX · Java · where the tools are found · the startup warning and `⚠ Alan setup` · Check Setup row by row |
 
@@ -65,18 +65,19 @@ to be checked out. The PDF uses asciidoctor-pdf's default theme for now.
 | Section | State |
 | --- | --- |
 | Getting set up | first draft — content verified |
-| Finding and fixing compiler errors | first draft — content verified, voice pass done |
 | Starting a new game | first draft — content verified, Thomas's own prose |
-| Advanced use | notes only, imports — content verified |
+| Growing your game | first draft — Thomas's own prose, with the error sections from the old *Finding and fixing compiler errors* moved in |
+| More than one file | prose from the old *Finding and fixing compiler errors* (content verified, voice pass done), notes on imports and the library (content verified) |
+| Advanced use | notes only |
 | Setup in detail | moved out of Getting set up, not yet reread as a section of its own |
 
 Everything else is outline.
 
 *Finding and fixing compiler errors* was written on a machine without the
-writing-style conventions available and has since had one voice pass, which also
-changed the worked example to `Start At kitchen.` from `Start At l.`, verified
-against `alan -ide -encoding utf8` 3.0beta9: `310 E : Identifier 'kitchen' not
-defined.` *Getting set up* is Thomas's own rewrite.
+writing-style conventions available and has since had one voice pass. It has been
+split up: reading an error went to *Growing your game*, where the reader meets the
+`halway` error, and the rest to *More than one file*. *Getting set up* is Thomas's
+own rewrite.
 
 Neither section has its screenshots yet.
 
@@ -89,7 +90,7 @@ coming out raw. `check.sh` renders every section and fails if that happens again
 
 Worth not re-deriving.
 
-### Finding and fixing compiler errors
+### Compiler errors
 
 Checked against the code and against `alan` 3.0beta9:
 
@@ -220,17 +221,8 @@ author is actually in. Struck rather than left to be acted on.
 
 Raised against the first draft, deferred while it is still a spike.
 
-- **The section reads as though compiler errors are the only errors there are.**
-  The Problems panel carries three sources: syntax errors from Xtext's incremental
-  parser, the compiler's own errors, and spell checking. An author does not see
-  them as three systems, so the guide needs a frame that covers all three — either
-  a broader section than this one, or an opening that says which is which and
-  where each is described.
 - Decide whether the per-directory main-file rule is described as current
   behaviour or waits for the project descriptor that the code comment anticipates.
-- Move *Errors in a file you are not looking at*, with *Which file counts as the main
-  file* and *Two files with the same name*, from *Finding and fixing compiler errors*
-  to *Advanced use*. A first game in one folder never meets them.
 - The guide says nothing about Workspace Trust. It assumes #4 is fixed, so the
   extension works in a new folder before the author has trusted it.
 - Two screenshots are marked with `// TODO:` in *Getting set up* — the Extensions view,

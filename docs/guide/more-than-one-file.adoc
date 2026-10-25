@@ -1,0 +1,119 @@
+= More than one file
+:experimental:
+
+A game soon grows beyond a single file.
+You split it into `.i` files of your own, and you will probably use the standard library, which is a set of `.i` files too.
+This chapter is about what changes when you do.
+
+// NOTES, NOT PROSE YET, down to "Errors in a file you are not looking at".
+// Verified against the extension sources at 34b03b5 and alan 3.0beta9, by compiling
+// the way the IDE does: a temp copy of the main file, with the working directory and
+// -include both set to the main file's folder.
+// The compiler's import lookup may change, so check these again before writing.
+
+== The standard library
+
+* With the standard library (StdLib v2.2.0-WIP) the game also needs a `my_game`:
++
+[source,alan]
+----
+Import 'library.i'.
+
+The my_game Isa definition_block.
+End The my_game.
+----
++
+Without it the library itself reports `310 E : Identifier 'my_game' not defined.` many times over, ending in `7 W : Maximum number of messages exceeded.`
+* The library files have to lie loose in the game folder, see below.
+
+== Your own imported files
+
+* Imports resolve against the main file's folder, not the importing file's.
+`Import 'lib/rooms.i'.` finds `lib/rooms.i`.
+`Import 'rooms.i'.` does not, and gives `199 F : Adventure source file (rooms.i) not found.`
+* So the standard library does not work from a subfolder.
+`library.i` imports its siblings by bare name, and every one of them is `199 F` not found.
+There is no include-path setting to change that.
+* A backslash in an Import path is not found on Linux.
+Windows is untested.
+
+== Errors in a file you are not looking at
+
+An Alan adventure is compiled as a whole, from its main file.
+An error in an imported `.i` file is found while compiling the main file, and the IDE puts it where it belongs.
+You get the red underline on the offending line of `rooms.i` even though the compiler was run on `game.alan`, and the *Problems* view lists it under `rooms.i`.
+
+Click an entry in the *Problems* view and the editor opens that file with the cursor on the error.
+It lists the errors from all the files, so it is the place to look when your game spans several.
+
+[.fold-in]
+.To fold in
+****
+On a fresh VS Code the panel is closed, and killing the Play terminal with the dustbin closes it again.
+menu:View[Problems] always opens it.
+Check that clicking the status bar count, and kbd:[Ctrl+Shift+M], really do too.
+Source: Thomas in a fresh VS Code.
+****
+
+=== Which file counts as the main file
+
+The rule is mechanical, and it is not the setting you might expect.
+
+When you are editing a `.alan` file, that file is the main file.
+It is compiled as itself.
+
+When you are editing a `.i` file, the IDE compiles the first `.alan` file in the same directory, in alphabetical order.
+It does not search subdirectories, and it does not look at the folder above.
+
+[IMPORTANT]
+====
+The `alanif.mainFile` setting does not affect this.
+That setting tells *Play* which adventure to run, and nothing else.
+====
+
+If a directory holds more than one `.alan` file, the alphabetically first one is used, silently.
+If that is not the one that imports the `.i` you are editing, the errors you see are that other adventure's.
+
+=== Two files with the same name
+
+Errors are matched to files by filename alone, ignoring the directory.
+If your adventure has a `chapter.i` in two different folders both will show the same errors, and one set of them is wrong.
+Give such files distinct names.
+
+== Saving imported files
+
+An imported `.i` file is compiled from the disk, since that is where the compiler reads it.
+While such a file has unsaved changes the IDE shows no compiler errors for it at all, rather than errors from a version on disk that no longer matches what you are looking at.
+Save the file and its errors appear.
+With the author profile (see <<setup-in-detail>>) files are saved automatically after 800 ms, so this lasts under a second.
+
+[NOTE]
+====
+If a `.i` file has stopped reporting errors, look at its tab for the unsaved dot.
+That is the most likely reason.
+====
+
+== When you see no errors at all
+
+An empty *Problems* view is good news, as long as the compiler is actually running.
+There are a few ways for it to be quiet for the wrong reason.
+
+*No compiler is installed or configured.*
+Without the Alan compiler the IDE can't produce compiler errors, and it doesn't invent them.
+Syntax errors from the editor's own parser still appear, but undefined names, type errors and everything else the compiler checks go unreported.
+Run *Alan IF: Check Setup* from the Command Palette (kbd:[Ctrl+Shift+P]) to see whether a compiler was found, and where.
+The language status bubble beside "Alan" in the status bar says the same thing while an Alan file is open, and a `⚠ Alan setup` item appears in the status bar whenever something is missing.
+
+*The `.i` file you are editing has unsaved changes.*
+See above, save it.
+
+*Something went wrong running the compiler.*
+You don't get a dialogue for this.
+It goes to the output channel instead: menu:View[Output], then pick *Alan IF Language Server* from the dropdown.
+A compiler that could not be started, one that took longer than a minute, or one too old to understand the options the IDE passes it, all report themselves there.
+
+[TIP]
+====
+The main file is compiled on every keystroke, so a very large adventure can make typing feel heavy.
+If that happens it is the compile you are feeling, not the editor.
+====

@@ -2,27 +2,17 @@
 :experimental:
 
 // NOTES, NOT PROSE YET.
+
+== More than one main file
+
+* Play picks its file as: `alanif.mainFile`; else the active `.alan` file; else the first `.alan` beside the active `.i`; else the first `.alan` anywhere in the folder.
+
+== Sub-directories
+
 // Verified against the extension sources at 34b03b5 and alan 3.0beta9, by compiling
 // the way the IDE does: a temp copy of the main file, with the working directory and
 // -include both set to the main file's folder.
-// The compiler's import lookup may change, so check these again before writing.
-
-== The standard library
-
-* With the standard library (StdLib v2.2.0-WIP) the game also needs a `my_game`:
-+
-[source,alan]
-----
-Import 'library.i'.
-
-The my_game Isa definition_block.
-End The my_game.
-----
-+
-Without it the library itself reports `310 E : Identifier 'my_game' not defined.` many times over, ending in `7 W : Maximum number of messages exceeded.`
-* The library files have to lie loose in the game folder, see below.
-
-== Your own imported files
+// The compiler's import lookup may change (alan-if/alan#57), so check these again before writing.
 
 * Imports resolve against the main file's folder, not the importing file's.
 `Import 'lib/rooms.i'.` finds `lib/rooms.i`.
@@ -32,12 +22,12 @@ Without it the library itself reports `310 E : Identifier 'my_game' not defined.
 There is no include-path setting to change that.
 * A backslash in an Import path is not found on Linux.
 Windows is untested.
-* An imported `.i` is compiled from disk, and shows no compiler errors while it has unsaved changes.
-* The author profile auto-saves after 800 ms, so with it the "unsaved `.i` shows no errors" case lasts under a second.
+* An error in `lib/rooms.i` still gets its red underline there, and the *Problems* view lists it under `lib/rooms.i`.
 
-== More than one main file
-
-* Play picks its file as: `alanif.mainFile`; else the active `.alan` file; else the first `.alan` beside the active `.i`; else the first `.alan` anywhere in the folder.
+* If a `.i` file sits in a directory with no `.alan` file beside it, a `lib/` subfolder say, there is nothing to compile it as part of, and it gets no compiler errors at all.
+Nothing is reported to say so.
+The file stays quiet, however wrong it is.
+Open a `.alan` file that imports it and the errors turn up there, against the imported file.
 
 == Re-Playing
 
@@ -47,33 +37,3 @@ Windows is untested.
   - The reader writes the file in the editor, as a plain list of commands.
   - arun -c would write such a file from a session that's actually played, but Play doesn't
     pass switches, so that one is for later or for Advanced use.
-
-[#another-interpreter]
-== Seeing it as the player will
-
-Although your player _can_ run the game in a terminal like you have been doing, it is far more likely that they will run it in WinArun or Gargoyle.
-
-In fact, so can you, at least in WinArun.
-By pointing the IDE at a different interpreter, Play runs the game there instead of in the terminal.
-This is something to do now and again, e.g. to see how your game looks with its media, rather than every time you Play.
-
-The easiest way to change which interpreter the *Alan IF IDE* uses is to hover above the {} in the status line (at bottom of the VS Code window) beside the text "Alan".
-
-// TODO Screenshot of the Language settings hover
-
-There you will find a line which starts with "Interpreter".
-It indicates where the *Alan IF IDE* has found the interpreter.
-Usually "next to the compiler".
-
-To the right on that line you see "Settings..." which will take you to the settings page for the interpreter setting.
-Put the path to `winarun.exe` there.
-
-// TODO Image of the settings page
-
-WinArun runs the game in a window of its own, outside the terminal.
-So each Play opens a new window, and you have to close them yourself.
-
-To go back to playing in the terminal, clear the setting.
-The IDE will then find `arun` again.
-
-Gargoyle can not be used this way, but you can always open your `.a3c` in it.

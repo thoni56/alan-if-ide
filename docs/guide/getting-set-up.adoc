@@ -11,7 +11,7 @@ If the following doesn't work in your environment, or you want to see what other
 
 === The Alan SDK - the compiler and interpreter for Alan.
 
-This is strictly speaking not part of the IDE, but it is needed for the IDE to show errors, compile and run your game.
+This is strictly speaking not part of the IDE, but it is needed for the IDE to show all types of errors, compile and run your game.
 You can write Alan without it, but you cannot compile or run your game.
 
 The Alan SDK is currently a separate download, from https://alanif.se[alanif.se].
