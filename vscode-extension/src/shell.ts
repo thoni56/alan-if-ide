@@ -31,7 +31,13 @@ export function shellFrom(shellPath: string | undefined, platform: string): Shel
     return platform === 'win32' ? 'powershell' : 'posix';
 }
 
-/** Compile, then start the game only if that succeeded -- in this shell's dialect. */
+/**
+ * Compile, then start the game only if that succeeded -- in this shell's dialect.
+ *
+ * <p>Only a POSIX terminal gets `-u`: it shows UTF-8, while arun's own Latin-1 shows
+ * as "K\366ket". On Windows it is the other way round, measured in the Play terminal:
+ * "KÃ¶ket" with `-u` and "Köket" without.
+ */
 export function playCommand(shell: Shell, compiler: string, main: string,
         interpreter: string, a3c: string): string {
     switch (shell) {
@@ -40,10 +46,10 @@ export function playCommand(shell: Shell, compiler: string, main: string,
             // an expression. And `&&` exists only in PowerShell 7 while Windows still
             // ships 5.1, so "only if it worked" goes through $LASTEXITCODE instead.
             return `& ${ps(compiler)} ${compileFlags.join(' ')} ${ps(main)}; `
-                + `if ($LASTEXITCODE -eq 0) { & ${ps(interpreter)} -u ${ps(a3c)} }`;
+                + `if ($LASTEXITCODE -eq 0) { & ${ps(interpreter)} ${ps(a3c)} }`;
         case 'cmd':
             return `${dq(compiler)} ${compileFlags.join(' ')} ${dq(main)} `
-                + `&& ${dq(interpreter)} -u ${dq(a3c)}`;
+                + `&& ${dq(interpreter)} ${dq(a3c)}`;
         default:
             return `${sq(compiler)} ${compileFlags.join(' ')} ${sq(main)} `
                 + `&& ${sq(interpreter)} -u ${sq(a3c)}`;
